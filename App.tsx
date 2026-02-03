@@ -67,6 +67,13 @@ const INITIAL_STATS: CharacterStats = {
 const App: React.FC = () => {
   const { ready, isOBR, playerName } = useOBR();
 
+  // Overlay Mode Detection
+  const [isOverlay, setIsOverlay] = useState(false);
+  useEffect(() => {
+    const query = new URLSearchParams(window.location.search);
+    setIsOverlay(query.get('overlay') === 'true');
+  }, []);
+
   const [items, setItems] = useState<Item[]>(INITIAL_ITEMS);
   const [stats, setStats] = useState<CharacterStats>(INITIAL_STATS);
   const [isLoaded, setIsLoaded] = useState(false);
@@ -89,39 +96,76 @@ const App: React.FC = () => {
     if (!ready) return;
 
     const loadData = async () => {
-      const [savedItems, savedStats] = await Promise.all([
-        OBRStorage.getItems(),
-        OBRStorage.getStats(),
-      ]);
+      try {
+        console.log("Loading FateWeaver data...");
+        const [savedItems, savedStats] = await Promise.all([
+          OBRStorage.getItems(),
+          OBRStorage.getStats(),
+        ]);
 
-      if (savedItems && savedItems.length > 0) {
-        setItems(savedItems);
-        setActiveItemId(savedItems[0]?.id || null);
-      } else {
-        setActiveItemId(INITIAL_ITEMS[0]?.id || null);
+        if (savedItems && savedItems.length > 0) {
+          console.log("Loaded items:", savedItems.length);
+          setItems(savedItems);
+          setActiveItemId(savedItems[0]?.id || null);
+        } else {
+          // If explicitly empty array (user deleted all), keep empty.
+          // If undefined (new user), use INITIAL.
+          console.log("No saved items found (or new user). Using defaults if undefined.");
+          if (savedItems && savedItems.length === 0) {
+            setItems([]);
+            setActiveItemId(null);
+          } else {
+            // Only reset to initial if we truly have nothing
+            setActiveItemId(INITIAL_ITEMS[0]?.id || null);
+          }
+        }
+
+        if (savedStats) {
+          console.log("Loaded stats.");
+          setStats(savedStats);
+        }
+      } catch (e) {
+        console.error("Error loading data:", e);
+      } finally {
+        setIsLoaded(true);
       }
-
-      if (savedStats) {
-        setStats(savedStats);
-      }
-
-      setIsLoaded(true);
     };
 
     loadData();
   }, [ready]);
 
+  // Open the overlay window on mount (if acting as controller)
+  useEffect(() => {
+    if (ready && isOBR && !isOverlay) {
+      // We are the controller. Try to open the overlay.
+      import('@owlbear-rodeo/sdk').then(({ default: OBR }) => {
+        OBR.modal.open({
+          id: 'com.fateweaver.dice.overlay',
+          url: window.location.pathname + '?overlay=true',
+          height: 400, // Placeholder
+          width: 400,
+          fullScreen: true,
+          hideBackdrop: true,
+          hidePaper: true,
+          disablePointerEvents: true, // Pass clicks through
+        }).catch(e => console.error("Failed to open overlay:", e));
+      });
+    }
+  }, [ready, isOBR, isOverlay]);
+
   // Save items when they change
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || isOverlay) return;
+    console.log("Saving items...");
     OBRStorage.setItems(items);
-  }, [items, isLoaded]);
+  }, [items, isLoaded, isOverlay]);
 
   // Save stats when they change
   useEffect(() => {
-    if (!isLoaded) return;
+    if (!isLoaded || isOverlay) return;
+    console.log("Saving stats...");
     OBRStorage.setStats(stats);
-  }, [stats, isLoaded]);
+  }, [stats, isLoaded, isOverlay]);
 
   const activeItem = items.find(i => i.id === activeItemId);
 
@@ -243,6 +287,15 @@ const App: React.FC = () => {
       fileInputRef.current.value = '';
     }
   };
+
+  // If Overlay Mode, render ONLY the overlay
+  if (isOverlay) {
+    return (
+      <div className="w-screen h-screen overflow-hidden bg-transparent pointer-events-none">
+        <SharedDiceOverlay />
+      </div>
+    );
+  }
 
   // Show loading while OBR is initializing
   if (!ready) {

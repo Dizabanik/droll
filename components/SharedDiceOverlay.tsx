@@ -39,8 +39,8 @@ export const SharedDiceOverlay: React.FC = () => {
 
     useEffect(() => {
         const unsubscribe = OBRBroadcast.onMessage((message: DiceRollMessage, senderId: string) => {
-            // Ignore our own messages
-            if (message.playerId === playerId) return;
+            // Allow self-broadcast so overlay shows our own rolls
+            // if (message.playerId === playerId) return;
 
             switch (message.type) {
                 case 'ROLL_START': {

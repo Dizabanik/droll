@@ -1,61 +1,74 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>FateWeaver</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@400;700&display=swap" rel="stylesheet">
-    <script>
-      tailwind.config = {
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
-              fantasy: ['Cinzel', 'serif'],
-            },
-            colors: {
-              background: '#09090b', // zinc-950
-              surface: '#18181b',    // zinc-900
-              border: '#27272a',     // zinc-800
-              primary: '#e4e4e7',    // zinc-200
-              accent: '#3b82f6',     // blue-500
-              daggerheart: '#a855f7', // purple-500
-              fear: '#ef4444',       // red-500
-              hope: '#3b82f6',       // blue-500
-            },
-            animation: {
-              'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-            }
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FateWeaver</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@400;700&display=swap"
+    rel="stylesheet">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+            fantasy: ['Cinzel', 'serif'],
+          },
+          colors: {
+            background: '#09090b', // zinc-950
+            surface: '#18181b',    // zinc-900
+            border: '#27272a',     // zinc-800
+            primary: '#e4e4e7',    // zinc-200
+            accent: '#3b82f6',     // blue-500
+            daggerheart: '#a855f7', // purple-500
+            fear: '#ef4444',       // red-500
+            hope: '#3b82f6',       // blue-500
+          },
+          animation: {
+            'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
           }
         }
       }
-    </script>
-    <style>
-      body {
-        background-color: transparent;
-        color: #e4e4e7;
-      }
-      /* Custom scrollbar for sleek look */
-      ::-webkit-scrollbar {
-        width: 6px;
-        height: 6px;
-      }
-      ::-webkit-scrollbar-track {
-        background: transparent;
-      }
-      ::-webkit-scrollbar-thumb {
-        background: #27272a;
-        border-radius: 3px;
-      }
-      ::-webkit-scrollbar-thumb:hover {
-        background: #3f3f46;
-      }
-      .font-fantasy {
-        font-family: 'Cinzel', serif;
-      }
-    </style>
+    }
+  </script>
+  <style>
+    html,
+    body {
+      background-color: transparent !important;
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      /* Prevent scrollbars in overlay */
+      color: #e4e4e7;
+    }
+
+    /* Custom scrollbar for sleek look */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #27272a;
+      border-radius: 3px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #3f3f46;
+    }
+
+    .font-fantasy {
+      font-family: 'Cinzel', serif;
+    }
+  </style>
   <script type="importmap">
 {
   "imports": {
@@ -76,10 +89,12 @@
   }
 }
 </script>
-<link rel="stylesheet" href="/index.css">
+  <link rel="stylesheet" href="/index.css">
 </head>
-  <body>
-    <div id="root"></div>
+
+<body>
+  <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>
+
 </html>

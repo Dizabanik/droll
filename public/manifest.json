@@ -1,0 +1,14 @@
+{
+    "name": "FateWeaver Dice Roller",
+    "version": "1.0.0",
+    "author": "FateWeaver",
+    "description": "A beautiful 3D dice roller with chain presets and character integration",
+    "icon": "/dice-icon.svg",
+    "action": {
+        "title": "FateWeaver",
+        "icon": "/dice-icon.svg",
+        "popover": "/index.html",
+        "width": 380,
+        "height": 600
+    }
+}

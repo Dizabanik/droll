@@ -4,11 +4,11 @@
     "version": "1.0.0",
     "author": "FateWeaver",
     "description": "A beautiful 3D dice roller with chain presets and character integration",
-    "icon": "/dice-icon.svg",
+    "icon": "https://dizabanik.github.io/droll/dice-icon.svg",
     "action": {
         "title": "FateWeaver",
-        "icon": "/dice-icon.svg",
-        "popover": "/index.html",
+        "icon": "https://dizabanik.github.io/droll/dice-icon.svg",
+        "popover": "https://dizabanik.github.io/droll/index.html",
         "width": 380,
         "height": 600
     }

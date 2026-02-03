@@ -569,6 +569,7 @@ const App: React.FC = () => {
             characterStats={stats}
             itemName={activeRollItemName}
             onClose={closeRoller}
+            hideCanvas={isOBR} // Hide 3D canvas in main window if in OBR (overlay handles it)
           />
         )}
       </div>

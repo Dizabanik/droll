@@ -14,6 +14,7 @@ import { StepResult, DamageType } from '../types';
 import clsx from 'clsx';
 
 interface ActiveRoll {
+    rollId: string; // Unique ID for keying to prevent ghosts
     playerId: string;
     playerName: string;
     playerColor: string;
@@ -48,6 +49,7 @@ export const SharedDiceOverlay: React.FC = () => {
                     setActiveRolls(prev => {
                         const next = new Map(prev);
                         next.set(startMsg.playerId, {
+                            rollId: `${startMsg.playerId}-${Date.now()}`,
                             playerId: startMsg.playerId,
                             playerName: startMsg.playerName,
                             playerColor: startMsg.playerColor,
@@ -138,7 +140,7 @@ export const SharedDiceOverlay: React.FC = () => {
         <div className="fixed inset-0 z-[100] pointer-events-none">
             {/* Transparent 3D scene for each active roll */}
             {Array.from(activeRolls.values()).map(roll => (
-                <div key={roll.playerId} className="absolute inset-0">
+                <div key={roll.rollId} className="absolute inset-0">
                     {/* 3D Dice Scene with transparent background */}
                     <div className="absolute inset-0" style={{ background: 'transparent' }}>
                         <DiceScene

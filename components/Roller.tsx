@@ -14,6 +14,7 @@ interface RollerProps {
   characterStats: CharacterStats;
   itemName: string;
   onClose: () => void;
+  hideCanvas?: boolean;
 }
 
 const DamageIcon = ({ type }: { type: DamageType }) => {
@@ -73,7 +74,7 @@ const DaggerheartVisual = ({ result }: { result: StepResult }) => {
   );
 };
 
-export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose }) => {
+export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas }) => {
   const { playerId, playerName, playerColor } = useOBR();
 
   const [results, setResults] = useState<StepResult[]>([]);
@@ -281,7 +282,10 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       style={{ background: 'transparent' }}
     >
       {/* Transparent 3D Dice Scene - "on board" effect like dddice */}
-      <div className="absolute inset-0 z-0 pointer-events-none">
+      <div
+        className={clsx("absolute inset-0 z-0 pointer-events-none", hideCanvas && "opacity-0")}
+        aria-hidden={hideCanvas}
+      >
         <DiceScene
           dice={sceneDice}
           activeDiceIds={activeDiceIds}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StepResult, DicePreset, CharacterStats } from '../types';
-import { PendingDie, getStepDiceConfig, checkCondition, resolveStepResult, createSkippedResult, getStatModifierValue, getStatLabel, parseFormula } from '../utils/engine';
+import { PendingDie, getStepDiceConfig, checkCondition, resolveStepResult, createSkippedResult, getStatModifierValue, getStatLabel, parseFormula, generateId } from '../utils/engine';
 import { RollResults } from './ui/RollResults';
 import { OBRBroadcast, useOBR } from '../obr';
 import { DicePlus, DicePlusResult } from '../utils/DicePlus';
@@ -46,34 +46,43 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
     // 1. Prepare Configs and Formulas
     preset.steps.forEach(step => {
       const config = getStepDiceConfig(step);
-      configs[step.id] = config;
 
+      // Override config dice for Daggerheart to match visual split logic
       if (step.type === 'daggerheart') {
-        // Daggerheart: 1d12{Hope} + 1d12{Fear}
-        formulaParts.push(`1d12{Hope} # ${step.id}_hope`);
-        formulaParts.push(`1d12{Fear} # ${step.id}_fear`);
-        // We do NOT send the modifier to Dice+ to avoid "label + mod" syntax issues.
-        // The modifier is handled locally in processRollResults anyway.
-      } else {
-        // Standard: Extract DICE ONLY from formula to avoid syntax error with labels
-        // e.g. "1d20+2" -> "1d20 # id" (We strip the +2 for the Dice+ visual request)
+        // Logic: N dice. Even: N/2 Hope, N/2 Fear. Odd: (N-1)/2 Hope, (N-1)/2 Fear, 1 Standard.
         const cleanFormula = (step.formula || '0').split('#')[0].trim();
-
-        // Inline robust parsing to ensure modifiers are stripped even if engine.ts is stale
-        // Matches "1d20", "d20", "1d20+5", "1d20 + 5", "2d6", etc.
         const match = cleanFormula.toLowerCase().match(/^(\d*)d(\d+)/);
+        const count = match && match[1] ? parseInt(match[1]) : 1;
+        const sides = match ? parseInt(match[2]) : 12; // Default to d12 if parsing fails for DH
 
-        if (match) {
-          const count = match[1] ? parseInt(match[1]) : 1;
-          const sides = parseInt(match[2]);
-          formulaParts.push(`${count}d${sides} # ${step.id}_std`);
-          console.log(`[FATEWEAVER] Parsed ${cleanFormula} -> ${count}d${sides} for Dice+`);
-        } else {
-          // Fallback or complex formula - try to send as is but warn
-          // If it's a constant (e.g. "5"), we skip sending a die for it
-          console.warn(`[FATEWEAVER] Could not parse dice from '${cleanFormula}', skipping visual roll for this step.`);
+        const hopeCount = Math.floor(count / 2);
+        const fearCount = Math.floor(count / 2);
+        const stdCount = count % 2;
+
+        const dhDice: PendingDie[] = [];
+
+        if (hopeCount > 0) formulaParts.push(`${hopeCount}d${sides}{Hope} # ${step.id}_hope`);
+        if (fearCount > 0) formulaParts.push(`${fearCount}d${sides}{Fear} # ${step.id}_fear`);
+        if (stdCount > 0) formulaParts.push(`${stdCount}d${sides} # ${step.id}_std`);
+
+        // Rebuild config dice to match these expected pools for mapping later
+        for (let i = 0; i < hopeCount; i++) dhDice.push({ id: generateId(), sides, type: 'hope' });
+        for (let i = 0; i < fearCount; i++) dhDice.push({ id: generateId(), sides, type: 'fear' });
+        // For the 'odd' standard die in DH, we treat it as standard type
+        for (let i = 0; i < stdCount; i++) dhDice.push({ id: generateId(), sides, type: 'standard' });
+
+        config.dice = dhDice;
+      } else {
+        // Standard: Extract DICE ONLY
+        const cleanFormula = (step.formula || '0').split('#')[0].trim();
+        const parsed = parseFormula(cleanFormula);
+
+        if (parsed.count > 0 && parsed.sides > 0) {
+          formulaParts.push(`${parsed.count}d${parsed.sides} # ${step.id}_std`);
         }
       }
+
+      configs[step.id] = config;
     });
 
     stepConfigsRef.current = configs;
@@ -119,35 +128,17 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
     const calculatedResults: StepResult[] = [];
     const globalDiceValues: Record<string, number> = {};
-
-    // Map for visual Dice outcomes
     const newDieOutcomes: Record<string, 'crit' | 'fail' | 'neutral'> = {};
-    let chainHasCrit = false;
 
     // 4. Parse Dice+ Groups into convenient map
-    // Map: tag -> array of dice values
     const tagMap: Record<string, number[]> = {};
-
     if (diceResult.groups) {
       diceResult.groups.forEach((group: any) => {
-        // Group description is our tag (e.g. "s1_std" or "s1_hope")
         const tag = group.description?.trim();
         if (tag) {
           if (!tagMap[tag]) tagMap[tag] = [];
           if (group.dice) {
             group.dice.forEach((d: any) => {
-              // Use kept dice mainly? Or all dice?
-              // Engine expects all dice rolled.
-              // Dice+ keeps "dropped" dice in array with kept:false
-              // We take ALL values because our engine might want to see dropped ones?
-              // Actually resolveStepResult takes rolls[] and sums them.
-              // If logic was kh1, we want the kept one.
-              // But our engine is simple.
-              // If `formula` was complex (2d20kh1), Dice+ returned `baseModifier: 0`.
-              // `cleanFormula` sent to Dice+ is `2d20kh1`. Dice+ returns correct logic.
-              // Dice+ group has `total`.
-              // So we should use `group.total` logic whenever possible.
-
               tagMap[tag].push(d.value);
             });
           }
@@ -155,82 +146,150 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       });
     }
 
-    // 5. Iterate Steps Logic (Sequential Dependency)
-    preset.steps.forEach(step => {
-      // A. Check Condition
-      const shouldRun = checkCondition(step, calculatedResults, variables);
+    // A. First Pass: Collect Values & Determine Global Crit
+    let chainHasCrit = false;
 
+    // Temporary helper to store values per step for Second Pass
+    const stepValueMap: Record<string, Record<string, number>> = {};
+
+    preset.steps.forEach(step => {
+      const config = stepConfigsRef.current[step.id];
+      const stepDiceValues: Record<string, number> = {};
+
+      if (step.type === 'daggerheart') {
+        const hopeVals = [...(tagMap[`${step.id}_hope`] || [])];
+        const fearVals = [...(tagMap[`${step.id}_fear`] || [])];
+        const stdVals = [...(tagMap[`${step.id}_std`] || [])];
+
+        config.dice.forEach(d => {
+          let val;
+          if (d.type === 'hope') val = hopeVals.shift();
+          else if (d.type === 'fear') val = fearVals.shift();
+          else val = stdVals.shift();
+
+          if (val !== undefined) stepDiceValues[d.id] = val;
+        });
+
+        // DH Crit Logic: Check doubles specifically on Hope/Fear pairs?
+        // User: "for 2d12 it rolls same value on both".
+        // With >2 dice, we likely check if ANY hope matches ANY fear? Or specific pairs?
+        // Or maybe just the HIGHEST hope vs HIGHEST fear?
+        // Let's iterate all mapped hope/fear values.
+
+        // ACTUALLY, strict Daggerheart is just 2 dice.
+        // For "3d12", if the "normal" matches, does it count?
+        // Let's stick to: if we find *any* pair of equal values on d12s in this step, it's a crit?
+        // Or strictly Hope == Fear?
+        // User said: "if roll on which crit is turned on IS CRIT ... for 2d12 it rolls same value on both".
+        // Implicitly, check values.
+        const values = Object.values(stepDiceValues);
+        // Check for duplicates
+        if (step.isCrit !== false && values.length >= 2) {
+          const unique = new Set(values);
+          if (unique.size < values.length) {
+            // Found duplicates!
+            chainHasCrit = true;
+          }
+        }
+
+      } else {
+        // Standard
+        const vals = [...(tagMap[`${step.id}_std`] || [])];
+        config.dice.forEach(d => {
+          const val = vals.shift();
+          if (val !== undefined) stepDiceValues[d.id] = val;
+
+          // Crit Check
+          // Only if step.isCrit is NOT explicitly off (undefined usually means "check natural")
+          // Actually `step.isCrit` usually tracks "forced crit".
+          // We need to check natural 20s (or max side).
+          if (val === d.sides && val === 20) { // Natural 20 is always crit trigger if d20
+            chainHasCrit = true;
+          }
+        });
+      }
+
+      stepValueMap[step.id] = stepDiceValues;
+      Object.assign(globalDiceValues, stepDiceValues);
+    });
+
+    // B. Second Pass: Calculate Results
+    preset.steps.forEach(step => {
+      const shouldRun = checkCondition(step, calculatedResults, variables);
       if (!shouldRun) {
         calculatedResults.push(createSkippedResult(step));
         return;
       }
 
-      // B. Retrieve Config & Values
       const config = stepConfigsRef.current[step.id];
-      const stepDiceValues: Record<string, number> = {};
+      const stepDiceValues = stepValueMap[step.id];
 
-      // Extract Values from Tag Map
-      if (step.type === 'daggerheart') {
-        const hopeVals = tagMap[`${step.id}_hope`] || []; // Should be 1
-        const fearVals = tagMap[`${step.id}_fear`] || []; // Should be 1
-
-        // Map to our PendingDie IDs
-        const hopeDie = config.dice.find(d => d.type === 'hope');
-        const fearDie = config.dice.find(d => d.type === 'fear');
-
-        if (hopeDie && hopeVals[0] !== undefined) stepDiceValues[hopeDie.id] = hopeVals[0];
-        if (fearDie && fearVals[0] !== undefined) stepDiceValues[fearDie.id] = fearVals[0];
-
-      } else {
-        const vals = tagMap[`${step.id}_std`] || [];
-        // Map to dice in order
-        config.dice.forEach((d, i) => {
-          if (vals[i] !== undefined) stepDiceValues[d.id] = vals[i];
-        });
-      }
-
-      // Update Global map
-      Object.assign(globalDiceValues, stepDiceValues);
-
-      // C. Calculate Modifiers
       const statMod = getStatModifierValue(characterStats, step.statModifier);
       const totalModifier = config.baseModifier + statMod;
 
-      // Display String
       let displayFormula = step.formula;
       if (statMod !== 0 && step.statModifier) {
         const label = getStatLabel(characterStats, step.statModifier);
         displayFormula = `${step.formula} ${statMod >= 0 ? '+' : ''}${statMod} (${label})`;
       }
 
-      // D. Resolve Result
-      // For Standard, if formula was complex, our 'sum' logic in resolveStepResult fails.
-      // Maybe we should pass the `group.total` from Dice+ if available?
-      // Hard to find specific group by tag again without loop.
-      // Simplification: We assume Simple Formulas for now as per Engine limitation.
+      // Calculate Total using Global Logic
+      let total = 0;
+      const rolls = config.dice.map(d => stepDiceValues[d.id] || 0);
+      const sumRolls = rolls.reduce((a, b) => a + b, 0);
 
-      // Check for Crit Propagation
-      let effectiveCrit = chainHasCrit || !!step.isCrit;
-
-      // Daggerheart Crit Check
       if (step.type === 'daggerheart') {
-        const h = Object.values(stepDiceValues)[0]; // simplistic, rely on resolveStepResult mainly
-        const f = Object.values(stepDiceValues)[1];
-        if (h === f) {
-          chainHasCrit = true;
-          effectiveCrit = true;
-        }
+        // DH Total is usually Hope + Fear + Mod?
+        // Or just sum of all?
+        // Standard DH is Hope+Fear.
+        // If we have extra dice, we probably sum them all?
+        total = sumRolls + totalModifier;
+        // DH doesn't usually use the "Max + Roll" crit rule, but user said "if crit is turned on for roll".
+        // If user sets DH step as "sum: on" & "crit: on", we might apply rule.
+        // But normally DH Crit is just "Success with Fear/Hope".
+        // Given user request seems focused on D&D damage ("2d12+4", "4d6+2"), let's apply the rule to 'standard' types mostly.
+        // But if it IS D daggerheart type, we use standard logic unless...
+        // Let's assume the "Max + Roll" rule applies primarily to STANDARD damage steps.
+        // User example 1) is "2d12+4". That looks like Standard step (weapon damage), not DH check.
+
       } else {
-        // Standard Crit Check (Nat 20)
-        config.dice.forEach(d => {
-          if (stepDiceValues[d.id] === 20 && d.sides === 20) {
-            chainHasCrit = true;
-            effectiveCrit = true;
-          }
-        });
+        // Standard
+        if (chainHasCrit && step.addToSum) {
+          // CRIT LOGIC: Sum of MAX values + Actual Values + Modifiers
+          const maxDiceSum = config.dice.reduce((acc, d) => acc + d.sides, 0);
+          total = maxDiceSum + sumRolls + totalModifier;
+        } else {
+          // Normal
+          total = sumRolls + totalModifier;
+        }
       }
 
-      const result = resolveStepResult(step, stepDiceValues, config.dice, totalModifier, displayFormula, effectiveCrit);
+      // Build Result Object (Manually to handle custom total logic bypassing engine if needed)
+      // Actually `resolveStepResult` does specific things.
+      // We can use it but overwrite `total` if needed.
+
+      const result = resolveStepResult(step, stepDiceValues, config.dice, totalModifier, displayFormula, chainHasCrit);
+
+      // OVERRIDE TOTAL if we applied the special Crit Rule
+      if (step.type === 'standard' && chainHasCrit && step.addToSum) {
+        result.total = total;
+        result.wasCrit = true;
+      }
+
+      // Daggerheart Visual Logic Override
+      if (step.type === 'daggerheart') {
+        // Recalculate Hope/Fear for visual display
+        // We sum all Hope dice and all Fear dice?
+        const hopeSum = config.dice.filter(d => d.type === 'hope').reduce((a, d) => a + (stepDiceValues[d.id] || 0), 0);
+        const fearSum = config.dice.filter(d => d.type === 'fear').reduce((a, d) => a + (stepDiceValues[d.id] || 0), 0);
+
+        result.dhHope = hopeSum;
+        result.dhFear = fearSum;
+        if (hopeSum === fearSum && hopeSum > 0) result.dhOutcome = 'crit';
+        else if (hopeSum >= fearSum) result.dhOutcome = 'hope';
+        else result.dhOutcome = 'fear';
+      }
+
       calculatedResults.push(result);
     });
 

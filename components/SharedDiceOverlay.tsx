@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DiceScene } from './3d/DiceScene';
 import { Icons } from './ui/Icons';
+import { RollResults } from './ui/RollResults';
 import { OBRBroadcast, DiceRollMessage, DiceRollStartMessage, DiceValuesMessage, RollCompleteMessage } from '../obr';
 import { useOBR } from '../obr';
 import { PendingDie } from '../utils/engine';
@@ -31,6 +32,7 @@ interface ActiveRoll {
     isComplete: boolean;
     grandTotal: number;
     breakdown: string;
+    instant: boolean;
 }
 
 const FADE_DELAY_MS = 4000; // How long to show completed roll before fading
@@ -68,6 +70,7 @@ export const SharedDiceOverlay: React.FC = () => {
                             isComplete: false,
                             grandTotal: 0,
                             breakdown: '',
+                            instant: !!startMsg.instant
                         });
                         return next;
                     });
@@ -154,68 +157,41 @@ export const SharedDiceOverlay: React.FC = () => {
             {/* Transparent 3D scene for each active roll */}
             {Array.from(activeRolls.values()).map(roll => (
                 <div key={roll.rollId} className="absolute inset-0">
-                    {/* 3D Dice Scene with transparent background */}
-                    <div className="absolute inset-0" style={{ background: 'transparent' }}>
-                        <DiceScene
-                            dice={roll.renderedDice}
-                            activeDiceIds={roll.activeDiceIds}
-                            damageType={roll.steps[0]?.damageType || 'none'}
-                            outcomes={{}}
-                            onRollComplete={() => { }} // No-op, we don't control this
-                        />
-                    </div>
+                    {/* Transparent 3D scene for each active roll (Hidden if instant) */}
+                    {!(roll.instant) && (
+                        <div className="absolute inset-0" style={{ background: 'transparent' }}>
+                            <DiceScene
+                                dice={roll.renderedDice}
+                                activeDiceIds={roll.activeDiceIds}
+                                damageType={roll.steps[0]?.damageType || 'none'}
+                                outcomes={{}}
+                                onRollComplete={() => { }} // No-op, we don't control this
+                            />
+                        </div>
+                    )}
 
                     {/* Result Panel */}
                     <AnimatePresence>
                         {roll.results.length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 50, scale: 0.9 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: -20, scale: 0.95 }}
-                                className="absolute bottom-20 left-1/2 transform -translate-x-1/2 pointer-events-auto"
-                            >
-                                <div className="bg-zinc-900/95 border border-zinc-700 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-lg min-w-[280px] max-w-[360px]">
-                                    {/* Player Header */}
-                                    <div
-                                        className="px-4 py-2 border-b border-zinc-800 flex items-center gap-2"
-                                        style={{ backgroundColor: roll.playerColor + '20' }}
-                                    >
-                                        <div
-                                            className="w-3 h-3 rounded-full"
-                                            style={{ backgroundColor: roll.playerColor }}
-                                        />
-                                        <span className="text-sm font-medium text-white">{roll.playerName}</span>
-                                        <span className="text-xs text-zinc-400 ml-auto">{roll.presetName}</span>
-                                    </div>
-
-                                    {/* Results List */}
-                                    <div className="p-3 space-y-2 max-h-[250px] overflow-y-auto">
-                                        {roll.results.filter(r => !r.skipped).map(res => (
-                                            <div
-                                                key={res.uniqueId}
-                                                className="flex justify-between items-center bg-zinc-800/60 rounded-lg px-3 py-2"
-                                            >
-                                                <div>
-                                                    <span className="text-sm text-zinc-200">{res.label}</span>
-                                                    <span className="text-xs text-zinc-500 ml-2">({res.formula})</span>
-                                                </div>
-                                                <span className="text-lg font-mono font-bold text-white">{res.total}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-
-                                    {/* Grand Total */}
-                                    {roll.isComplete && roll.grandTotal > 0 && (
-                                        <div className="px-4 py-3 bg-zinc-950/90 border-t border-zinc-800 text-center">
-                                            <span className="text-xs text-zinc-500 uppercase tracking-wider">Total</span>
-                                            <div className="text-3xl font-black text-white font-mono">{roll.grandTotal}</div>
-                                            {roll.breakdown && (
-                                                <span className="text-xs text-zinc-400">{roll.breakdown}</span>
-                                            )}
-                                        </div>
-                                    )}
-                                </div>
-                            </motion.div>
+                            <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 pointer-events-auto">
+                                <RollResults
+                                    results={roll.results}
+                                    isComplete={roll.isComplete}
+                                    onClose={() => {
+                                        // Allow manually closing by removing from active rolls
+                                        setActiveRolls(p => {
+                                            const n = new Map(p);
+                                            n.delete(roll.playerId);
+                                            return n;
+                                        });
+                                    }}
+                                    grandTotal={roll.grandTotal}
+                                    breakdown={roll.breakdown}
+                                    itemName={roll.itemName}
+                                    presetName={roll.presetName}
+                                    hideCloseButton={false}
+                                />
+                            </div>
                         )}
                     </AnimatePresence>
                 </div>

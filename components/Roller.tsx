@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { StepResult, DamageType, DicePreset, CharacterStats } from '../types';
 import { PendingDie, getStepDiceConfig, checkCondition, resolveStepResult, createSkippedResult, getStatModifierValue, getStatLabel } from '../utils/engine';
 import { Icons } from './ui/Icons';
+import { RollResults } from './ui/RollResults';
 import { DiceScene } from './3d/DiceScene';
 import { OBRBroadcast, useOBR } from '../obr';
 import clsx from 'clsx';
@@ -17,62 +18,8 @@ interface RollerProps {
   hideCanvas?: boolean;
 }
 
-const DamageIcon = ({ type }: { type: DamageType }) => {
-  const size = 16;
-  switch (type) {
-    case 'fire': return <Icons.Fire size={size} className="text-orange-500" />;
-    case 'cold': return <Icons.Cold size={size} className="text-cyan-400" />;
-    case 'lightning': return <Icons.Lightning size={size} className="text-yellow-400" />;
-    case 'necrotic': return <Icons.Necrotic size={size} className="text-purple-500" />;
-    case 'radiant': return <Icons.Radiant size={size} className="text-yellow-200" />;
-    case 'acid': return <Icons.Acid size={size} className="text-green-500" />;
-    case 'poison': return <Icons.Poison size={size} className="text-emerald-600" />;
-    case 'psychic': return <Icons.Psychic size={size} className="text-pink-500" />;
-    case 'force': return <Icons.Force size={size} className="text-indigo-400" />;
-    case 'magic': return <Icons.Magic size={size} className="text-fuchsia-400" />;
-    case 'physical': return <Icons.Attack size={size} className="text-stone-400" />;
-    case 'slashing':
-    case 'piercing':
-    case 'bludgeoning': return <Icons.Attack size={size} className="text-zinc-400" />;
-    default: return <Icons.Dice size={size} className="text-zinc-500" />;
-  }
-};
-
-const DaggerheartVisual = ({ result }: { result: StepResult }) => {
-  if (result.type !== 'daggerheart') return null;
-
-  const isHope = result.dhOutcome === 'hope';
-  const isFear = result.dhOutcome === 'fear';
-  const isCrit = result.dhOutcome === 'crit';
-
-  return (
-    <div className="flex flex-col gap-2 mt-2 bg-zinc-950/50 p-3 rounded-lg border border-white/5">
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex flex-col items-center">
-          <span className="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-1">Hope</span>
-          <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 font-mono text-xl">
-            {result.dhHope}
-          </div>
-        </div>
-        <div className="text-xs text-zinc-600 font-mono">VS</div>
-        <div className="flex flex-col items-center">
-          <span className="text-[10px] text-purple-400 uppercase tracking-widest font-bold mb-1">Fear</span>
-          <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 font-mono text-xl">
-            {result.dhFear}
-          </div>
-        </div>
-      </div>
-      <div className={clsx(
-        "text-center text-xs font-bold uppercase tracking-wider py-1 rounded",
-        isCrit && "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
-        isHope && !isCrit && "bg-blue-500/10 text-blue-400 border border-blue-500/20",
-        isFear && !isCrit && "bg-purple-500/10 text-purple-400 border border-purple-500/20",
-      )}>
-        {isCrit ? "Critical Success!" : (isHope ? "With Hope" : "With Fear")}
-      </div>
-    </div>
-  );
-};
+// Helper Components Removed (DamageIcon, DaggerheartVisual) since they are in RollResults now
+// ...
 
 export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas }) => {
   const { playerId, playerName, playerColor } = useOBR();
@@ -80,6 +27,8 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
   const [results, setResults] = useState<StepResult[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
+  const [instantMode, setInstantMode] = useState(false);
+  const [activeRollInstant, setActiveRollInstant] = useState(false); // Track if CURRENT roll is instant
 
   // Scene State
   const [sceneDice, setSceneDice] = useState<PendingDie[]>([]);
@@ -107,6 +56,9 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       allDiceRef.current = allDice;
       stepConfigsRef.current = configs;
 
+      const isInstant = instantMode;
+      setActiveRollInstant(isInstant);
+
       // Send ROLL_START broadcast
       OBRBroadcast.send({
         type: 'ROLL_START',
@@ -116,12 +68,14 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
         presetName: preset.name,
         itemName: itemName,
         diceConfig: allDice,
+        instant: isInstant,
         steps: preset.steps.map(s => ({
           id: s.id,
           label: s.label,
           type: s.type,
           formula: s.formula,
           damageType: s.damageType,
+          isCrit: s.isCrit
         })),
         variables,
       });
@@ -132,7 +86,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       setSceneDice([]);
       setActiveDiceIds([]);
       setDieOutcomes({});
-      setTimeout(() => evaluateNextStep(0, []), 500);
+      setTimeout(() => evaluateNextStep(0, []), isInstant ? 50 : 500);
     }
     return () => {
       if (failsafeRef.current) clearTimeout(failsafeRef.current);
@@ -171,6 +125,14 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
     if (!config) return; // Should not happen
     setCurrentStepIndex(stepIdx);
     setSceneDamageType(step.damageType);
+
+    // If Instant Mode, skip physics
+    if (activeRollInstant) {
+      const mock: Record<string, number> = {};
+      config.dice.forEach(d => mock[d.id] = Math.ceil(Math.random() * d.sides));
+      handleRollComplete(mock);
+      return;
+    }
 
     // Append new dice to the scene
     setSceneDice(prev => [...prev, ...config.dice]);
@@ -236,7 +198,9 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
     // Determine Visual Outcomes (Crit/Fail)
     const newOutcomes = { ...dieOutcomes };
 
-    if (step.type === 'daggerheart') {
+    if (step.isCrit) {
+      stepDiceIds.forEach(id => newOutcomes[id] = 'crit');
+    } else if (step.type === 'daggerheart') {
       // Daggerheart Crit: Doubles
       const vals = Object.values(currentStepValues);
       if (vals.length === 2 && vals[0] === vals[1]) {
@@ -260,7 +224,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
     setTimeout(() => {
       evaluateNextStep(currentStepIndex + 1, [...results, result]);
-    }, 1000);
+    }, activeRollInstant ? 100 : 1000);
   };
 
   const calculateGrandTotalFromResults = (resArray: StepResult[]) => {
@@ -293,10 +257,10 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
         className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-300"
         style={{
           background: 'transparent',
-          visibility: hideCanvas ? 'hidden' : 'visible',
-          opacity: hideCanvas ? 0 : 1
+          visibility: (hideCanvas || activeRollInstant) ? 'hidden' : 'visible',
+          opacity: (hideCanvas || activeRollInstant) ? 0 : 1
         }}
-        aria-hidden={hideCanvas}
+        aria-hidden={hideCanvas || activeRollInstant}
       >
         <DiceScene
           dice={sceneDice}
@@ -309,104 +273,36 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
       <AnimatePresence>
         {results.length > 0 && (
-          <motion.div
-            initial={{ scale: 0.9, y: 50, opacity: 0 }}
-            animate={{ scale: 1, y: 0, opacity: 1 }}
-            className="z-10 w-full max-w-md bg-zinc-900/95 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-lg m-4 max-h-[70vh] flex flex-col absolute bottom-10 right-10 pointer-events-auto"
-          >
-            <div className="bg-zinc-950/90 p-3 border-b border-zinc-800 flex justify-between items-center">
-              <h2 className="text-white font-semibold flex items-center gap-2 text-sm">
-                <Icons.Magic className="text-accent" size={16} />
-                {preset.name}
-              </h2>
-              {/* Only show close button when complete */}
-              {isComplete && (
-                <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
-                  <Icons.Close size={16} />
-                </button>
-              )}
-            </div>
-
-            <div className="p-3 space-y-2 overflow-y-auto custom-scrollbar flex-1">
-              {results.map((res) => (
-                <motion.div
-                  key={res.uniqueId}
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  className={clsx(
-                    "relative p-3 rounded-lg border transition-all",
-                    res.skipped
-                      ? "bg-zinc-900/50 border-zinc-800 opacity-50 grayscale"
-                      : "bg-zinc-800/80 border-zinc-700"
-                  )}
-                >
-                  {res.skipped && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/60 z-10 rounded-lg">
-                      <span className="text-[10px] text-zinc-500 uppercase font-mono tracking-widest border border-zinc-700 px-2 py-0.5 rounded">Skipped</span>
-                    </div>
-                  )}
-
-                  <div className="flex justify-between items-start">
-                    <div>
-                      <h3 className="text-zinc-200 font-medium text-xs flex items-center gap-2">
-                        {res.label}
-                        <span className="text-[10px] text-zinc-500 font-normal font-mono">({res.formula})</span>
-                        {res.addToSum && <span className="text-[10px] text-accent font-bold px-1.5 py-0.5 bg-accent/10 rounded">SUM</span>}
-                      </h3>
-                      <div className="flex items-center gap-1.5 mt-1">
-                        <DamageIcon type={res.damageType} />
-                        <span className="text-[10px] text-zinc-400 capitalize">{res.damageType === 'none' ? 'Result' : res.damageType}</span>
-                      </div>
-                    </div>
-                    <div className="text-xl font-mono font-bold text-white">
-                      {res.total}
-                    </div>
-                  </div>
-
-                  {res.type === 'daggerheart' && !res.skipped && (
-                    <DaggerheartVisual result={res} />
-                  )}
-                </motion.div>
-              ))}
-
-              {!isComplete && (
-                <div className="flex justify-center p-2">
-                  <span className="text-xs text-zinc-500 animate-pulse">Rolling...</span>
-                </div>
-              )}
-            </div>
-
-            {isComplete && count > 0 && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="p-4 bg-zinc-950/90 border-t border-zinc-800"
-              >
-                <div className="flex flex-col items-center">
-                  <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Total Damage</span>
-                  <div className="text-4xl font-black text-white my-1 font-mono tracking-tighter shadow-glow">
-                    {grandTotal}
-                  </div>
-                  {breakdown && (
-                    <span className="text-xs text-zinc-400">{breakdown}</span>
-                  )}
-                </div>
-              </motion.div>
-            )}
-
-            {isComplete && (
-              <div className="p-3 bg-zinc-950/80 border-t border-zinc-800 text-center">
-                <button
-                  onClick={onClose}
-                  className="w-full bg-white text-black text-sm font-semibold py-2 rounded-lg hover:bg-zinc-200 transition-colors"
-                >
-                  Close
-                </button>
-              </div>
-            )}
-          </motion.div>
+          <RollResults
+            results={results}
+            isComplete={isComplete}
+            onClose={onClose}
+            grandTotal={grandTotal}
+            breakdown={breakdown}
+            itemName={itemName}
+            presetName={preset ? preset.name : ''}
+          />
         )}
       </AnimatePresence>
+
+      {/* Toggle Controls (Only visible if not hidden externally) */}
+      {!hideCanvas && !isComplete && (
+        <div className="absolute top-4 right-4 z-[60] flex gap-2 pointer-events-auto">
+          <button
+            onClick={() => setInstantMode(!instantMode)}
+            className={clsx(
+              "p-2 rounded-full border transition-all shadow-lg",
+              instantMode
+                ? "bg-accent text-white border-accent"
+                : "bg-zinc-900/80 text-zinc-400 border-zinc-700 hover:text-white"
+            )}
+            title="Instant Roll (Skip 3D)"
+          >
+            <Icons.Dice size={20} />
+            {instantMode && <span className="absolute -bottom-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span></span>}
+          </button>
+        </div>
+      )}
     </motion.div>
   );
 };

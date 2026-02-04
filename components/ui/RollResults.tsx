@@ -1,0 +1,189 @@
+import React, { useRef, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import clsx from 'clsx';
+import { StepResult, DamageType } from '../../types';
+import { Icons } from './Icons';
+
+export interface RollResultsProps {
+    results: StepResult[];
+    isComplete: boolean;
+    onClose?: () => void;
+    grandTotal: number;
+    breakdown: string;
+    itemName: string;
+    presetName: string;
+    hideCloseButton?: boolean;
+}
+
+const DamageIcon = ({ type }: { type: DamageType }) => {
+    const size = 16;
+    switch (type) {
+        case 'fire': return <Icons.Fire size={size} className="text-orange-500" />;
+        case 'cold': return <Icons.Cold size={size} className="text-cyan-400" />;
+        case 'lightning': return <Icons.Lightning size={size} className="text-yellow-400" />;
+        case 'necrotic': return <Icons.Necrotic size={size} className="text-purple-500" />;
+        case 'radiant': return <Icons.Radiant size={size} className="text-yellow-200" />;
+        case 'acid': return <Icons.Acid size={size} className="text-green-500" />;
+        case 'poison': return <Icons.Poison size={size} className="text-emerald-600" />;
+        case 'psychic': return <Icons.Psychic size={size} className="text-pink-500" />;
+        case 'force': return <Icons.Force size={size} className="text-indigo-400" />;
+        case 'magic': return <Icons.Magic size={size} className="text-fuchsia-400" />;
+        case 'physical': return <Icons.Attack size={size} className="text-stone-400" />;
+        case 'slashing':
+        case 'piercing':
+        case 'bludgeoning': return <Icons.Attack size={size} className="text-zinc-400" />;
+        default: return <Icons.Dice size={size} className="text-zinc-500" />;
+    }
+};
+
+const DaggerheartVisual = ({ result }: { result: StepResult }) => {
+    if (result.type !== 'daggerheart') return null;
+
+    const isHope = result.dhOutcome === 'hope';
+    const isFear = result.dhOutcome === 'fear';
+    const isCrit = result.dhOutcome === 'crit';
+
+    return (
+        <div className="flex flex-col gap-2 mt-2 bg-zinc-950/50 p-3 rounded-lg border border-white/5">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex flex-col items-center">
+                    <span className="text-[10px] text-blue-400 uppercase tracking-widest font-bold mb-1">Hope</span>
+                    <div className="w-10 h-10 rounded-lg bg-blue-500/10 border border-blue-500/30 flex items-center justify-center text-blue-400 font-mono text-xl">
+                        {result.dhHope}
+                    </div>
+                </div>
+                <div className="text-xs text-zinc-600 font-mono">VS</div>
+                <div className="flex flex-col items-center">
+                    <span className="text-[10px] text-purple-400 uppercase tracking-widest font-bold mb-1">Fear</span>
+                    <div className="w-10 h-10 rounded-lg bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400 font-mono text-xl">
+                        {result.dhFear}
+                    </div>
+                </div>
+            </div>
+            <div className={clsx(
+                "text-center text-xs font-bold uppercase tracking-wider py-1 rounded",
+                isCrit && "bg-yellow-500/20 text-yellow-400 border border-yellow-500/30",
+                isHope && !isCrit && "bg-blue-500/10 text-blue-400 border border-blue-500/20",
+                isFear && !isCrit && "bg-purple-500/10 text-purple-400 border border-purple-500/20",
+            )}>
+                {isCrit ? "Critical Success!" : (isHope ? "With Hope" : "With Fear")}
+            </div>
+        </div>
+    );
+};
+
+export const RollResults: React.FC<RollResultsProps> = ({
+    results, isComplete, onClose, grandTotal, breakdown, itemName, presetName, hideCloseButton
+}) => {
+    const scrollRef = useRef<HTMLDivElement>(null);
+
+    // Auto-scroll to bottom when results add
+    useEffect(() => {
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
+    }, [results.length]);
+
+    return (
+        <motion.div
+            initial={{ scale: 0.9, y: 50, opacity: 0 }}
+            animate={{ scale: 1, y: 0, opacity: 1 }}
+            className="z-10 w-full max-w-md bg-zinc-900/95 border border-zinc-800 rounded-2xl shadow-2xl overflow-hidden backdrop-blur-lg m-4 max-h-[70vh] flex flex-col pointer-events-auto"
+        >
+            <div className="bg-zinc-950/90 p-3 border-b border-zinc-800 flex justify-between items-center">
+                <div>
+                    <h2 className="text-white font-semibold flex items-center gap-2 text-sm">
+                        <Icons.Magic className="text-accent" size={16} />
+                        {presetName}
+                    </h2>
+                    <p className="text-xs text-zinc-500 ml-6">{itemName}</p>
+                </div>
+                {(isComplete && !hideCloseButton && onClose) && (
+                    <button onClick={onClose} className="text-zinc-500 hover:text-white transition-colors">
+                        <Icons.Close size={16} />
+                    </button>
+                )}
+            </div>
+
+            <div ref={scrollRef} className="p-3 space-y-2 overflow-y-auto custom-scrollbar flex-1">
+                {results.map((res) => (
+                    <motion.div
+                        key={res.uniqueId}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className={clsx(
+                            "relative p-3 rounded-lg border transition-all",
+                            res.skipped
+                                ? "bg-zinc-900/50 border-zinc-800 opacity-50 grayscale"
+                                : "bg-zinc-800/80 border-zinc-700",
+                            res.wasCrit && "border-yellow-500/30 bg-yellow-500/5"
+                        )}
+                    >
+                        {res.skipped && (
+                            <div className="absolute inset-0 flex items-center justify-center bg-zinc-950/60 z-10 rounded-lg">
+                                <span className="text-[10px] text-zinc-500 uppercase font-mono tracking-widest border border-zinc-700 px-2 py-0.5 rounded">Skipped</span>
+                            </div>
+                        )}
+
+                        <div className="flex justify-between items-start">
+                            <div>
+                                <h3 className="text-zinc-200 font-medium text-xs flex items-center gap-2">
+                                    {res.label}
+                                    <span className="text-[10px] text-zinc-500 font-normal font-mono">({res.formula})</span>
+                                    {res.addToSum && <span className="text-[10px] text-accent font-bold px-1.5 py-0.5 bg-accent/10 rounded">SUM</span>}
+                                    {res.wasCrit && <span className="text-[10px] text-yellow-500 font-bold px-1.5 py-0.5 bg-yellow-500/10 rounded border border-yellow-500/20">CRIT</span>}
+                                </h3>
+                                <div className="flex items-center gap-1.5 mt-1">
+                                    <DamageIcon type={res.damageType} />
+                                    <span className="text-[10px] text-zinc-400 capitalize">{res.damageType === 'none' ? 'Result' : res.damageType}</span>
+                                </div>
+                            </div>
+                            <div className="text-xl font-mono font-bold text-white">
+                                {res.total}
+                            </div>
+                        </div>
+
+                        {res.type === 'daggerheart' && !res.skipped && (
+                            <DaggerheartVisual result={res} />
+                        )}
+                    </motion.div>
+                ))}
+
+                {!isComplete && (
+                    <div className="flex justify-center p-2">
+                        <span className="text-xs text-zinc-500 animate-pulse">Rolling...</span>
+                    </div>
+                )}
+            </div>
+
+            {isComplete && grandTotal > 0 && (
+                <motion.div
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="p-4 bg-zinc-950/90 border-t border-zinc-800"
+                >
+                    <div className="flex flex-col items-center">
+                        <span className="text-[10px] text-zinc-500 uppercase tracking-widest font-bold">Total Damage</span>
+                        <div className="text-4xl font-black text-white my-1 font-mono tracking-tighter shadow-glow">
+                            {grandTotal}
+                        </div>
+                        {breakdown && (
+                            <span className="text-xs text-zinc-400">{breakdown}</span>
+                        )}
+                    </div>
+                </motion.div>
+            )}
+
+            {(isComplete && !hideCloseButton && onClose) && (
+                <div className="p-3 bg-zinc-950/80 border-t border-zinc-800 text-center">
+                    <button
+                        onClick={onClose}
+                        className="w-full bg-white text-black text-sm font-semibold py-2 rounded-lg hover:bg-zinc-200 transition-colors"
+                    >
+                        Close
+                    </button>
+                </div>
+            )}
+        </motion.div>
+    );
+};

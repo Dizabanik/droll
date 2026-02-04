@@ -17,6 +17,8 @@ export interface DiceRollStartMessage {
     playerColor: string;
     presetName: string;
     itemName: string;
+    instant?: boolean;
+    forceCrit?: boolean;
     diceConfig: PendingDie[];
     steps: Array<{
         id: string;
@@ -24,6 +26,7 @@ export interface DiceRollStartMessage {
         type: 'standard' | 'daggerheart';
         formula: string;
         damageType: DamageType;
+        isCrit?: boolean;
     }>;
     variables: Record<string, number>;
 }

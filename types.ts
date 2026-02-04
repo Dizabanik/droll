@@ -1,7 +1,7 @@
 
-export type DamageType = 
-  | 'slashing' | 'piercing' | 'bludgeoning' 
-  | 'fire' | 'cold' | 'lightning' | 'thunder' | 'acid' | 'poison' 
+export type DamageType =
+  | 'slashing' | 'piercing' | 'bludgeoning'
+  | 'fire' | 'cold' | 'lightning' | 'thunder' | 'acid' | 'poison'
   | 'necrotic' | 'radiant' | 'psychic' | 'force' | 'none'
   | 'magic' | 'physical';
 
@@ -44,7 +44,8 @@ export interface RollStep {
   statModifier?: string; // Namespaced key: "dnd_attr:str", "dnd_skill:arcana", "dh:agility", "custom:id"
   damageType: DamageType;
   condition?: RollCondition;
-  addToSum?: boolean; 
+  addToSum?: boolean;
+  isCrit?: boolean;
 }
 
 export interface DicePreset {
@@ -72,8 +73,9 @@ export interface StepResult {
   type: 'standard' | 'daggerheart';
   damageType: DamageType;
   skipped: boolean;
-  addToSum?: boolean; 
-  
+  addToSum?: boolean;
+  wasCrit?: boolean;
+
   // Daggerheart specifics
   dhHope?: number;
   dhFear?: number;

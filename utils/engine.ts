@@ -7,13 +7,13 @@ export const generateId = () => Math.random().toString(36).substr(2, 9);
 export const parseFormula = (formula: string) => {
   // Matches: Optional number, "d", number, optional modifier
   const match = formula.toLowerCase().match(/^(\d*)d(\d+)([\+\-]\d+)?$/);
-  
+
   if (!match) {
     // Try constant number
     const constant = parseInt(formula);
     if (!isNaN(constant)) return { count: 0, sides: 0, modifier: constant };
     // Default fallback if garbage input
-    return { count: 1, sides: 20, modifier: 0 }; 
+    return { count: 1, sides: 20, modifier: 0 };
   }
 
   return {
@@ -25,38 +25,38 @@ export const parseFormula = (formula: string) => {
 
 export const getStatModifierValue = (stats: CharacterStats, key: string | undefined): number => {
   if (!key) return 0;
-  
+
   const [type, id] = key.split(':');
-  
+
   if (type === 'dnd_attr') {
     const val = stats.dndAttributes[id] || 10;
     return Math.floor((val - 10) / 2);
   }
-  
+
   if (type === 'dnd_skill') {
     return stats.dndSkills[id] || 0;
   }
-  
+
   if (type === 'dh') {
     return stats.daggerheartStats[id] || 0;
   }
-  
+
   if (type === 'custom') {
     return stats.customStats.find(s => s.id === id)?.value || 0;
   }
-  
+
   return 0;
 };
 
 export const getStatLabel = (stats: CharacterStats, key: string | undefined): string => {
   if (!key) return '';
   const [type, id] = key.split(':');
-  
+
   if (type === 'dnd_attr') return id.toUpperCase();
   if (type === 'dnd_skill') return id.charAt(0).toUpperCase() + id.slice(1);
   if (type === 'dh') return id.charAt(0).toUpperCase() + id.slice(1);
   if (type === 'custom') return stats.customStats.find(s => s.id === id)?.name || 'Custom';
-  
+
   return 'Unknown';
 };
 
@@ -64,6 +64,7 @@ export interface PendingDie {
   id: string;
   sides: number;
   type: 'standard' | 'hope' | 'fear';
+  isCrit?: boolean; // If forced crit applies to this die
 }
 
 /**
@@ -100,12 +101,12 @@ export const checkCondition = (
   if (!step.condition) return true;
 
   const prev = previousResults.find(r => r.stepId === step.condition!.dependsOnStepId);
-  
+
   if (!prev || prev.skipped) return false;
 
   const { operator, compareTarget, value = 0, variableId } = step.condition;
   const prevVal = prev.total;
-  
+
   let threshold = 0;
   if (!['is_hope', 'is_fear', 'is_crit'].includes(operator)) {
     if (compareTarget === 'variable' && variableId) {
@@ -136,15 +137,16 @@ export const resolveStepResult = (
   diceValues: Record<string, number>, // Map of pendingDie ID -> Rolled Value
   diceConfig: PendingDie[],
   totalModifier: number, // Includes base formula mod + stat mod
-  displayFormula: string
+  displayFormula: string,
+  forceCrit: boolean = false
 ): StepResult => {
   const uniqueId = generateId();
-  
+
   if (step.type === 'daggerheart') {
     // Identify hope and fear dice
     const hopeDie = diceConfig.find(d => d.type === 'hope');
     const fearDie = diceConfig.find(d => d.type === 'fear');
-    
+
     const hope = hopeDie ? diceValues[hopeDie.id] : 0;
     const fear = fearDie ? diceValues[fearDie.id] : 0;
 
@@ -166,24 +168,36 @@ export const resolveStepResult = (
       dhHope: hope,
       dhFear: fear,
       dhOutcome: outcome,
-      addToSum: step.addToSum
+      addToSum: step.addToSum,
+      wasCrit: outcome === 'crit'
     };
   } else {
     // Standard
-    const rolls = diceConfig.map(d => diceValues[d.id]);
+    let currentDice = diceConfig;
+    const rolls = currentDice.map(d => diceValues[d.id]);
     const sum = rolls.reduce((a, b) => a + b, 0);
+
+    let total = sum + totalModifier;
+    let wasCrit = forceCrit || !!step.isCrit;
+
+    // Critical Hit Math: Max Dice + Rolls + Mod
+    if (wasCrit && currentDice.length > 0) {
+      const maxDice = currentDice.reduce((acc, d) => acc + d.sides, 0);
+      total = maxDice + sum + totalModifier;
+    }
 
     return {
       stepId: step.id,
       uniqueId,
       label: step.label,
-      total: sum + totalModifier,
+      total,
       rolls,
       formula: displayFormula,
       type: 'standard',
       damageType: step.damageType,
       skipped: false,
-      addToSum: step.addToSum
+      addToSum: step.addToSum,
+      wasCrit
     };
   }
 };
@@ -198,5 +212,6 @@ export const createSkippedResult = (step: RollStep): StepResult => ({
   type: step.type,
   damageType: step.damageType,
   skipped: true,
-  addToSum: step.addToSum
+  addToSum: step.addToSum,
+  wasCrit: false
 });

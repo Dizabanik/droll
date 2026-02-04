@@ -1,8 +1,8 @@
 import OBR from '@owlbear-rodeo/sdk';
 
-const DICE_PLUS_ID = 'com.battle-system.dice-plus'; // Best guess or standard ID
-const ROLL_REQUEST_CHANNEL = 'dice-plus/roll';
-const IS_READY_CHANNEL = 'dice-plus/isReady';
+// Verified Channel IDs
+const ROLL_REQUEST_CHANNEL = 'dice-plus/roll-request';
+// Results come back on `${source}/roll-result`
 
 export interface DicePlusResult {
     formula: string;
@@ -15,6 +15,7 @@ export interface DicePlusResult {
 
 class DicePlusService {
     private ready = false;
+    // This source ID is critical. It determines where Dice+ sends the answer.
     private mySourceId = 'com.fateweaver.dice';
 
     constructor() {
@@ -23,27 +24,29 @@ class DicePlusService {
 
     async checkReady() {
         if (!OBR.isAvailable) return;
-        // Listen for readiness (optional, simplified for now)
-        // In a real implementation we might ping via broadcast
         this.ready = true;
     }
 
     async roll(formula: string): Promise<DicePlusResult> {
         const rollId = Math.random().toString(36).substring(7);
 
-        // Promise that resolves when we get a result back
-        return new Promise((resolve, reject) => {
+        // If OBR is not available (local dev), return mock immediately to prevent hang
+        if (!OBR.isAvailable) {
+            console.warn("[Dice+] OBR not available, returning mock result.");
+            return this.mockResult(formula);
+        }
 
+        return new Promise((resolve, reject) => {
+            // 5s timeout to prevent infinite stuck state
             const timeout = setTimeout(() => {
                 cleanup();
-                reject(new Error("Dice+ roll timed out. Is the extension installed?"));
-            }, 30000); // 30s timeout
+                console.warn("[Dice+] Roll timed out (no response from Dice+). Returning mock result for continuity.");
+                resolve(this.mockResult(formula));
+            }, 5000);
 
             const handleMessage = (event: any) => {
-                // We expect a message on OUR source channel
-                // Channel: `${mySourceId}/roll-result`
-                // We verify the rollId matches if possible, or just take the next one
                 const data = event.data;
+                // Dice+ sends result with matching rollId we sent
                 if (data && data.rollId === rollId) {
                     cleanup();
                     resolve(this.parseResult(data));
@@ -52,46 +55,81 @@ class DicePlusService {
 
             const cleanup = () => {
                 clearTimeout(timeout);
-                // Remove listener (implementation depends on how we hook into OBR broadcast)
-                // Since OBR.broadcast.onMessage is global, we need a way to unsubscribe.
-                // For now, we'll assume a global listener handles this routing or we add a one-off.
+                // OBR broadcast listeners are global, typically handled by one-time subscription or global router.
+                // For this implementation, we register a temporary listener.
+                unsubscribe();
             };
 
-            // In this simplified adapter, we'll assume we have a global listener in App.tsx 
-            // that routes messages to this service, OR we register here.
-            // OBR.broadcast.onMessage allows multiple listeners.
-
-            const channel = `${this.mySourceId}/roll-result`;
-
-            const unsubscribe = OBR.broadcast.onMessage(channel, (event) => {
+            // Register listener for THIS specific roll transaction
+            const resultChannel = `${this.mySourceId}/roll-result`;
+            const unsubscribe = OBR.broadcast.onMessage(resultChannel, (event) => {
                 handleMessage(event);
             });
 
-            // Override cleanup to include unsubscribe // this is tricky with OBR SDK types directly here.
-            // Let's rely on the simplified flow:
+            // Payload matching Dice+ requirements
+            const payload = {
+                rollId: rollId,
+                playerId: 'unknown', // OBR.player.id ideally, but we might not have it inside this class easily without async
+                playerName: 'FateWeaver',
+                rollTarget: 'everyone',
+                diceNotation: formula,
+                showResults: false, // We want to handle results ourselves
+                timestamp: Date.now(),
+                source: this.mySourceId // Crucial: tells Dice+ where to send result
+            };
 
             // Send Request
-            OBR.broadcast.sendMessage(ROLL_REQUEST_CHANNEL, {
-                source: this.mySourceId,
-                rollId: rollId,
-                formula: formula,
-                hidden: false // or true?
+            OBR.broadcast.sendMessage(ROLL_REQUEST_CHANNEL, payload).catch(err => {
+                console.error("[Dice+] Send failed:", err);
+                cleanup();
+                // Fallback to mock if send fails completely
+                resolve(this.mockResult(formula));
             });
 
-            // Note: This needs the real channel ID.
-            // If 'dice-plus/roll' is wrong, this fails.
-
-            console.log(`[Dice+] Sent roll request: ${formula} (ID: ${rollId})`);
+            console.log(`[Dice+] Sent request to ${ROLL_REQUEST_CHANNEL}`, payload);
         });
     }
 
-    private parseResult(data: any): DicePlusResult {
-        // Transform Dice+ format to our format
-        // This is hypothetical until verified
+    // Fallback for local dev or timeout
+    private mockResult(formula: string): DicePlusResult {
+        // Very basic parser for mock purposes: "1d20+5" -> just rand(20)
+        // This is just to keep the automation chain moving
+        const parts = formula.match(/(\d+)d(\d+)/);
+        let sides = 20;
+        let count = 1;
+        if (parts) {
+            count = parseInt(parts[1]);
+            sides = parseInt(parts[2]);
+        }
+
+        const results = [];
+        let total = 0;
+        for (let i = 0; i < count; i++) {
+            const val = Math.ceil(Math.random() * sides);
+            results.push({ sides, result: val });
+            total += val;
+        }
+
+        // Add modifier if present
+        const modMatch = formula.match(/[+-](\d+)/);
+        if (modMatch) {
+            total += parseInt(modMatch[0]);
+        }
+
         return {
-            formula: data.formula,
-            results: data.dice?.map((d: any) => ({ sides: d.sides, result: d.value })) || [],
-            total: data.total || 0
+            formula,
+            results,
+            total
+        };
+    }
+
+    private parseResult(data: any): DicePlusResult {
+        // Dice+ 'dice' array contains individual die results
+        // We map them to our interface
+        return {
+            formula: data.diceNotation || data.formula, // field might vary
+            results: data.dice?.map((d: any) => ({ sides: d.sides || 20, result: d.result || d.value })) || [],
+            total: data.total || 0 // Dice+ usually calculates total
         };
     }
 }

@@ -19,12 +19,18 @@ class DicePlusService {
     private mySourceId = 'com.fateweaver.dice';
 
     constructor() {
-        this.checkReady();
+        this.init();
     }
 
-    async checkReady() {
+    async init() {
         if (!OBR.isAvailable) return;
         this.ready = true;
+
+        // Listen for global errors from Dice+
+        // Note: This might need to be set up outside class context if used as singleton
+        OBR.broadcast.onMessage(`${this.mySourceId}/roll-error`, (event) => {
+            console.error("[Dice+] Received error from Dice+:", event.data);
+        });
     }
 
     async roll(formula: string): Promise<DicePlusResult> {
@@ -66,27 +72,32 @@ class DicePlusService {
                 handleMessage(event);
             });
 
-            // Payload matching Dice+ requirements
-            const payload = {
-                rollId: rollId,
-                playerId: 'unknown', // OBR.player.id ideally, but we might not have it inside this class easily without async
-                playerName: 'FateWeaver',
-                rollTarget: 'everyone',
-                diceNotation: formula,
-                showResults: false, // We want to handle results ourselves
-                timestamp: Date.now(),
-                source: this.mySourceId // Crucial: tells Dice+ where to send result
-            };
+            // Get Player Info (Dice+ likely requires valid IDs)
+            Promise.all([OBR.player.getId(), OBR.player.getName()]).then(([pid, pname]) => {
+                const payload = {
+                    rollId: rollId,
+                    playerId: pid,
+                    playerName: pname,
+                    rollTarget: 'everyone',
+                    diceNotation: formula,
+                    showResults: false,
+                    timestamp: Date.now(),
+                    source: this.mySourceId
+                };
 
-            // Send Request
-            OBR.broadcast.sendMessage(ROLL_REQUEST_CHANNEL, payload).catch(err => {
-                console.error("[Dice+] Send failed:", err);
-                cleanup();
-                // Fallback to mock if send fails completely
+                // Send Request
+                OBR.broadcast.sendMessage(ROLL_REQUEST_CHANNEL, payload).catch(err => {
+                    console.error("[Dice+] Send failed:", err);
+                    cleanup();
+                    // Fallback to mock if send fails completely
+                    resolve(this.mockResult(formula));
+                });
+                console.log(`[Dice+] Sent request to ${ROLL_REQUEST_CHANNEL}`, payload);
+            }).catch(e => {
+                console.error("[Dice+] Failed to get player info:", e);
+                // Fallback to mock
                 resolve(this.mockResult(formula));
             });
-
-            console.log(`[Dice+] Sent request to ${ROLL_REQUEST_CHANNEL}`, payload);
         });
     }
 

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StepResult, DicePreset, CharacterStats } from '../types';
-import { PendingDie, getStepDiceConfig, checkCondition, resolveStepResult, createSkippedResult, getStatModifierValue, getStatLabel } from '../utils/engine';
+import { PendingDie, getStepDiceConfig, checkCondition, resolveStepResult, createSkippedResult, getStatModifierValue, getStatLabel, parseFormula } from '../utils/engine';
 import { RollResults } from './ui/RollResults';
 import { OBRBroadcast, useOBR } from '../obr';
 import { DicePlus, DicePlusResult } from '../utils/DicePlus';
@@ -48,21 +48,22 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       const config = getStepDiceConfig(step);
       configs[step.id] = config;
 
-      // Clean formula of existing comments
-      const cleanFormula = (step.formula || '0').split('#')[0].trim();
-
       if (step.type === 'daggerheart') {
         // Daggerheart: 1d12{Hope} + 1d12{Fear}
-        // We tag them specifically to find them later
         formulaParts.push(`1d12{Hope} # ${step.id}_hope`);
         formulaParts.push(`1d12{Fear} # ${step.id}_fear`);
-        // NOTE: baseModifier for DH is usually 0 in formula, but handled in resolution
-        if (config.baseModifier !== 0) {
-          formulaParts.push(`${config.baseModifier}`);
-        }
+        // We do NOT send the modifier to Dice+ to avoid "label + mod" syntax issues.
+        // The modifier is handled locally in processRollResults anyway.
       } else {
-        // Standard: Use user formula + tag
-        formulaParts.push(`${cleanFormula} # ${step.id}_std`);
+        // Standard: Extract DICE ONLY from formula to avoid syntax error with labels
+        // e.g. "1d20+2" -> "1d20 # id" (We strip the +2 for the Dice+ visual request)
+        const cleanFormula = (step.formula || '0').split('#')[0].trim();
+        const parsed = parseFormula(cleanFormula);
+
+        if (parsed.count > 0 && parsed.sides > 0) {
+          formulaParts.push(`${parsed.count}d${parsed.sides} # ${step.id}_std`);
+        }
+        // If count is 0 (constant), we send nothing to Dice+.
       }
     });
 

@@ -135,12 +135,45 @@ class DicePlusService {
     }
 
     private parseResult(data: any): DicePlusResult {
-        // Dice+ 'dice' array contains individual die results
-        // We map them to our interface
+        // Official Dice+ Result Structure:
+        // data.result.groups[] -> group.dice[] -> { value: number, diceType: string, kept: boolean }
+
+        const rawResult = data.result;
+        if (!rawResult) {
+            console.warn("[DicePlus] Received result without 'result' property", data);
+            return { formula: "error", results: [], total: 0 };
+        }
+
+        const flattenedResults: { sides: number; result: number }[] = [];
+
+        if (rawResult.groups && Array.isArray(rawResult.groups)) {
+            rawResult.groups.forEach((group: any) => {
+                if (group.dice && Array.isArray(group.dice)) {
+                    group.dice.forEach((d: any) => {
+                        // Extract sides from "d20", "d6" etc
+                        const type = d.diceType || group.diceType || "d20";
+                        const sides = parseInt(type.replace(/[^\d]/g, '')) || 20;
+
+                        // Only include if it 'counted'? 
+                        // Our engine usually expects ALL dice rolled to be returned so we can map them to our IDs.
+                        // Dice+ 'kept' flag handles drops. 
+                        // If we drop a die in notation "2d20kh1", Dice+ returns both.
+                        // Our engine might expect to see both to animate them?
+                        // Actually, Roller.tsx maps by index.
+
+                        flattenedResults.push({
+                            sides: sides,
+                            result: d.value
+                        });
+                    });
+                }
+            });
+        }
+
         return {
-            formula: data.diceNotation || data.formula, // field might vary
-            results: data.dice?.map((d: any) => ({ sides: d.sides || 20, result: d.result || d.value })) || [],
-            total: data.total || 0 // Dice+ usually calculates total
+            formula: rawResult.diceNotation,
+            results: flattenedResults,
+            total: rawResult.totalValue
         };
     }
 }

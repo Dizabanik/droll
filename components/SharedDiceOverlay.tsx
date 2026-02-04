@@ -48,6 +48,11 @@ export const SharedDiceOverlay: React.FC = () => {
                     const startMsg = message as DiceRollStartMessage;
                     setActiveRolls(prev => {
                         const next = new Map(prev);
+                        // Ensure we cleanup any existing roll for this player to prevent ghosts
+                        if (next.has(startMsg.playerId)) {
+                            next.delete(startMsg.playerId);
+                        }
+
                         next.set(startMsg.playerId, {
                             rollId: `${startMsg.playerId}-${Date.now()}`,
                             playerId: startMsg.playerId,

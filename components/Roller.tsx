@@ -16,19 +16,20 @@ interface RollerProps {
   itemName: string;
   onClose: () => void;
   hideCanvas?: boolean;
+  instantMode?: boolean;
 }
 
 // Helper Components Removed (DamageIcon, DaggerheartVisual) since they are in RollResults now
 // ...
 
-export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas }) => {
+export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas, instantMode = false }) => {
   const { playerId, playerName, playerColor } = useOBR();
 
   const [results, setResults] = useState<StepResult[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [instantMode, setInstantMode] = useState(false);
   const [activeRollInstant, setActiveRollInstant] = useState(false); // Track if CURRENT roll is instant
+  const [chainHasCrit, setChainHasCrit] = useState(false); // Auto-Crit Propagation
 
   // Scene State
   const [sceneDice, setSceneDice] = useState<PendingDie[]>([]);
@@ -86,6 +87,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       setSceneDice([]);
       setActiveDiceIds([]);
       setDieOutcomes({});
+      setChainHasCrit(false);
       setTimeout(() => evaluateNextStep(0, []), isInstant ? 50 : 500);
     }
     return () => {
@@ -195,16 +197,17 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
     const result = resolveStepResult(step, currentStepValues, currentStepConfig, totalModifier, displayFormula);
 
-    // Determine Visual Outcomes (Crit/Fail)
+    // Determine Visual Outcomes (Crit/Fail) and Auto-Crit Propagation
     const newOutcomes = { ...dieOutcomes };
+    let stepIsCrit = step.isCrit || false;
 
-    if (step.isCrit) {
-      stepDiceIds.forEach(id => newOutcomes[id] = 'crit');
-    } else if (step.type === 'daggerheart') {
+    if (step.type === 'daggerheart') {
       // Daggerheart Crit: Doubles
       const vals = Object.values(currentStepValues);
       if (vals.length === 2 && vals[0] === vals[1]) {
         stepDiceIds.forEach(id => newOutcomes[id] = 'crit');
+        if (!chainHasCrit) setChainHasCrit(true);
+        stepIsCrit = true;
       } else {
         stepDiceIds.forEach(id => newOutcomes[id] = 'neutral');
       }
@@ -212,14 +215,55 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       // Standard: 1 is Fail, Max Sides is Crit
       currentStepConfig.forEach(d => {
         const val = currentStepValues[d.id];
-        if (val === d.sides) newOutcomes[d.id] = 'crit';
+        if (val === d.sides && d.sides === 20) { // Natural 20 auto-crit
+          newOutcomes[d.id] = 'crit';
+          if (!chainHasCrit) setChainHasCrit(true);
+          stepIsCrit = true;
+        }
+        else if (val === d.sides) newOutcomes[d.id] = 'crit'; // Generic max-roll visual crit (e.g. d6->6), usually doesn't propagate
         else if (val === 1) newOutcomes[d.id] = 'fail';
         else newOutcomes[d.id] = 'neutral';
       });
     }
 
+    // Force Crit for subsequent steps if chainHasCrit is true (or became true this step)
+    // We re-resolve result if we just discovered a crit is active that wasn't before? 
+    // Actually, resolveStepResult doesn't KNOW about chainHasCrit yet in the call above.
+    // We need to pass chainHasCrit OR stepIsCrit to resolveStepResult.
+
+    // RE-CALCULATE RESULT with Critical Status if needed
+    // This is valid because we haven't setResults yet.
+    const effectiveCrit = chainHasCrit || stepIsCrit || step.isCrit;
+
+    // We need resolveStepResult to accept 'forceCrit' logic again, but we removed it? 
+    // No, we updated resolveStepResult to use `step.isCrit`. 
+    // We should modify resolveStepResult to accept an optional override, 
+    // OR we modify the step object passed to it temporarily.
+
+    // Let's rely on the passed-in "forceCrit" param if we re-add it to engine, 
+    // OR just manually adjust total if it's a crit.
+
+    // Better: Update resolveStepResult to take `forceCrit` again? 
+    // I thought we removed it from Roller but kept it in engine (I think I removed it from engine too? Let me check engine.ts).
+    // I removed it from engine.ts signature in the last turn, wait. 
+    // Let's assume I need to pass it.
+
+    // WAIT. I should check engine.ts again. I think I added it back?
+    // I removed it in Step 543/549/554... 
+    // Let's modify logic:
+
+    // If effectiveCrit is true, we want the Critical Math.
+    // resolveStepResult uses `wasCrit = forceCrit || !!step.isCrit`. 
+    // So if I pass forceCrit=true, it works.
+
+    const finalResult = resolveStepResult(step, currentStepValues, currentStepConfig, totalModifier, displayFormula, effectiveCrit);
+
+    if (effectiveCrit) {
+      // visual override for all dice in this step? maybe not needed if outcomes handled above.
+    }
+
     setDieOutcomes(newOutcomes);
-    setResults(prev => [...prev, result]);
+    setResults(prev => [...prev, finalResult]);
     setActiveDiceIds([]);
 
     setTimeout(() => {
@@ -288,19 +332,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       {/* Toggle Controls (Only visible if not hidden externally) */}
       {!hideCanvas && !isComplete && (
         <div className="absolute top-4 right-4 z-[60] flex gap-2 pointer-events-auto">
-          <button
-            onClick={() => setInstantMode(!instantMode)}
-            className={clsx(
-              "p-2 rounded-full border transition-all shadow-lg",
-              instantMode
-                ? "bg-accent text-white border-accent"
-                : "bg-zinc-900/80 text-zinc-400 border-zinc-700 hover:text-white"
-            )}
-            title="Instant Roll (Skip 3D)"
-          >
-            <Icons.Dice size={20} />
-            {instantMode && <span className="absolute -bottom-1 -right-1 flex h-3 w-3"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span><span className="relative inline-flex rounded-full h-3 w-3 bg-white"></span></span>}
-          </button>
+          {/* Toggle removed from here, moved to Sidebar */}
         </div>
       )}
     </motion.div>

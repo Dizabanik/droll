@@ -87,6 +87,7 @@ const App: React.FC = () => {
   const [activeRollPreset, setActiveRollPreset] = useState<DicePreset | null>(null);
   const [activeRollVars, setActiveRollVars] = useState<Record<string, number>>({});
   const [activeRollItemName, setActiveRollItemName] = useState<string>('');
+  const [instantMode, setInstantMode] = useState<boolean>(false);
 
   // File input ref for import
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -405,6 +406,29 @@ const App: React.FC = () => {
                 </button>
               </div>
             </div>
+
+            {/* Global Settings */}
+            <div className="pt-2 border-t border-zinc-800">
+              <button
+                onClick={() => setInstantMode(!instantMode)}
+                className={clsx(
+                  "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-all",
+                  instantMode
+                    ? "bg-accent/10 text-accent border border-accent/20"
+                    : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-300"
+                )}
+              >
+                <span className="flex items-center gap-2">
+                  <Icons.Dice size={14} /> 3D Dice
+                </span>
+                <span className={clsx(
+                  "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
+                  instantMode ? "bg-accent text-white" : "bg-zinc-800 text-zinc-500"
+                )}>
+                  {instantMode ? 'OFF' : 'ON'}
+                </span>
+              </button>
+            </div>
           </>
         )}
       </div>
@@ -570,6 +594,7 @@ const App: React.FC = () => {
             itemName={activeRollItemName}
             onClose={closeRoller}
             hideCanvas={isOBR} // Hide 3D canvas in main window if in OBR (overlay handles it)
+            instantMode={instantMode}
           />
         )}
       </div>

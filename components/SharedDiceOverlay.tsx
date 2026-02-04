@@ -21,6 +21,8 @@ interface ActiveRoll {
     presetName: string;
     itemName: string;
     diceConfig: PendingDie[];
+    allDiceConfig: PendingDie[]; // Full config from start
+    renderedDice: PendingDie[]; // incrementally revealed dice
     steps: Array<{ id: string; label: string; type: 'standard' | 'daggerheart'; formula: string; damageType: DamageType }>;
     variables: Record<string, number>;
     activeDiceIds: string[];
@@ -56,6 +58,8 @@ export const SharedDiceOverlay: React.FC = () => {
                             presetName: startMsg.presetName,
                             itemName: startMsg.itemName,
                             diceConfig: startMsg.diceConfig,
+                            allDiceConfig: startMsg.diceConfig,
+                            renderedDice: [], // Start empty
                             steps: startMsg.steps,
                             variables: startMsg.variables,
                             activeDiceIds: [],
@@ -80,6 +84,15 @@ export const SharedDiceOverlay: React.FC = () => {
                                 ...roll,
                                 activeDiceIds: valuesMsg.activeDiceIds,
                                 diceValues: { ...roll.diceValues, ...valuesMsg.values },
+                                // Reveal dice that are active
+                                renderedDice: [
+                                    ...roll.renderedDice,
+                                    ...(valuesMsg.activeDiceIds
+                                        .filter(id => !roll.renderedDice.some(d => d.id === id))
+                                        .map(id => roll.allDiceConfig.find(d => d.id === id))
+                                        .filter((d): d is PendingDie => !!d)
+                                    )
+                                ]
                             });
                         }
                         return next;
@@ -144,7 +157,7 @@ export const SharedDiceOverlay: React.FC = () => {
                     {/* 3D Dice Scene with transparent background */}
                     <div className="absolute inset-0" style={{ background: 'transparent' }}>
                         <DiceScene
-                            dice={roll.diceConfig}
+                            dice={roll.renderedDice}
                             activeDiceIds={roll.activeDiceIds}
                             damageType={roll.steps[0]?.damageType || 'none'}
                             outcomes={{}}

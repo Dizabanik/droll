@@ -89,22 +89,23 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
   const failsafeRef = useRef<number | null>(null);
   const allDiceRef = useRef<PendingDie[]>([]);
-  const stepDiceRef = useRef<PendingDie[][]>([]);
+  const stepConfigsRef = useRef<Record<string, { dice: PendingDie[], baseModifier: number }>>({});
 
   // Broadcast roll start when preset changes
   useEffect(() => {
     if (preset) {
-      // Calculate all dice needed for the entire roll
+      // Calculate all dice needed for the entire roll ONCE to preserve IDs
       const allDice: PendingDie[] = [];
-      const stepDice: PendingDie[][] = [];
+      const configs: Record<string, { dice: PendingDie[], baseModifier: number }> = {};
 
       preset.steps.forEach(step => {
         const config = getStepDiceConfig(step);
-        stepDice.push(config.dice);
+        configs[step.id] = config;
         allDice.push(...config.dice);
       });
+
       allDiceRef.current = allDice;
-      stepDiceRef.current = stepDice;
+      stepConfigsRef.current = configs;
 
       // Send ROLL_START broadcast
       OBRBroadcast.send({
@@ -166,17 +167,14 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       return;
     }
 
-    const currentDice = stepDiceRef.current[stepIdx] || [];
-
-    // Re-calculate modifier (safe) but use stable dice IDs from ref
-    // const config = getStepDiceConfig(step); 
-
+    const config = stepConfigsRef.current[step.id];
+    if (!config) return; // Should not happen
     setCurrentStepIndex(stepIdx);
     setSceneDamageType(step.damageType);
 
     // Append new dice to the scene
-    setSceneDice(prev => [...prev, ...currentDice]);
-    setActiveDiceIds(currentDice.map(d => d.id));
+    setSceneDice(prev => [...prev, ...config.dice]);
+    setActiveDiceIds(config.dice.map(d => d.id));
 
     // Broadcast dice values update
     OBRBroadcast.send({
@@ -184,14 +182,14 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       playerId: playerId || 'unknown',
       stepIndex: stepIdx,
       values: {},
-      activeDiceIds: currentDice.map(d => d.id),
+      activeDiceIds: config.dice.map(d => d.id),
     });
 
     // Failsafe
     if (failsafeRef.current) clearTimeout(failsafeRef.current);
     failsafeRef.current = window.setTimeout(() => {
       const mock: Record<string, number> = {};
-      currentDice.forEach(d => mock[d.id] = Math.ceil(Math.random() * d.sides));
+      config.dice.forEach(d => mock[d.id] = Math.ceil(Math.random() * d.sides));
       handleRollComplete(mock);
     }, 10000);
   };
@@ -218,7 +216,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
     // Resolve Logic
     const step = preset.steps[currentStepIndex];
-    const { baseModifier } = getStepDiceConfig(step);
+    const { baseModifier } = stepConfigsRef.current[step.id];
 
     // Calculate Stat Modifier
     const statMod = getStatModifierValue(characterStats, step.statModifier);

@@ -87,7 +87,6 @@ const App: React.FC = () => {
   const [activeRollPreset, setActiveRollPreset] = useState<DicePreset | null>(null);
   const [activeRollVars, setActiveRollVars] = useState<Record<string, number>>({});
   const [activeRollItemName, setActiveRollItemName] = useState<string>('');
-  const [instantMode, setInstantMode] = useState<boolean>(false);
 
   // File input ref for import
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -407,198 +406,176 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Global Settings */}
-            <div className="pt-2 border-t border-zinc-800">
-              <button
-                onClick={() => setInstantMode(!instantMode)}
-                className={clsx(
-                  "w-full flex items-center justify-between px-3 py-2 rounded-md text-xs font-medium transition-all",
-                  instantMode
-                    ? "bg-accent/10 text-accent border border-accent/20"
-                    : "bg-zinc-900 text-zinc-400 border border-zinc-800 hover:text-zinc-300"
-                )}
-              >
-                <span className="flex items-center gap-2">
-                  <Icons.Dice size={14} /> 3D Dice
-                </span>
-                <span className={clsx(
-                  "px-1.5 py-0.5 rounded text-[10px] font-bold uppercase",
-                  instantMode ? "bg-accent text-white" : "bg-zinc-800 text-zinc-500"
-                )}>
-                  {instantMode ? 'OFF' : 'ON'}
-                </span>
-              </button>
-            </div>
-          </>
+          </div>
+      </>
         )}
-      </div>
+    </div>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+      {/* Main Content */ }
+  <div className="flex-1 flex flex-col h-full overflow-hidden relative">
 
-        {activeView === 'character' ? (
-          <CharacterSheet stats={stats} onChange={setStats} />
-        ) : (
-          activeItem ? (
-            <>
-              {/* Header */}
-              <div className="p-8 pb-4 border-b border-border bg-gradient-to-b from-surface to-background">
-                <div className="max-w-4xl mx-auto w-full">
-                  <div className="flex justify-between items-start mb-4">
-                    <div>
-                      {editingItem ? (
-                        <input
-                          value={activeItem.name}
-                          onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateActiveItem({ name: e.target.value })}
-                          className="bg-transparent text-3xl font-bold text-white focus:outline-none border-b border-accent/50 w-full"
-                          autoFocus
-                        />
-                      ) : (
-                        <h2
-                          className="text-3xl font-bold text-white cursor-pointer hover:text-zinc-200"
-                          onClick={() => setEditingItem(true)}
-                        >
-                          {activeItem.name}
-                        </h2>
-                      )}
-
-                      {editingItem ? (
-                        <textarea
-                          value={activeItem.description}
-                          onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateActiveItem({ description: e.target.value })}
-                          className="bg-transparent text-zinc-400 mt-2 w-full h-20 focus:outline-none resize-none text-sm"
-                          placeholder="Item description..."
-                        />
-                      ) : (
-                        <p
-                          className="text-zinc-400 mt-2 text-sm leading-relaxed max-w-2xl cursor-pointer hover:text-zinc-300"
-                          onClick={() => setEditingItem(true)}
-                        >
-                          {activeItem.description || "No description provided."}
-                        </p>
-                      )}
-                    </div>
-
-                    {editingItem && (
-                      <div className="flex gap-2">
-                        <button
-                          onClick={() => setEditingItem(false)}
-                          className="px-4 py-2 bg-zinc-800 text-white text-xs rounded hover:bg-zinc-700"
-                        >
-                          Done
-                        </button>
-                        <button
-                          onClick={deleteActiveItem}
-                          className="px-4 py-2 bg-red-500/10 text-red-500 text-xs rounded hover:bg-red-500/20 border border-red-500/20"
-                        >
-                          Delete Item
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              {/* Presets List */}
-              <div className="flex-1 overflow-y-auto p-8 bg-zinc-950">
-                <div className="max-w-4xl mx-auto space-y-8">
-                  {activeItem.presets.map((preset, idx) => (
-                    <div key={preset.id} className="group">
-                      {editingItem ? (
-                        <DiceChainEditor
-                          preset={preset}
-                          onUpdate={(u) => updatePreset(idx, u)}
-                          onDelete={() => deletePreset(idx)}
-                          characterStats={stats}
-                        />
-                      ) : (
-                        <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-all">
-                          <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-zinc-200 flex items-center gap-3">
-                              {preset.name}
-                              {(preset.variables?.length || 0) > 0 && (
-                                <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full font-normal">
-                                  {preset.variables?.length} Vars
-                                </span>
-                              )}
-                            </h3>
-                            <button
-                              onClick={() => initiateRoll(preset)}
-                              className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-full font-bold text-sm hover:bg-accent hover:text-white transition-all shadow-lg shadow-white/5"
-                            >
-                              <Icons.Dice size={16} /> Roll
-                            </button>
-                          </div>
-
-                          <div className="flex flex-wrap gap-2">
-                            {preset.steps.map((step, sIdx) => (
-                              <div key={step.id} className="flex items-center text-xs bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-zinc-400">
-                                <span className="font-mono text-zinc-300 mr-2">
-                                  {step.formula || 'DH'}
-                                  {step.statModifier && <span className="text-accent ml-1">+{getStatLabel(stats, step.statModifier)}</span>}
-                                </span>
-                                <span>{step.label}</span>
-                                {step.condition && (
-                                  <span className="ml-2 pl-2 border-l border-zinc-800 text-yellow-600/80">
-                                    if {step.condition.operator} {step.condition.compareTarget === 'variable'
-                                      ? (preset.variables?.find(v => v.id === step.condition?.variableId)?.name || 'Var')
-                                      : step.condition.value}
-                                  </span>
-                                )}
-                                {sIdx < preset.steps.length - 1 && <Icons.ArrowRight size={10} className="ml-2 text-zinc-700" />}
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  ))}
-
-                  {editingItem && (
-                    <button
-                      onClick={addPreset}
-                      className="w-full py-8 border-2 border-dashed border-zinc-800 rounded-xl text-zinc-600 font-medium hover:border-zinc-700 hover:text-zinc-400 transition-all flex flex-col items-center gap-2"
+    {activeView === 'character' ? (
+      <CharacterSheet stats={stats} onChange={setStats} />
+    ) : (
+      activeItem ? (
+        <>
+          {/* Header */}
+          <div className="p-8 pb-4 border-b border-border bg-gradient-to-b from-surface to-background">
+            <div className="max-w-4xl mx-auto w-full">
+              <div className="flex justify-between items-start mb-4">
+                <div>
+                  {editingItem ? (
+                    <input
+                      value={activeItem.name}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateActiveItem({ name: e.target.value })}
+                      className="bg-transparent text-3xl font-bold text-white focus:outline-none border-b border-accent/50 w-full"
+                      autoFocus
+                    />
+                  ) : (
+                    <h2
+                      className="text-3xl font-bold text-white cursor-pointer hover:text-zinc-200"
+                      onClick={() => setEditingItem(true)}
                     >
-                      <Icons.Add size={24} />
-                      Add New Dice Chain
-                    </button>
+                      {activeItem.name}
+                    </h2>
+                  )}
+
+                  {editingItem ? (
+                    <textarea
+                      value={activeItem.description}
+                      onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateActiveItem({ description: e.target.value })}
+                      className="bg-transparent text-zinc-400 mt-2 w-full h-20 focus:outline-none resize-none text-sm"
+                      placeholder="Item description..."
+                    />
+                  ) : (
+                    <p
+                      className="text-zinc-400 mt-2 text-sm leading-relaxed max-w-2xl cursor-pointer hover:text-zinc-300"
+                      onClick={() => setEditingItem(true)}
+                    >
+                      {activeItem.description || "No description provided."}
+                    </p>
                   )}
                 </div>
-              </div>
-            </>
-          ) : (
-            <div className="flex-1 flex items-center justify-center text-zinc-600">
-              <div className="text-center">
-                <Icons.Dice size={48} className="mx-auto mb-4 opacity-20" />
-                <p>Select or create an item to begin weaving fate.</p>
+
+                {editingItem && (
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setEditingItem(false)}
+                      className="px-4 py-2 bg-zinc-800 text-white text-xs rounded hover:bg-zinc-700"
+                    >
+                      Done
+                    </button>
+                    <button
+                      onClick={deleteActiveItem}
+                      className="px-4 py-2 bg-red-500/10 text-red-500 text-xs rounded hover:bg-red-500/20 border border-red-500/20"
+                    >
+                      Delete Item
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
-          )
-        )}
+          </div>
 
-        {/* Modals */}
-        {pendingPreset && (
-          <VariableModal
-            variables={pendingPreset.variables || []}
-            onConfirm={handleVariableConfirm}
-            onCancel={() => setPendingPreset(null)}
-          />
-        )}
+          {/* Presets List */}
+          <div className="flex-1 overflow-y-auto p-8 bg-zinc-950">
+            <div className="max-w-4xl mx-auto space-y-8">
+              {activeItem.presets.map((preset, idx) => (
+                <div key={preset.id} className="group">
+                  {editingItem ? (
+                    <DiceChainEditor
+                      preset={preset}
+                      onUpdate={(u) => updatePreset(idx, u)}
+                      onDelete={() => deletePreset(idx)}
+                      characterStats={stats}
+                    />
+                  ) : (
+                    <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-all">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-lg font-semibold text-zinc-200 flex items-center gap-3">
+                          {preset.name}
+                          {(preset.variables?.length || 0) > 0 && (
+                            <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full font-normal">
+                              {preset.variables?.length} Vars
+                            </span>
+                          )}
+                        </h3>
+                        <button
+                          onClick={() => initiateRoll(preset)}
+                          className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-full font-bold text-sm hover:bg-accent hover:text-white transition-all shadow-lg shadow-white/5"
+                        >
+                          <Icons.Dice size={16} /> Roll
+                        </button>
+                      </div>
 
-        {/* Roller Overlay */}
-        {activeRollPreset && (
-          <Roller
-            preset={activeRollPreset}
-            variables={activeRollVars}
-            characterStats={stats}
-            itemName={activeRollItemName}
-            onClose={closeRoller}
-            hideCanvas={isOBR} // Hide 3D canvas in main window if in OBR (overlay handles it)
-            instantMode={instantMode}
-          />
-        )}
-      </div>
-    </div>
+                      <div className="flex flex-wrap gap-2">
+                        {preset.steps.map((step, sIdx) => (
+                          <div key={step.id} className="flex items-center text-xs bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-zinc-400">
+                            <span className="font-mono text-zinc-300 mr-2">
+                              {step.formula || 'DH'}
+                              {step.statModifier && <span className="text-accent ml-1">+{getStatLabel(stats, step.statModifier)}</span>}
+                            </span>
+                            <span>{step.label}</span>
+                            {step.condition && (
+                              <span className="ml-2 pl-2 border-l border-zinc-800 text-yellow-600/80">
+                                if {step.condition.operator} {step.condition.compareTarget === 'variable'
+                                  ? (preset.variables?.find(v => v.id === step.condition?.variableId)?.name || 'Var')
+                                  : step.condition.value}
+                              </span>
+                            )}
+                            {sIdx < preset.steps.length - 1 && <Icons.ArrowRight size={10} className="ml-2 text-zinc-700" />}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ))}
+
+              {editingItem && (
+                <button
+                  onClick={addPreset}
+                  className="w-full py-8 border-2 border-dashed border-zinc-800 rounded-xl text-zinc-600 font-medium hover:border-zinc-700 hover:text-zinc-400 transition-all flex flex-col items-center gap-2"
+                >
+                  <Icons.Add size={24} />
+                  Add New Dice Chain
+                </button>
+              )}
+            </div>
+          </div>
+        </>
+      ) : (
+        <div className="flex-1 flex items-center justify-center text-zinc-600">
+          <div className="text-center">
+            <Icons.Dice size={48} className="mx-auto mb-4 opacity-20" />
+            <p>Select or create an item to begin weaving fate.</p>
+          </div>
+        </div>
+      )
+    )}
+
+    {/* Modals */}
+    {pendingPreset && (
+      <VariableModal
+        variables={pendingPreset.variables || []}
+        onConfirm={handleVariableConfirm}
+        onCancel={() => setPendingPreset(null)}
+      />
+    )}
+
+    {/* Roller Overlay */}
+    {activeRollPreset && (
+      <Roller
+        preset={activeRollPreset}
+        variables={activeRollVars}
+        characterStats={stats}
+        itemName={activeRollItemName}
+        onClose={closeRoller}
+        hideCanvas={isOBR} // Hide 3D canvas in main window if in OBR (overlay handles it)
+      />
+    )}
+  </div>
+    </div >
   );
 };
 

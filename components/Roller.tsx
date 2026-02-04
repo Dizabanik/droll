@@ -5,8 +5,8 @@ import { StepResult, DamageType, DicePreset, CharacterStats } from '../types';
 import { PendingDie, getStepDiceConfig, checkCondition, resolveStepResult, createSkippedResult, getStatModifierValue, getStatLabel } from '../utils/engine';
 import { Icons } from './ui/Icons';
 import { RollResults } from './ui/RollResults';
-import { DiceScene } from './3d/DiceScene';
 import { OBRBroadcast, useOBR } from '../obr';
+import { DicePlus } from '../utils/DicePlus';
 import clsx from 'clsx';
 
 interface RollerProps {
@@ -16,29 +16,29 @@ interface RollerProps {
   itemName: string;
   onClose: () => void;
   hideCanvas?: boolean;
-  instantMode?: boolean;
 }
 
 // Helper Components Removed (DamageIcon, DaggerheartVisual) since they are in RollResults now
 // ...
 
-export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas, instantMode = false }) => {
+export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas }) => {
   const { playerId, playerName, playerColor } = useOBR();
 
   const [results, setResults] = useState<StepResult[]>([]);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  const [activeRollInstant, setActiveRollInstant] = useState(false); // Track if CURRENT roll is instant
+  // Removed instantMode
+  // Removed activeRollInstant
   const [chainHasCrit, setChainHasCrit] = useState(false); // Auto-Crit Propagation
 
-  // Scene State
-  const [sceneDice, setSceneDice] = useState<PendingDie[]>([]);
-  const [sceneDamageType, setSceneDamageType] = useState<DamageType>('none');
+  // Scene State REMOVED
+  // const [sceneDice, setSceneDice] = useState<PendingDie[]>([]);
+  // const [sceneDamageType, setSceneDamageType] = useState<DamageType>('none');
   const [activeDiceIds, setActiveDiceIds] = useState<string[]>([]);
   const [dieOutcomes, setDieOutcomes] = useState<Record<string, 'crit' | 'fail' | 'neutral'>>({});
 
   const failsafeRef = useRef<number | null>(null);
-  const allDiceRef = useRef<PendingDie[]>([]);
+  // const allDiceRef = useRef<PendingDie[]>([]); // Not strictly needed for physics anymore
   const stepConfigsRef = useRef<Record<string, { dice: PendingDie[], baseModifier: number }>>({});
 
   // Broadcast roll start when preset changes
@@ -54,11 +54,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
         allDice.push(...config.dice);
       });
 
-      allDiceRef.current = allDice;
       stepConfigsRef.current = configs;
-
-      const isInstant = instantMode;
-      setActiveRollInstant(isInstant);
 
       // Send ROLL_START broadcast
       OBRBroadcast.send({
@@ -69,7 +65,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
         presetName: preset.name,
         itemName: itemName,
         diceConfig: allDice,
-        instant: isInstant,
+        instant: false, // Always normal speed (Dice+ controls visuals)
         steps: preset.steps.map(s => ({
           id: s.id,
           label: s.label,
@@ -84,11 +80,9 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       setResults([]);
       setCurrentStepIndex(0);
       setIsComplete(false);
-      setSceneDice([]);
-      setActiveDiceIds([]);
       setDieOutcomes({});
       setChainHasCrit(false);
-      setTimeout(() => evaluateNextStep(0, []), isInstant ? 50 : 500);
+      setTimeout(() => evaluateNextStep(0, []), 500);
     }
     return () => {
       if (failsafeRef.current) clearTimeout(failsafeRef.current);
@@ -126,36 +120,41 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
     const config = stepConfigsRef.current[step.id];
     if (!config) return; // Should not happen
     setCurrentStepIndex(stepIdx);
-    setSceneDamageType(step.damageType);
+    // setSceneDamageType(step.damageType); // No visual scene
 
-    // If Instant Mode, skip physics
-    if (activeRollInstant) {
-      const mock: Record<string, number> = {};
-      config.dice.forEach(d => mock[d.id] = Math.ceil(Math.random() * d.sides));
-      handleRollComplete(mock);
-      return;
-    }
-
-    // Append new dice to the scene
-    setSceneDice(prev => [...prev, ...config.dice]);
+    // Use Dice+ Integration
     setActiveDiceIds(config.dice.map(d => d.id));
 
-    // Broadcast dice values update
-    OBRBroadcast.send({
-      type: 'DICE_VALUES',
-      playerId: playerId || 'unknown',
-      stepIndex: stepIdx,
-      values: {},
-      activeDiceIds: config.dice.map(d => d.id),
-    });
+    // Await Dice+ Roll Result
+    DicePlus.roll(step.formula).then((result) => {
+      // Mocking `handleRollComplete` with result data
+      // We need to map DicePlus result to OUR dice IDs
+      // This is tricky because Dice+ generates its own dice.
+      // But our `handleRollComplete` expects values mapped to OUR `activeDiceIds`.
 
-    // Failsafe
-    if (failsafeRef.current) clearTimeout(failsafeRef.current);
-    failsafeRef.current = window.setTimeout(() => {
-      const mock: Record<string, number> = {};
-      config.dice.forEach(d => mock[d.id] = Math.ceil(Math.random() * d.sides));
-      handleRollComplete(mock);
-    }, 10000);
+      // Simulating the mapping:
+      const values: Record<string, number> = {};
+
+      // We assume Dice+ returns result dice in same order as formula dice?
+      // Or we just trust the total?
+      // For individual outcomes (crits), we need individual values.
+
+      // Simple mapping: 
+      config.dice.forEach((d, i) => {
+        // If Dice+ result has this index, use it.
+        if (result.results[i]) {
+          values[d.id] = result.results[i].result;
+        } else {
+          // Fallback if mismatch
+          values[d.id] = Math.max(1, Math.min(d.sides, Math.round(result.total / config.dice.length)));
+        }
+      });
+
+      handleRollComplete(values);
+    }).catch(err => {
+      console.error("Dice+ Roll Failed:", err);
+      // Fallback?
+    });
   };
 
   const handleRollComplete = (diceValues: Record<string, number>) => {
@@ -193,9 +192,9 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       displayFormula = `${step.formula} ${statMod >= 0 ? '+' : ''}${statMod} (${label})`;
     }
 
-    const currentStepConfig = sceneDice.filter(d => stepDiceIds.includes(d.id));
+    const currentStepConfig = stepConfigsRef.current[step.id].dice.filter(d => stepDiceIds.includes(d.id));
 
-    const result = resolveStepResult(step, currentStepValues, currentStepConfig, totalModifier, displayFormula);
+    const result = resolveStepResult(step, currentStepValues, currentStepConfig, totalModifier, displayFormula, undefined);
 
     // Determine Visual Outcomes (Crit/Fail) and Auto-Crit Propagation
     const newOutcomes = { ...dieOutcomes };
@@ -268,7 +267,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
     setTimeout(() => {
       evaluateNextStep(currentStepIndex + 1, [...results, result]);
-    }, activeRollInstant ? 100 : 1000);
+    }, 500);
   };
 
   const calculateGrandTotalFromResults = (resArray: StepResult[]) => {
@@ -296,24 +295,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       className="fixed inset-0 z-50 flex flex-col items-center justify-center"
       style={{ background: 'transparent' }}
     >
-      {/* Transparent 3D Dice Scene - "on board" effect like dddice */}
-      <div
-        className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-300"
-        style={{
-          background: 'transparent',
-          visibility: (hideCanvas || activeRollInstant) ? 'hidden' : 'visible',
-          opacity: (hideCanvas || activeRollInstant) ? 0 : 1
-        }}
-        aria-hidden={hideCanvas || activeRollInstant}
-      >
-        <DiceScene
-          dice={sceneDice}
-          activeDiceIds={activeDiceIds}
-          damageType={sceneDamageType}
-          outcomes={dieOutcomes}
-          onRollComplete={handleRollComplete}
-        />
-      </div>
+      {/* 3D Scene Removed */}
 
       <AnimatePresence>
         {results.length > 0 && (

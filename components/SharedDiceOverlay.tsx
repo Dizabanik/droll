@@ -5,8 +5,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { DiceScene } from './3d/DiceScene';
-import { Icons } from './ui/Icons';
 import { RollResults } from './ui/RollResults';
 import { OBRBroadcast, DiceRollMessage, DiceRollStartMessage, DiceValuesMessage, RollCompleteMessage } from '../obr';
 import { useOBR } from '../obr';
@@ -154,21 +152,10 @@ export const SharedDiceOverlay: React.FC = () => {
 
     return (
         <div className="fixed inset-0 z-[100] pointer-events-none">
-            {/* Transparent 3D scene for each active roll */}
+            {/* Transparent 3D scene was here - removed for Dice+ integration */}
             {Array.from(activeRolls.values()).map(roll => (
                 <div key={roll.rollId} className="absolute inset-0">
-                    {/* Transparent 3D scene for each active roll (Hidden if instant) */}
-                    {!(roll.instant) && (
-                        <div className="absolute inset-0" style={{ background: 'transparent' }}>
-                            <DiceScene
-                                dice={roll.renderedDice}
-                                activeDiceIds={roll.activeDiceIds}
-                                damageType={roll.steps[0]?.damageType || 'none'}
-                                outcomes={{}}
-                                onRollComplete={() => { }} // No-op, we don't control this
-                            />
-                        </div>
-                    )}
+
 
                     {/* Result Panel */}
                     <AnimatePresence>

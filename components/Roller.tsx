@@ -58,12 +58,21 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
         // Standard: Extract DICE ONLY from formula to avoid syntax error with labels
         // e.g. "1d20+2" -> "1d20 # id" (We strip the +2 for the Dice+ visual request)
         const cleanFormula = (step.formula || '0').split('#')[0].trim();
-        const parsed = parseFormula(cleanFormula);
 
-        if (parsed.count > 0 && parsed.sides > 0) {
-          formulaParts.push(`${parsed.count}d${parsed.sides} # ${step.id}_std`);
+        // Inline robust parsing to ensure modifiers are stripped even if engine.ts is stale
+        // Matches "1d20", "d20", "1d20+5", "1d20 + 5", "2d6", etc.
+        const match = cleanFormula.toLowerCase().match(/^(\d*)d(\d+)/);
+
+        if (match) {
+          const count = match[1] ? parseInt(match[1]) : 1;
+          const sides = parseInt(match[2]);
+          formulaParts.push(`${count}d${sides} # ${step.id}_std`);
+          console.log(`[FATEWEAVER] Parsed ${cleanFormula} -> ${count}d${sides} for Dice+`);
+        } else {
+          // Fallback or complex formula - try to send as is but warn
+          // If it's a constant (e.g. "5"), we skip sending a die for it
+          console.warn(`[FATEWEAVER] Could not parse dice from '${cleanFormula}', skipping visual roll for this step.`);
         }
-        // If count is 0 (constant), we send nothing to Dice+.
       }
     });
 

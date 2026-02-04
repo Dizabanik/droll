@@ -2,7 +2,6 @@ import OBR from '@owlbear-rodeo/sdk';
 
 // Verified Channel IDs
 const ROLL_REQUEST_CHANNEL = 'dice-plus/roll-request';
-// Results come back on `${source}/roll-result`
 
 export interface DicePlusResult {
     formula: string;
@@ -27,14 +26,13 @@ class DicePlusService {
         this.ready = true;
 
         // Listen for global errors from Dice+
-        // Note: This might need to be set up outside class context if used as singleton
         OBR.broadcast.onMessage(`${this.mySourceId}/roll-error`, (event) => {
             console.error("[Dice+] Received error from Dice+:", event.data);
         });
     }
 
     async roll(formula: string): Promise<DicePlusResult> {
-        const rollId = Math.random().toString(36).substring(7);
+        const rollId = `roll_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
 
         // If OBR is not available (local dev), return mock immediately to prevent hang
         if (!OBR.isAvailable) {
@@ -42,7 +40,9 @@ class DicePlusService {
             return this.mockResult(formula);
         }
 
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
+            let unsubscribe: (() => void) | null = null;
+
             // 5s timeout to prevent infinite stuck state
             const timeout = setTimeout(() => {
                 cleanup();
@@ -50,30 +50,34 @@ class DicePlusService {
                 resolve(this.mockResult(formula));
             }, 5000);
 
+            const cleanup = () => {
+                clearTimeout(timeout);
+                if (unsubscribe) {
+                    unsubscribe();
+                }
+            };
+
             const handleMessage = (event: any) => {
                 const data = event.data;
                 // Dice+ sends result with matching rollId we sent
                 if (data && data.rollId === rollId) {
                     cleanup();
+                    console.log("[Dice+] Received result:", data);
                     resolve(this.parseResult(data));
                 }
             };
 
-            const cleanup = () => {
-                clearTimeout(timeout);
-                // OBR broadcast listeners are global, typically handled by one-time subscription or global router.
-                // For this implementation, we register a temporary listener.
-                unsubscribe();
-            };
-
             // Register listener for THIS specific roll transaction
             const resultChannel = `${this.mySourceId}/roll-result`;
-            const unsubscribe = OBR.broadcast.onMessage(resultChannel, (event) => {
-                handleMessage(event);
-            });
+            unsubscribe = OBR.broadcast.onMessage(resultChannel, handleMessage);
 
-            // Get Player Info (Dice+ likely requires valid IDs)
-            Promise.all([OBR.player.getId(), OBR.player.getName()]).then(([pid, pname]) => {
+            try {
+                // Get Player Info (Dice+ requires valid IDs)
+                const [pid, pname] = await Promise.all([
+                    OBR.player.getId(),
+                    OBR.player.getName()
+                ]);
+
                 const payload = {
                     rollId: rollId,
                     playerId: pid,
@@ -85,25 +89,26 @@ class DicePlusService {
                     source: this.mySourceId
                 };
 
-                // Send Request
-                OBR.broadcast.sendMessage(ROLL_REQUEST_CHANNEL, payload).catch(err => {
-                    console.error("[Dice+] Send failed:", err);
-                    cleanup();
-                    // Fallback to mock if send fails completely
-                    resolve(this.mockResult(formula));
-                });
+                // Send Request with destination parameter
+                await OBR.broadcast.sendMessage(
+                    ROLL_REQUEST_CHANNEL,
+                    payload,
+                    { destination: 'ALL' }
+                );
+
                 console.log(`[Dice+] Sent request to ${ROLL_REQUEST_CHANNEL}`, payload);
-            }).catch(e => {
-                console.error("[Dice+] Failed to get player info:", e);
-                // Fallback to mock
+            } catch (err) {
+                console.error("[Dice+] Failed to send request:", err);
+                cleanup();
+                // Fallback to mock if send fails completely
                 resolve(this.mockResult(formula));
-            });
+            }
         });
     }
 
     // Fallback for local dev or timeout
     private mockResult(formula: string): DicePlusResult {
-        // Very basic parser for mock purposes: "1d20+5" -> just rand(20)
+        // Basic parser for mock purposes: "1d20+5" -> just rand(20)
         // This is just to keep the automation chain moving
         const parts = formula.match(/(\d+)d(\d+)/);
         let sides = 20;
@@ -127,6 +132,8 @@ class DicePlusService {
             total += parseInt(modMatch[0]);
         }
 
+        console.log("[Dice+] Mock result:", { formula, results, total });
+
         return {
             formula,
             results,
@@ -140,8 +147,8 @@ class DicePlusService {
 
         const rawResult = data.result;
         if (!rawResult) {
-            console.warn("[DicePlus] Received result without 'result' property", data);
-            return { formula: "error", results: [], total: 0 };
+            console.warn("[Dice+] Received result without 'result' property", data);
+            return { formula: data.diceNotation || "error", results: [], total: 0 };
         }
 
         const flattenedResults: { sides: number; result: number }[] = [];
@@ -154,13 +161,8 @@ class DicePlusService {
                         const type = d.diceType || group.diceType || "d20";
                         const sides = parseInt(type.replace(/[^\d]/g, '')) || 20;
 
-                        // Only include if it 'counted'? 
-                        // Our engine usually expects ALL dice rolled to be returned so we can map them to our IDs.
-                        // Dice+ 'kept' flag handles drops. 
-                        // If we drop a die in notation "2d20kh1", Dice+ returns both.
-                        // Our engine might expect to see both to animate them?
-                        // Actually, Roller.tsx maps by index.
-
+                        // Include all dice (both kept and dropped)
+                        // Your engine might need to see all dice to animate them properly
                         flattenedResults.push({
                             sides: sides,
                             result: d.value
@@ -171,9 +173,9 @@ class DicePlusService {
         }
 
         return {
-            formula: rawResult.diceNotation,
+            formula: rawResult.diceNotation || data.diceNotation || "unknown",
             results: flattenedResults,
-            total: rawResult.totalValue
+            total: rawResult.totalValue || 0
         };
     }
 }

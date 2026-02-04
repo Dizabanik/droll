@@ -1,13 +1,10 @@
-
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { StepResult, DamageType, DicePreset, CharacterStats } from '../types';
+import { StepResult, DicePreset, CharacterStats } from '../types';
 import { PendingDie, getStepDiceConfig, checkCondition, resolveStepResult, createSkippedResult, getStatModifierValue, getStatLabel } from '../utils/engine';
-import { Icons } from './ui/Icons';
 import { RollResults } from './ui/RollResults';
 import { OBRBroadcast, useOBR } from '../obr';
-import { DicePlus } from '../utils/DicePlus';
-import clsx from 'clsx';
+import { DicePlus, DicePlusResult } from '../utils/DicePlus';
 
 interface RollerProps {
   preset: DicePreset | null;
@@ -18,260 +15,220 @@ interface RollerProps {
   hideCanvas?: boolean;
 }
 
-// Helper Components Removed (DamageIcon, DaggerheartVisual) since they are in RollResults now
-// ...
-
 export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas }) => {
   const { playerId, playerName, playerColor } = useOBR();
 
   const [results, setResults] = useState<StepResult[]>([]);
-  const [currentStepIndex, setCurrentStepIndex] = useState(0);
   const [isComplete, setIsComplete] = useState(false);
-  // Removed instantMode
-  // Removed activeRollInstant
-  const [chainHasCrit, setChainHasCrit] = useState(false); // Auto-Crit Propagation
 
-  // Scene State REMOVED
-  // const [sceneDice, setSceneDice] = useState<PendingDie[]>([]);
-  // const [sceneDamageType, setSceneDamageType] = useState<DamageType>('none');
-  const [activeDiceIds, setActiveDiceIds] = useState<string[]>([]);
-  const [dieOutcomes, setDieOutcomes] = useState<Record<string, 'crit' | 'fail' | 'neutral'>>({});
-
-  const failsafeRef = useRef<number | null>(null);
-  // const allDiceRef = useRef<PendingDie[]>([]); // Not strictly needed for physics anymore
+  // We keep configs to map results back to dice IDs
   const stepConfigsRef = useRef<Record<string, { dice: PendingDie[], baseModifier: number }>>({});
+  const hasRolledRef = useRef(false);
 
-  // Broadcast roll start when preset changes
   useEffect(() => {
-    if (preset) {
-      // Calculate all dice needed for the entire roll ONCE to preserve IDs
-      const allDice: PendingDie[] = [];
-      const configs: Record<string, { dice: PendingDie[], baseModifier: number }> = {};
-
-      preset.steps.forEach(step => {
-        const config = getStepDiceConfig(step);
-        configs[step.id] = config;
-        allDice.push(...config.dice);
-      });
-
-      stepConfigsRef.current = configs;
-
-      // Send ROLL_START broadcast
-      OBRBroadcast.send({
-        type: 'ROLL_START',
-        playerId: playerId || 'unknown',
-        playerName: playerName || 'Unknown Player',
-        playerColor: playerColor || '#888888',
-        presetName: preset.name,
-        itemName: itemName,
-        diceConfig: allDice,
-        instant: false, // Always normal speed (Dice+ controls visuals)
-        steps: preset.steps.map(s => ({
-          id: s.id,
-          label: s.label,
-          type: s.type,
-          formula: s.formula,
-          damageType: s.damageType,
-          isCrit: s.isCrit
-        })),
-        variables,
-      });
-
-      setResults([]);
-      setCurrentStepIndex(0);
-      setIsComplete(false);
-      setDieOutcomes({});
-      setChainHasCrit(false);
-      setTimeout(() => evaluateNextStep(0, []), 500);
+    if (preset && !hasRolledRef.current) {
+      hasRolledRef.current = true;
+      executeSimultaneousRoll();
     }
+
+    // Reset if preset changes (though Roller is usually unmounted/remounted)
     return () => {
-      if (failsafeRef.current) clearTimeout(failsafeRef.current);
+      // Cleanup if needed
     };
   }, [preset]);
 
-  const evaluateNextStep = (stepIdx: number, currentResults: StepResult[]) => {
-    if (!preset || stepIdx >= preset.steps.length) {
-      // Roll Complete - broadcast final results
-      const { grandTotal, breakdown } = calculateGrandTotalFromResults(currentResults);
-
-      OBRBroadcast.send({
-        type: 'ROLL_COMPLETE',
-        playerId: playerId || 'unknown',
-        results: currentResults,
-        grandTotal,
-        breakdown,
-      });
-
-      setIsComplete(true);
-      return;
-    }
-
-    const step = preset.steps[stepIdx];
-    const shouldRun = checkCondition(step, currentResults, variables);
-
-    if (!shouldRun) {
-      const skipped = createSkippedResult(step);
-      const newResults = [...currentResults, skipped];
-      setResults(newResults);
-      setTimeout(() => evaluateNextStep(stepIdx + 1, newResults), 200);
-      return;
-    }
-
-    const config = stepConfigsRef.current[step.id];
-    if (!config) return; // Should not happen
-    setCurrentStepIndex(stepIdx);
-    // setSceneDamageType(step.damageType); // No visual scene
-
-    // Use Dice+ Integration
-    setActiveDiceIds(config.dice.map(d => d.id));
-
-    // Await Dice+ Roll Result
-    DicePlus.roll(step.formula).then((result) => {
-      // Mocking `handleRollComplete` with result data
-      // We need to map DicePlus result to OUR dice IDs
-      // This is tricky because Dice+ generates its own dice.
-      // But our `handleRollComplete` expects values mapped to OUR `activeDiceIds`.
-
-      // Simulating the mapping:
-      const values: Record<string, number> = {};
-
-      // We assume Dice+ returns result dice in same order as formula dice?
-      // Or we just trust the total?
-      // For individual outcomes (crits), we need individual values.
-
-      // Simple mapping: 
-      config.dice.forEach((d, i) => {
-        // If Dice+ result has this index, use it.
-        if (result.results[i]) {
-          values[d.id] = result.results[i].result;
-        } else {
-          // Fallback if mismatch
-          values[d.id] = Math.max(1, Math.min(d.sides, Math.round(result.total / config.dice.length)));
-        }
-      });
-
-      handleRollComplete(values);
-    }).catch(err => {
-      console.error("Dice+ Roll Failed:", err);
-      // Fallback?
-    });
-  };
-
-  const handleRollComplete = (diceValues: Record<string, number>) => {
-    if (failsafeRef.current) clearTimeout(failsafeRef.current);
+  const executeSimultaneousRoll = async () => {
     if (!preset) return;
 
-    // Filter values for ONLY the dice involved in the current step
-    const stepDiceIds = activeDiceIds;
-    const currentStepValues: Record<string, number> = {};
-    stepDiceIds.forEach(id => {
-      if (diceValues[id] !== undefined) currentStepValues[id] = diceValues[id];
-    });
+    const configs: Record<string, { dice: PendingDie[], baseModifier: number }> = {};
+    const formulaParts: string[] = [];
 
-    // Broadcast dice values
-    OBRBroadcast.send({
-      type: 'DICE_VALUES',
-      playerId: playerId || 'unknown',
-      stepIndex: currentStepIndex,
-      values: currentStepValues,
-      activeDiceIds: stepDiceIds,
-    });
+    // 1. Prepare Configs and Formulas
+    preset.steps.forEach(step => {
+      const config = getStepDiceConfig(step);
+      configs[step.id] = config;
 
-    // Resolve Logic
-    const step = preset.steps[currentStepIndex];
-    const { baseModifier } = stepConfigsRef.current[step.id];
+      // Clean formula of existing comments
+      const cleanFormula = (step.formula || '0').split('#')[0].trim();
 
-    // Calculate Stat Modifier
-    const statMod = getStatModifierValue(characterStats, step.statModifier);
-    const totalModifier = baseModifier + statMod;
-
-    // Construct display formula for result (e.g. "1d20+4(+3 STR)")
-    let displayFormula = step.formula;
-    if (statMod !== 0 && step.statModifier) {
-      const label = getStatLabel(characterStats, step.statModifier);
-      displayFormula = `${step.formula} ${statMod >= 0 ? '+' : ''}${statMod} (${label})`;
-    }
-
-    const currentStepConfig = stepConfigsRef.current[step.id].dice.filter(d => stepDiceIds.includes(d.id));
-
-    const result = resolveStepResult(step, currentStepValues, currentStepConfig, totalModifier, displayFormula, undefined);
-
-    // Determine Visual Outcomes (Crit/Fail) and Auto-Crit Propagation
-    const newOutcomes = { ...dieOutcomes };
-    let stepIsCrit = step.isCrit || false;
-
-    if (step.type === 'daggerheart') {
-      // Daggerheart Crit: Doubles
-      const vals = Object.values(currentStepValues);
-      if (vals.length === 2 && vals[0] === vals[1]) {
-        stepDiceIds.forEach(id => newOutcomes[id] = 'crit');
-        if (!chainHasCrit) setChainHasCrit(true);
-        stepIsCrit = true;
-      } else {
-        stepDiceIds.forEach(id => newOutcomes[id] = 'neutral');
-      }
-    } else {
-      // Standard: 1 is Fail, Max Sides is Crit
-      currentStepConfig.forEach(d => {
-        const val = currentStepValues[d.id];
-        if (val === d.sides && d.sides === 20) { // Natural 20 auto-crit
-          newOutcomes[d.id] = 'crit';
-          if (!chainHasCrit) setChainHasCrit(true);
-          stepIsCrit = true;
+      if (step.type === 'daggerheart') {
+        // Daggerheart: 1d12{Hope} + 1d12{Fear}
+        // We tag them specifically to find them later
+        formulaParts.push(`1d12{Hope} # ${step.id}_hope`);
+        formulaParts.push(`1d12{Fear} # ${step.id}_fear`);
+        // NOTE: baseModifier for DH is usually 0 in formula, but handled in resolution
+        if (config.baseModifier !== 0) {
+          formulaParts.push(`${config.baseModifier}`);
         }
-        else if (val === d.sides) newOutcomes[d.id] = 'crit'; // Generic max-roll visual crit (e.g. d6->6), usually doesn't propagate
-        else if (val === 1) newOutcomes[d.id] = 'fail';
-        else newOutcomes[d.id] = 'neutral';
+      } else {
+        // Standard: Use user formula + tag
+        formulaParts.push(`${cleanFormula} # ${step.id}_std`);
+      }
+    });
+
+    stepConfigsRef.current = configs;
+
+    // 2. Broadcast Start (Visuals)
+    const allDice: PendingDie[] = Object.values(configs).flatMap(c => c.dice);
+
+    OBRBroadcast.send({
+      type: 'ROLL_START',
+      playerId: playerId || 'unknown',
+      playerName: playerName || 'Unknown Player',
+      playerColor: playerColor || '#888888',
+      presetName: preset.name,
+      itemName: itemName,
+      diceConfig: allDice,
+      instant: false,
+      steps: preset.steps.map(s => ({
+        id: s.id,
+        label: s.label,
+        type: s.type,
+        formula: s.formula,
+        damageType: s.damageType,
+        isCrit: s.isCrit
+      })),
+      variables,
+    });
+
+    // 3. Execute Dice+ Roll
+    const combinedFormula = formulaParts.join(' + ');
+    console.log("Dice+ Combined Formula:", combinedFormula);
+
+    try {
+      const result = await DicePlus.roll(combinedFormula);
+      processRollResults(result);
+    } catch (err) {
+      console.error("Dice+ Roll Error", err);
+      // TODO: Handle error visually?
+    }
+  };
+
+  const processRollResults = (diceResult: DicePlusResult) => {
+    if (!preset) return;
+
+    const calculatedResults: StepResult[] = [];
+    const globalDiceValues: Record<string, number> = {};
+
+    // Map for visual Dice outcomes
+    const newDieOutcomes: Record<string, 'crit' | 'fail' | 'neutral'> = {};
+    let chainHasCrit = false;
+
+    // 4. Parse Dice+ Groups into convenient map
+    // Map: tag -> array of dice values
+    const tagMap: Record<string, number[]> = {};
+
+    if (diceResult.groups) {
+      diceResult.groups.forEach((group: any) => {
+        // Group description is our tag (e.g. "s1_std" or "s1_hope")
+        const tag = group.description?.trim();
+        if (tag) {
+          if (!tagMap[tag]) tagMap[tag] = [];
+          if (group.dice) {
+            group.dice.forEach((d: any) => {
+              // Use kept dice mainly? Or all dice?
+              // Engine expects all dice rolled.
+              // Dice+ keeps "dropped" dice in array with kept:false
+              // We take ALL values because our engine might want to see dropped ones?
+              // Actually resolveStepResult takes rolls[] and sums them.
+              // If logic was kh1, we want the kept one.
+              // But our engine is simple.
+              // If `formula` was complex (2d20kh1), Dice+ returned `baseModifier: 0`.
+              // `cleanFormula` sent to Dice+ is `2d20kh1`. Dice+ returns correct logic.
+              // Dice+ group has `total`.
+              // So we should use `group.total` logic whenever possible.
+
+              tagMap[tag].push(d.value);
+            });
+          }
+        }
       });
     }
 
-    // Force Crit for subsequent steps if chainHasCrit is true (or became true this step)
-    // We re-resolve result if we just discovered a crit is active that wasn't before? 
-    // Actually, resolveStepResult doesn't KNOW about chainHasCrit yet in the call above.
-    // We need to pass chainHasCrit OR stepIsCrit to resolveStepResult.
+    // 5. Iterate Steps Logic (Sequential Dependency)
+    preset.steps.forEach(step => {
+      // A. Check Condition
+      const shouldRun = checkCondition(step, calculatedResults, variables);
 
-    // RE-CALCULATE RESULT with Critical Status if needed
-    // This is valid because we haven't setResults yet.
-    const effectiveCrit = chainHasCrit || stepIsCrit || step.isCrit;
+      if (!shouldRun) {
+        calculatedResults.push(createSkippedResult(step));
+        return;
+      }
 
-    // We need resolveStepResult to accept 'forceCrit' logic again, but we removed it? 
-    // No, we updated resolveStepResult to use `step.isCrit`. 
-    // We should modify resolveStepResult to accept an optional override, 
-    // OR we modify the step object passed to it temporarily.
+      // B. Retrieve Config & Values
+      const config = stepConfigsRef.current[step.id];
+      const stepDiceValues: Record<string, number> = {};
 
-    // Let's rely on the passed-in "forceCrit" param if we re-add it to engine, 
-    // OR just manually adjust total if it's a crit.
+      // Extract Values from Tag Map
+      if (step.type === 'daggerheart') {
+        const hopeVals = tagMap[`${step.id}_hope`] || []; // Should be 1
+        const fearVals = tagMap[`${step.id}_fear`] || []; // Should be 1
 
-    // Better: Update resolveStepResult to take `forceCrit` again? 
-    // I thought we removed it from Roller but kept it in engine (I think I removed it from engine too? Let me check engine.ts).
-    // I removed it from engine.ts signature in the last turn, wait. 
-    // Let's assume I need to pass it.
+        // Map to our PendingDie IDs
+        const hopeDie = config.dice.find(d => d.type === 'hope');
+        const fearDie = config.dice.find(d => d.type === 'fear');
 
-    // WAIT. I should check engine.ts again. I think I added it back?
-    // I removed it in Step 543/549/554... 
-    // Let's modify logic:
+        if (hopeDie && hopeVals[0] !== undefined) stepDiceValues[hopeDie.id] = hopeVals[0];
+        if (fearDie && fearVals[0] !== undefined) stepDiceValues[fearDie.id] = fearVals[0];
 
-    // If effectiveCrit is true, we want the Critical Math.
-    // resolveStepResult uses `wasCrit = forceCrit || !!step.isCrit`. 
-    // So if I pass forceCrit=true, it works.
+      } else {
+        const vals = tagMap[`${step.id}_std`] || [];
+        // Map to dice in order
+        config.dice.forEach((d, i) => {
+          if (vals[i] !== undefined) stepDiceValues[d.id] = vals[i];
+        });
+      }
 
-    const finalResult = resolveStepResult(step, currentStepValues, currentStepConfig, totalModifier, displayFormula, effectiveCrit);
+      // Update Global map
+      Object.assign(globalDiceValues, stepDiceValues);
 
-    if (effectiveCrit) {
-      // visual override for all dice in this step? maybe not needed if outcomes handled above.
-    }
+      // C. Calculate Modifiers
+      const statMod = getStatModifierValue(characterStats, step.statModifier);
+      const totalModifier = config.baseModifier + statMod;
 
-    setDieOutcomes(newOutcomes);
-    setResults(prev => [...prev, finalResult]);
-    setActiveDiceIds([]);
+      // Display String
+      let displayFormula = step.formula;
+      if (statMod !== 0 && step.statModifier) {
+        const label = getStatLabel(characterStats, step.statModifier);
+        displayFormula = `${step.formula} ${statMod >= 0 ? '+' : ''}${statMod} (${label})`;
+      }
 
-    setTimeout(() => {
-      evaluateNextStep(currentStepIndex + 1, [...results, result]);
-    }, 500);
-  };
+      // D. Resolve Result
+      // For Standard, if formula was complex, our 'sum' logic in resolveStepResult fails.
+      // Maybe we should pass the `group.total` from Dice+ if available?
+      // Hard to find specific group by tag again without loop.
+      // Simplification: We assume Simple Formulas for now as per Engine limitation.
 
-  const calculateGrandTotalFromResults = (resArray: StepResult[]) => {
-    const includedResults = resArray.filter(r => !r.skipped && r.addToSum);
+      // Check for Crit Propagation
+      let effectiveCrit = chainHasCrit || !!step.isCrit;
+
+      // Daggerheart Crit Check
+      if (step.type === 'daggerheart') {
+        const h = Object.values(stepDiceValues)[0]; // simplistic, rely on resolveStepResult mainly
+        const f = Object.values(stepDiceValues)[1];
+        if (h === f) {
+          chainHasCrit = true;
+          effectiveCrit = true;
+        }
+      } else {
+        // Standard Crit Check (Nat 20)
+        config.dice.forEach(d => {
+          if (stepDiceValues[d.id] === 20 && d.sides === 20) {
+            chainHasCrit = true;
+            effectiveCrit = true;
+          }
+        });
+      }
+
+      const result = resolveStepResult(step, stepDiceValues, config.dice, totalModifier, displayFormula, effectiveCrit);
+      calculatedResults.push(result);
+    });
+
+    setResults(calculatedResults);
+    setIsComplete(true);
+
+    // Calculate breakdown
+    const includedResults = calculatedResults.filter(r => !r.skipped && r.addToSum);
     const grandTotal = includedResults.reduce((sum, r) => sum + r.total, 0);
     const groups: Record<string, number> = {};
     includedResults.forEach(r => {
@@ -280,10 +237,32 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
     });
     const breakdownParts = Object.entries(groups).map(([type, value]) => `${value} ${type}`);
     const breakdown = breakdownParts.length > 0 ? `(${breakdownParts.join(' + ')})` : '';
-    return { grandTotal, breakdown, count: includedResults.length };
+
+    // 6. Broadcast VALUES and COMPLETE
+    // We can send D_VALUES first if listeners expect it, but ROLL_COMPLETE has results too.
+    // OBRBroadcast.send({ ...DICE_VALUES... }) // Optional, visualizers might need it.
+
+    OBRBroadcast.send({
+      type: 'ROLL_COMPLETE',
+      playerId: playerId || 'unknown',
+      results: calculatedResults,
+      grandTotal,
+      breakdown,
+    });
   };
 
-  const { grandTotal, breakdown, count } = calculateGrandTotalFromResults(results);
+  const { grandTotal, breakdown } = (() => {
+    const includedResults = results.filter(r => !r.skipped && r.addToSum);
+    const grandTotal = includedResults.reduce((sum, r) => sum + r.total, 0);
+    const groups: Record<string, number> = {};
+    includedResults.forEach(r => {
+      const type = r.damageType === 'none' ? 'typeless' : r.damageType;
+      groups[type] = (groups[type] || 0) + r.total;
+    });
+    const breakdownParts = Object.entries(groups).map(([type, value]) => `${value} ${type}`);
+    const breakdown = breakdownParts.length > 0 ? `(${breakdownParts.join(' + ')})` : '';
+    return { grandTotal, breakdown };
+  })();
 
   if (!preset) return null;
 
@@ -295,8 +274,6 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       className="fixed inset-0 z-50 flex flex-col items-center justify-center"
       style={{ background: 'transparent' }}
     >
-      {/* 3D Scene Removed */}
-
       <AnimatePresence>
         {results.length > 0 && (
           <RollResults
@@ -311,10 +288,9 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
         )}
       </AnimatePresence>
 
-      {/* Toggle Controls (Only visible if not hidden externally) */}
       {!hideCanvas && !isComplete && (
-        <div className="absolute top-4 right-4 z-[60] flex gap-2 pointer-events-auto">
-          {/* Toggle removed from here, moved to Sidebar */}
+        <div className="text-white bg-black/50 px-4 py-2 rounded-full absolute bottom-10 animate-pulse">
+          Rolling...
         </div>
       )}
     </motion.div>

@@ -10,6 +10,7 @@ export interface DicePlusResult {
         result: number;
     }[];
     total: number;
+    groups: any[]; // Raw groups from Dice+
 }
 
 class DicePlusService {
@@ -137,7 +138,8 @@ class DicePlusService {
         return {
             formula,
             results,
-            total
+            total,
+            groups: []
         };
     }
 
@@ -148,7 +150,7 @@ class DicePlusService {
         const rawResult = data.result;
         if (!rawResult) {
             console.warn("[Dice+] Received result without 'result' property", data);
-            return { formula: data.diceNotation || "error", results: [], total: 0 };
+            return { formula: data.diceNotation || "error", results: [], total: 0, groups: [] };
         }
 
         const flattenedResults: { sides: number; result: number }[] = [];
@@ -175,7 +177,8 @@ class DicePlusService {
         return {
             formula: rawResult.diceNotation || data.diceNotation || "unknown",
             results: flattenedResults,
-            total: rawResult.totalValue || 0
+            total: rawResult.totalValue || 0,
+            groups: rawResult.groups || []
         };
     }
 }

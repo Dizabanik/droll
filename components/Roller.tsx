@@ -290,10 +290,12 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
     >
       {/* Transparent 3D Dice Scene - "on board" effect like dddice */}
       <div
-        className={clsx(
-          "absolute inset-0 z-0 pointer-events-none transition-opacity duration-300",
-          hideCanvas ? "opacity-0 invisible" : "opacity-100 visible"
-        )}
+        className="absolute inset-0 z-0 pointer-events-none transition-opacity duration-300"
+        style={{
+          background: 'transparent',
+          visibility: hideCanvas ? 'hidden' : 'visible',
+          opacity: hideCanvas ? 0 : 1
+        }}
         aria-hidden={hideCanvas}
       >
         <DiceScene

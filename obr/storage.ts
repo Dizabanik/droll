@@ -17,8 +17,11 @@ interface FateWeaverMetadata {
  * Check if we're running inside Owlbear Rodeo
  */
 export const isOBREnvironment = (): boolean => {
-  return typeof window !== 'undefined' && 
-         window.location !== window.parent.location;
+  try {
+    return typeof window !== 'undefined' && window.self !== window.top;
+  } catch (e) {
+    return true; // If access blocked, we are likely in an iframe (OBR)
+  }
 };
 
 /**

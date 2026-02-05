@@ -349,6 +349,24 @@ const App: React.FC = () => {
     return (
       <div className="w-screen h-screen overflow-hidden bg-transparent pointer-events-none">
         <SharedDiceOverlay />
+
+        {/* History Toggle Button - Overlay Only */}
+        <button
+          onClick={() => setIsHistoryOpen(true)}
+          className="fixed bottom-4 left-4 z-[100] p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 pointer-events-auto"
+          title="Open Roll History"
+        >
+          <Icons.Menu size={24} />
+        </button>
+
+        {/* History Panel */}
+        <div className="pointer-events-auto">
+          <RollHistoryPanel
+            isOpen={isHistoryOpen}
+            onClose={() => setIsHistoryOpen(false)}
+            history={rollHistory}
+          />
+        </div>
       </div>
     );
   }
@@ -632,25 +650,6 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* History Toggle Button - Only in Overlay */}
-      {isOverlay && (
-        <>
-          <button
-            onClick={() => setIsHistoryOpen(true)}
-            className="fixed bottom-4 left-4 z-[100] p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 pointer-events-auto"
-            title="Open Roll History"
-          >
-            <Icons.Menu size={24} />
-          </button>
-
-          {/* History Panel */}
-          <RollHistoryPanel
-            isOpen={isHistoryOpen}
-            onClose={() => setIsHistoryOpen(false)}
-            history={rollHistory}
-          />
-        </>
-      )}
     </div>
   );
 };

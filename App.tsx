@@ -627,6 +627,7 @@ const App: React.FC = () => {
             itemName={activeRollItemName}
             onClose={closeRoller}
             hideCanvas={isOBR} // Hide 3D canvas in main window if in OBR (overlay handles it)
+            showResultsUI={!isOBR} // Only show results UI in local dev. In OBR, the Overlay handles it.
           />
         )}
       </div>
@@ -636,7 +637,7 @@ const App: React.FC = () => {
         <>
           <button
             onClick={() => setIsHistoryOpen(true)}
-            className="fixed bottom-4 right-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 pointer-events-auto"
+            className="fixed bottom-4 left-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 pointer-events-auto"
             title="Open Roll History"
           >
             <Icons.Menu size={24} />

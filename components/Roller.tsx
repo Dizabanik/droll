@@ -13,13 +13,24 @@ interface RollerProps {
   itemName: string;
   onClose: () => void;
   hideCanvas?: boolean;
+  showResultsUI?: boolean;
 }
 
-export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas }) => {
+export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStats, itemName, onClose, hideCanvas, showResultsUI = true }) => {
   const { playerId, playerName, playerColor } = useOBR();
 
   const [results, setResults] = useState<StepResult[]>([]);
   const [isComplete, setIsComplete] = useState(false);
+
+  // Auto-close if UI is hidden
+  useEffect(() => {
+    if (isComplete && !showResultsUI) {
+      const timer = setTimeout(() => {
+        onClose();
+      }, 1000); // Brief delay to ensure broadcast went out
+      return () => clearTimeout(timer);
+    }
+  }, [isComplete, showResultsUI, onClose]);
 
   // We keep configs to map results back to dice IDs
   const stepConfigsRef = useRef<Record<string, { dice: PendingDie[], baseModifier: number }>>({});
@@ -344,7 +355,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       style={{ background: 'transparent' }}
     >
       <AnimatePresence>
-        {results.length > 0 && (
+        {showResultsUI && results.length > 0 && (
           <RollResults
             results={results}
             isComplete={isComplete}
@@ -360,6 +371,15 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       {!hideCanvas && !isComplete && (
         <div className="text-white bg-black/50 px-4 py-2 rounded-full absolute bottom-10 animate-pulse">
           Rolling...
+        </div>
+      )}
+
+      {!showResultsUI && !isComplete && (
+        <div className="fixed inset-0 flex items-center justify-center bg-black/20 backdrop-blur-[2px] z-[60]">
+          <div className="bg-zinc-900 border border-zinc-700 text-white px-6 py-4 rounded-xl shadow-2xl flex flex-col items-center">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white mb-2"></div>
+            <span className="font-bold tracking-wider text-sm">ROLLING ON BOARD</span>
+          </div>
         </div>
       )}
     </motion.div>

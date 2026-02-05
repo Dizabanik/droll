@@ -7,14 +7,12 @@ import { RollResults } from './ui/RollResults';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage } from '../obr';
 import { useOBR } from '../obr';
-
 import clsx from 'clsx';
 
 // Popover Dimensions
 const BTN_SIZE = 60;
-const EXPANDED_WIDTH = 400; // Width of sidebar
-// Height will be dynamic based on screen
-const POPUP_HEIGHT = 300;
+const POPUP_WIDTH = 300;
+const POPUP_HEIGHT = 400; // Enough for result card
 
 export const HistoryControl: React.FC = () => {
     const { playerId, playerName } = useOBR();
@@ -36,15 +34,13 @@ export const HistoryControl: React.FC = () => {
             if (message.type === 'ROLL_COMPLETE') {
                 const msg = message as RollCompleteMessage;
 
-                // 1. Update History
-                // (Simplified name resolution for now)
                 const resolvedName = (msg.playerId === playerId) ? (playerName || 'Me') : 'Player';
                 const newEntry: HistoryEntry = {
                     id: `${msg.playerId}-${Date.now()}`,
                     timestamp: Date.now(),
                     playerId: msg.playerId,
-                    playerName: resolvedName, // We can improve metadata fetching if crucial
-                    presetName: 'Roll', // Metadata fetching skipped for speed? Or use context?
+                    playerName: resolvedName,
+                    presetName: 'Roll',
                     itemName: '',
                     results: msg.results,
                     grandTotal: msg.grandTotal,
@@ -52,7 +48,7 @@ export const HistoryControl: React.FC = () => {
                 };
                 setRollHistory(prev => [newEntry, ...prev].slice(0, 20));
 
-                // 2. Show Popup Logic
+                // Show Popup
                 setActiveResult(msg);
 
                 // Auto-hide popup after 4s
@@ -68,36 +64,47 @@ export const HistoryControl: React.FC = () => {
         };
     }, [playerId, playerName]);
 
-    // Resize Window Effect
+    // Handle Resize Logic
     useEffect(() => {
-        resizePopover(isHistoryOpen, !!activeResult);
-    }, [isHistoryOpen, activeResult]);
+        if (isHistoryOpen) {
+            resizePopover(true, !!activeResult);
+        } else {
+            // Delay shrink to allow exit animation if we are closing
+            const timer = setTimeout(() => {
+                resizePopover(false, !!activeResult);
+            }, 300);
+            return () => clearTimeout(timer);
+        }
+    }, [isHistoryOpen]);
+
+    // Handle Popup Resize (Immediate if history closed)
+    useEffect(() => {
+        if (!isHistoryOpen) {
+            resizePopover(false, !!activeResult);
+        }
+    }, [activeResult]);
 
     const resizePopover = async (historyOpen: boolean, hasPopup: boolean) => {
-        // Calculate needed size
-        let width = BTN_SIZE;
-        let height = BTN_SIZE;
-
-        if (historyOpen) {
-            width = EXPANDED_WIDTH;
-            height = EXPANDED_HEIGHT;
-        } else if (hasPopup) {
-            width = 300; // Popup Width
-            height = BTN_SIZE + POPUP_HEIGHT; // Button + Popup space
-        }
-
         try {
+            let width = BTN_SIZE;
+            let height = BTN_SIZE;
+
+            if (historyOpen) {
+                // Fullscreen Mode
+                width = await OBR.viewport.getWidth();
+                height = await OBR.viewport.getHeight();
+            } else if (hasPopup) {
+                width = POPUP_WIDTH; // Popup Width
+                height = POPUP_HEIGHT; // Button + Popup space
+            }
+
             await OBR.popover.open({
                 id: 'com.fateweaver.dice.controls',
                 url: window.location.pathname + '?popover=true',
                 width,
                 height,
                 anchorOrigin: { horizontal: 'RIGHT', vertical: 'BOTTOM' },
-                // Disable click away closing?
                 disableClickAway: true,
-                // hidePaper: true // We want transparent background so we can shape it?
-                // Actually Popover has a paper background usually. 
-                // Let's use hidePaper: true and style it ourselves.
                 hidePaper: true,
             });
         } catch (e) {
@@ -106,17 +113,58 @@ export const HistoryControl: React.FC = () => {
     };
 
     return (
-        <div className="flex flex-col items-end justify-end h-full w-full pointer-events-auto relative">
+        <div className={clsx("relative w-full h-full pointer-events-auto", isHistoryOpen ? "" : "flex flex-col items-end justify-end")}>
 
-            {/* 1. Popup Result (Above Button) */}
+            {/* 1. Backdrop (When Open) */}
+            <AnimatePresence>
+                {isHistoryOpen && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        // Clicking backdrop closes history
+                        onClick={() => setIsHistoryOpen(false)}
+                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-0"
+                    />
+                )}
+            </AnimatePresence>
+
+            {/* 2. Sidebar (When Open) */}
+            <AnimatePresence>
+                {isHistoryOpen && (
+                    <motion.div
+                        initial={{ x: '100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                        className="absolute right-0 top-0 h-full w-[400px] z-10 shadow-2xl bg-zinc-900 border-l border-zinc-700"
+                        // Prevent backdrop click when clicking sidebar
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        {/* Header is handled by embedded panel or here? 
+                             User said "remove history popup (small one)", implying they just want the content.
+                             RollHistoryPanel embedded mode renders just the content.
+                         */}
+                        <div className="h-full flex flex-col pt-16"> {/* Padding top for the close button area if needed, or button is fixed */}
+                            <RollHistoryPanel
+                                isOpen={true}
+                                onClose={() => setIsHistoryOpen(false)}
+                                history={rollHistory}
+                                embedded={true}
+                            />
+                        </div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
+            {/* 3. Popup Result (Above Button) - Only show if Sidebar CLOSED */}
             <AnimatePresence>
                 {activeResult && !isHistoryOpen && (
                     <motion.div
                         initial={{ opacity: 0, y: 20, scale: 0.9 }}
                         animate={{ opacity: 1, y: 0, scale: 1 }}
                         exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                        className="mb-4 mr-2"
-                    // Clickable!
+                        className="mb-4 mr-2 relative z-20"
                     >
                         <RollResults
                             results={activeResult.results}
@@ -132,43 +180,23 @@ export const HistoryControl: React.FC = () => {
                 )}
             </AnimatePresence>
 
-            {/* 2. History Panel (Expands Up/Left) */}
-            <AnimatePresence>
-                {isHistoryOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={{ opacity: 0, scale: 0.9 }}
-                        className="mb-4 w-full h-full bg-zinc-900 rounded-xl border border-zinc-700 shadow-2xl overflow-hidden flex flex-col"
-                    >
-                        <div className="p-3 border-b border-zinc-700 flex justify-between items-center bg-zinc-800/50">
-                            <span className="font-bold text-zinc-200">History</span>
-                            <button onClick={() => setIsHistoryOpen(false)} className="p-1 hover:bg-zinc-700 rounded"><Icons.Close size={16} /></button>
-                        </div>
-                        <div className="flex-1 overflow-y-auto p-0">
-                            <RollHistoryPanel
-                                isOpen={true}
-                                onClose={() => setIsHistoryOpen(false)}
-                                history={rollHistory}
-                                embedded={true} // New prop needed to remove fixed positioning
-                            />
-                        </div>
-                    </motion.div>
+            {/* 4. Main Toggle Button (Fixed Position) 
+                It stays in the same place. 
+                When Open: Shows 'X'.
+                When Closed: Shows 'Menu'.
+            */}
+            <button
+                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
+                className={clsx(
+                    "absolute bottom-4 right-4 z-50 p-3 rounded-full shadow-lg border transition-all active:scale-95",
+                    isHistoryOpen
+                        ? "bg-zinc-700 text-white border-zinc-500 hover:bg-zinc-600"
+                        : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white hover:bg-zinc-700"
                 )}
-            </AnimatePresence>
-
-            {/* 3. Toggle Button (Bottom Right) */}
-            {/* Only show if history is CLOSED (panel covers it otherwise? or stays below?) */}
-            {/* User said: "return to small only button size". So button should persist? */}
-            {!isHistoryOpen && (
-                <button
-                    onClick={() => setIsHistoryOpen(true)}
-                    className="p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
-                    title="Open Roll History"
-                >
-                    <Icons.Menu size={24} />
-                </button>
-            )}
+                title={isHistoryOpen ? "Close History" : "Open Roll History"}
+            >
+                {isHistoryOpen ? <Icons.Close size={24} /> : <Icons.Menu size={24} />}
+            </button>
         </div>
     );
 };

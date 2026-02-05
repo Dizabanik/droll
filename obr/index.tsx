@@ -6,6 +6,7 @@
 import React, { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast } from "./broadcast";
+export * from "./broadcast"; // Re-export for convenience
 import { isOBREnvironment } from "./storage";
 
 interface OBRContextValue {

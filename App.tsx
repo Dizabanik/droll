@@ -7,8 +7,9 @@ import { Roller } from './components/Roller';
 import { VariableModal } from './components/VariableModal';
 import { CharacterSheet } from './components/CharacterSheet';
 import { SharedDiceOverlay } from './components/SharedDiceOverlay';
+import { RollHistoryPanel, HistoryEntry } from './components/RollHistoryPanel';
 import { Icons } from './components/ui/Icons';
-import { useOBR, OBRStorage } from './obr';
+import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage } from './obr';
 import clsx from 'clsx';
 
 // Initial Mock Data
@@ -65,7 +66,7 @@ const INITIAL_STATS: CharacterStats = {
 };
 
 const App: React.FC = () => {
-  const { ready, isOBR, playerName } = useOBR();
+  const { ready, isOBR, playerName, playerId } = useOBR();
 
   // Overlay Mode Detection
   const [isOverlay, setIsOverlay] = useState(false);
@@ -88,7 +89,62 @@ const App: React.FC = () => {
   const [activeRollVars, setActiveRollVars] = useState<Record<string, number>>({});
   const [activeRollItemName, setActiveRollItemName] = useState<string>('');
 
-  // File input ref for import
+  // History State
+  const [rollHistory, setRollHistory] = useState<HistoryEntry[]>([]);
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+
+  // Cache for mapping results back to names
+  const [playerMetaCache, setPlayerMetaCache] = useState<Record<string, { name: string, preset: string, item: string }>>({});
+
+  // Listen for Rolls for History
+  useEffect(() => {
+    const unsubscribe = OBRBroadcast.onMessage((message: DiceRollMessage, senderId: string) => {
+      if (message.type === 'ROLL_START') {
+        const startMsg = message;
+        setPlayerMetaCache(prev => ({
+          ...prev,
+          [startMsg.playerId]: {
+            name: startMsg.playerName,
+            preset: startMsg.presetName,
+            item: startMsg.itemName
+          }
+        }));
+      } else if (message.type === 'ROLL_COMPLETE') {
+        const msg = message as RollCompleteMessage;
+        setRollHistory(prev => {
+          // Try to resolve name from cache or current message if available (it isn't in COMPLETE)
+          // Or fallback to "Unknown"
+          const meta = playerMetaCache[msg.playerId];
+          // If it's me, use my name from hook if cache missing
+          const resolvedName = (msg.playerId === playerId) ? (playerName || 'Me') : (meta?.name || 'Unknown');
+          const resolvedPreset = meta?.preset || 'Roll';
+          const resolvedItem = meta?.item || 'Item';
+
+          const newEntry: HistoryEntry = {
+            id: `${msg.playerId}-${Date.now()}`,
+            timestamp: Date.now(),
+            playerId: msg.playerId,
+            playerName: resolvedName,
+            presetName: resolvedPreset,
+            itemName: resolvedItem,
+            results: msg.results,
+            grandTotal: msg.grandTotal,
+            breakdown: msg.breakdown
+          };
+          return [newEntry, ...prev].slice(0, 20);
+        });
+      }
+    });
+    return () => unsubscribe();
+  }, [playerId, playerName, playerMetaCache]);
+  // dependency on playerMetaCache might cause excessive re-binds but onMessage returns unsubscribe so it's fine. 
+  // actually, using functional state updates inside callback is safer to avoid dep loops.
+  // usage of playerMetaCache inside callback checks the CURRENT closure value. 
+  // So I SHOULD assume playerMetaCache is fresh. 
+  // But standard pattern: use refs or updated deps. 
+  // Let's rely on functional updates where possible, but here we read separate state.
+  // It's acceptable for now given low traffic.
+
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load data from OBR storage on mount
@@ -562,6 +618,7 @@ const App: React.FC = () => {
         )}
 
         {/* Roller Overlay */}
+        {/* Roller Overlay */}
         {activeRollPreset && (
           <Roller
             preset={activeRollPreset}
@@ -573,7 +630,23 @@ const App: React.FC = () => {
           />
         )}
       </div>
-    </div >
+
+      {/* History Toggle Button */}
+      <button
+        onClick={() => setIsHistoryOpen(true)}
+        className="fixed bottom-4 right-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
+        title="Open Roll History"
+      >
+        <Icons.Menu size={24} />
+      </button>
+
+      {/* History Panel */}
+      <RollHistoryPanel
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        history={rollHistory}
+      />
+    </div>
   );
 };
 

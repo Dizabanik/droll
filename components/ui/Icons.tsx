@@ -1,9 +1,9 @@
 
-import { 
-  Dices, Plus, Trash2, Sword, Shield, 
-  ChevronRight, Sparkles, Skull, Flame, 
-  Snowflake, Zap, Droplets, Biohazard, 
-  Ghost, Sun, Brain, Activity, X, User
+import {
+  Dices, Plus, Trash2, Sword, Shield,
+  ChevronRight, Sparkles, Skull, Flame,
+  Snowflake, Zap, Droplets, Biohazard,
+  Ghost, Sun, Brain, Activity, X, User, Menu
 } from 'lucide-react';
 
 export const Icons = {
@@ -25,5 +25,6 @@ export const Icons = {
   Psychic: Brain,
   Force: Activity,
   Close: X,
-  User: User
+  User: User,
+  Menu: Menu
 };

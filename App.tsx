@@ -8,8 +8,9 @@ import { VariableModal } from './components/VariableModal';
 import { CharacterSheet } from './components/CharacterSheet';
 import { HistoryControl } from './components/HistoryControl';
 import { RollHistoryPanel, HistoryEntry } from './components/RollHistoryPanel';
+import { TokenSettings } from './components/TokenSettings';
 import { Icons } from './components/ui/Icons';
-import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage } from './obr';
+import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage, DaggerheartVitals } from './obr';
 import clsx from 'clsx';
 
 // Initial Mock Data
@@ -83,8 +84,11 @@ const App: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'items' | 'character'>('items');
+  const [activeView, setActiveView] = useState<'items' | 'character' | 'token'>('items');
   const [editingItem, setEditingItem] = useState<boolean>(false);
+  const [daggerheartVitals, setDaggerheartVitals] = useState<DaggerheartVitals>({
+    hope: 0, hopeMax: 6, stress: 0, stressMax: 6, hp: 10, hpMax: 10, armor: 0, armorMax: 5
+  });
 
   // Rolling State
   const [pendingPreset, setPendingPreset] = useState<DicePreset | null>(null);
@@ -424,6 +428,17 @@ const App: React.FC = () => {
           >
             <Icons.User size={16} /> Character
           </button>
+          <button
+            onClick={() => setActiveView('token')}
+            className={clsx(
+              "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all font-medium",
+              activeView === 'token'
+                ? "bg-zinc-800 text-white"
+                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
+            )}
+          >
+            <Icons.Target size={16} /> Token
+          </button>
         </div>
 
         {activeView === 'items' && (
@@ -479,6 +494,8 @@ const App: React.FC = () => {
 
         {activeView === 'character' ? (
           <CharacterSheet stats={stats} onChange={setStats} />
+        ) : activeView === 'token' ? (
+          <TokenSettings vitals={daggerheartVitals} />
         ) : (
           activeItem ? (
             <>

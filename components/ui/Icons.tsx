@@ -3,7 +3,8 @@ import {
   Dices, Plus, Trash2, Sword, Shield,
   ChevronRight, Sparkles, Skull, Flame,
   Snowflake, Zap, Droplets, Biohazard,
-  Ghost, Sun, Brain, Activity, X, User, Menu
+  Ghost, Sun, Brain, Activity, X, User, Menu,
+  RefreshCw, Target
 } from 'lucide-react';
 
 export const Icons = {
@@ -26,5 +27,7 @@ export const Icons = {
   Force: Activity,
   Close: X,
   User: User,
-  Menu: Menu
+  Menu: Menu,
+  Refresh: RefreshCw,
+  Target: Target
 };

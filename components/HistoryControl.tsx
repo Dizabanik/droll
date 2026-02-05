@@ -1,12 +1,12 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from './ui/Icons';
 import { HistoryEntry } from './RollHistoryPanel';
 import { RollResults } from './ui/RollResults';
 import { DaggerheartStats } from './DaggerheartStats';
 import OBR from "@owlbear-rodeo/sdk";
-import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry } from '../obr';
+import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
 
 // Popover Dimensions
@@ -23,6 +23,18 @@ export const HistoryControl: React.FC = () => {
     // Active Result Popup State
     const [activeResult, setActiveResult] = useState<RollCompleteMessage | null>(null);
     const resultTimerRef = useRef<number | null>(null);
+
+    // Handle vitals change - sync to token attachments
+    const handleVitalsChange = useCallback(async (vitals: DaggerheartVitals) => {
+        try {
+            const tokenId = await OBRStorage.getSelectedTokenId();
+            if (tokenId) {
+                await TokenAttachments.update(tokenId, vitals);
+            }
+        } catch (e) {
+            console.error("Failed to sync vitals to token:", e);
+        }
+    }, []);
 
     // Load history on mount
     useEffect(() => {
@@ -186,7 +198,7 @@ export const HistoryControl: React.FC = () => {
                                 Daggerheart
                             </h2>
                         </div>
-                        <DaggerheartStats />
+                        <DaggerheartStats onVitalsChange={handleVitalsChange} />
                     </motion.div>
 
                     {/* Right Panel - Roll History */}

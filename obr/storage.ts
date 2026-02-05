@@ -41,12 +41,31 @@ export interface RollHistoryEntry {
   breakdown: string;
 }
 
+export interface DaggerheartCharacter {
+  // 6 core stats (can be negative or positive)
+  agility: number;
+  strength: number;
+  finesse: number;
+  instinct: number;
+  presence: number;
+  knowledge: number;
+  // Evasion and Level
+  evasion: number;
+  level: number;
+  // Damage thresholds
+  minorThreshold: number;
+  majorThreshold: number;
+  // Skull damage tracker (0-11)
+  skulls: number;
+}
+
 interface FateWeaverData {
   items?: Item[];
   stats?: CharacterStats;
   rollHistory?: RollHistoryEntry[];
   daggerheartVitals?: DaggerheartVitals;
   daggerheartStatuses?: DaggerheartStatuses;
+  daggerheartCharacter?: DaggerheartCharacter;
   selectedTokenId?: string;
 }
 
@@ -184,5 +203,13 @@ export const OBRStorage = {
   },
   setSelectedTokenId: async (tokenId: string | undefined): Promise<void> => {
     setData({ selectedTokenId: tokenId });
+  },
+
+  // Daggerheart character (stats, evasion, level, thresholds, skulls)
+  getDaggerheartCharacter: async (): Promise<DaggerheartCharacter | undefined> => {
+    return getData().daggerheartCharacter;
+  },
+  setDaggerheartCharacter: async (character: DaggerheartCharacter): Promise<void> => {
+    setData({ daggerheartCharacter: character });
   },
 };

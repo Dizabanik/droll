@@ -5,6 +5,7 @@ import { Icons } from './ui/Icons';
 import { HistoryEntry } from './RollHistoryPanel';
 import { RollResults } from './ui/RollResults';
 import { DaggerheartStats } from './DaggerheartStats';
+import { CharacterPanel } from './CharacterPanel';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
@@ -215,6 +216,23 @@ export const HistoryControl: React.FC = () => {
                             </h2>
                         </div>
                         <DaggerheartStats onVitalsChange={handleVitalsChange} onStatusesChange={handleStatusesChange} />
+                    </motion.div>
+
+                    {/* Middle Panel - Character Stats */}
+                    <motion.div
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        exit={{ opacity: 0, y: 20 }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.1 }}
+                        className="relative z-10 flex-1 bg-zinc-950/90 border-x border-zinc-800 shadow-2xl flex flex-col overflow-hidden max-w-sm"
+                    >
+                        <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
+                            <h2 className="text-white font-bold flex items-center gap-2">
+                                <Icons.User size={20} className="text-accent" />
+                                Character
+                            </h2>
+                        </div>
+                        <CharacterPanel />
                     </motion.div>
 
                     {/* Right Panel - Roll History */}

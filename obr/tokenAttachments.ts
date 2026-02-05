@@ -77,8 +77,7 @@ export const createTokenAttachments = async (
     const height = Math.abs(Math.ceil(absHeight / 4.85));  // HP bar height
     const width = absWidth;
     const border = Math.floor(width / 75);
-    const shapeHeight = absHeight / 2.3;
-    const shapeWidth = absWidth / 3;
+    const shapeSize = absWidth / 3;
 
     // HP bar position (at bottom with offset)
     const barPosition = {
@@ -167,15 +166,15 @@ export const createTokenAttachments = async (
     // === HOPE (top-left, circle) ===
     const hopeCircle = buildShape()
         .shapeType("CIRCLE")
-        .width(shapeWidth * 0.7)
-        .height(shapeHeight * 0.7)
+        .width(shapeSize * 0.7)
+        .height(shapeSize * 0.7)
         .fillColor("black")
         .fillOpacity(0.5)
-        .strokeWidth(shapeWidth / 25)
+        .strokeWidth(shapeSize / 25)
         .strokeColor(STAT_COLORS.hope.stroke)
         .position({
             x: barPosition.x,
-            y: bounds.position.y + absHeight - shapeHeight / 0.75 - height - absHeight / 10,
+            y: bounds.position.y + absHeight - shapeSize / 0.75 - height - absHeight / 10,
         })
         .attachedTo(tokenId)
         .layer(token.layer)
@@ -189,11 +188,11 @@ export const createTokenAttachments = async (
 
     const hopeText = buildText()
         .textType("PLAIN")
-        .width(shapeWidth / 1.5)
+        .width(shapeSize / 1.5)
         .height(height)
         .position({
             x: barPosition.x,
-            y: bounds.position.y + absHeight - shapeHeight * 1.25 - height - absHeight / 10,
+            y: bounds.position.y + absHeight - shapeSize * 1.25 - height - absHeight / 10,
         })
         .attachedTo(tokenId)
         .layer(token.layer)
@@ -217,15 +216,15 @@ export const createTokenAttachments = async (
     // === STRESS (left side, below hope, hexagon) ===
     const stressShape = buildShape()
         .shapeType("HEXAGON")
-        .width(shapeWidth * 0.7)
-        .height(shapeHeight * 0.7)
+        .width(shapeSize * 0.7)
+        .height(shapeSize * 0.7)
         .fillColor("black")
         .fillOpacity(0.5)
-        .strokeWidth(shapeWidth / 25)
+        .strokeWidth(shapeSize / 25)
         .strokeColor(STAT_COLORS.stress.stroke)
         .position({
-            x: barPosition.x + shapeWidth * 0.34,
-            y: bounds.position.y + absHeight - shapeHeight * 0.77 - absHeight / 10,
+            x: barPosition.x + shapeSize * 0.34,
+            y: bounds.position.y + absHeight - shapeSize * 0.77 - absHeight / 10,
         })
         .attachedTo(tokenId)
         .layer(token.layer)
@@ -239,11 +238,11 @@ export const createTokenAttachments = async (
 
     const stressText = buildText()
         .textType("PLAIN")
-        .width(shapeWidth * 0.7)
+        .width(shapeSize * 0.7)
         .height(height)
         .position({
             x: barPosition.x,
-            y: bounds.position.y + absHeight - shapeHeight - absHeight / 10
+            y: bounds.position.y + absHeight - shapeSize - absHeight / 10
         })
         .attachedTo(tokenId)
         .layer(token.layer)
@@ -267,15 +266,15 @@ export const createTokenAttachments = async (
     // === ARMOR (top-right, circle) ===
     const armorCircle = buildShape()
         .shapeType("CIRCLE")
-        .width(shapeWidth * 0.7)
-        .height(shapeHeight * 0.7)
+        .width(shapeSize * 0.7)
+        .height(shapeSize * 0.7)
         .fillColor("black")
         .fillOpacity(0.5)
-        .strokeWidth(shapeWidth / 25)
+        .strokeWidth(shapeSize / 25)
         .strokeColor(STAT_COLORS.armor.stroke)
         .position({
-            x: bounds.position.x + (bounds.width < 0 ? 0 : absWidth) - shapeWidth / 1.5,
-            y: bounds.position.y + absHeight - shapeHeight / 0.75 - height - absHeight / 10,
+            x: bounds.position.x + (bounds.width < 0 ? 0 : absWidth) - shapeSize / 1.5,
+            y: bounds.position.y + absHeight - shapeSize / 0.75 - height - absHeight / 10,
         })
         .attachedTo(tokenId)
         .layer(token.layer)
@@ -289,11 +288,11 @@ export const createTokenAttachments = async (
 
     const armorText = buildText()
         .textType("PLAIN")
-        .width(shapeWidth / 1.5)
+        .width(shapeSize / 1.5)
         .height(height)
         .position({
-            x: bounds.position.x + (bounds.width < 0 ? 0 : absWidth) - shapeWidth / 1.5,
-            y: bounds.position.y + absHeight - shapeHeight * 1.2 - height - absHeight / 10,
+            x: bounds.position.x + (bounds.width < 0 ? 0 : absWidth) - shapeSize / 1.5,
+            y: bounds.position.y + absHeight - shapeSize * 1.2 - height - absHeight / 10,
         })
         .attachedTo(tokenId)
         .layer(token.layer)

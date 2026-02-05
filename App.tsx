@@ -199,16 +199,8 @@ const App: React.FC = () => {
       // We are the controller. Try to open the overlay AND the popover.
       import('@owlbear-rodeo/sdk').then(({ default: OBR }) => {
         // 1. Visual Overlay (Fullscreen, Non-Interactive)
-        OBR.modal.open({
-          id: 'com.fateweaver.dice.overlay',
-          url: window.location.pathname + '?overlay=true',
-          height: 400,
-          width: 400,
-          fullScreen: true,
-          hideBackdrop: true,
-          hidePaper: true,
-          disablePointerEvents: true,
-        }).catch(e => console.error("Failed to open overlay:", e));
+        // Ensure legacy overlay is closed - We only use Popover now
+        OBR.modal.close('com.fateweaver.dice.overlay');
 
         // 2. Interactive Controls (Popover, Anchored Bottom-Right)
         OBR.popover.open({

@@ -8,11 +8,13 @@ import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage } from '../obr';
 import { useOBR } from '../obr';
 
+import clsx from 'clsx';
+
 // Popover Dimensions
 const BTN_SIZE = 60;
-const EXPANDED_WIDTH = 400;
-const EXPANDED_HEIGHT = 500;
-const POPUP_HEIGHT = 300; // Extra height for popup if needed? Or overlapping?
+const EXPANDED_WIDTH = 400; // Width of sidebar
+// Height will be dynamic based on screen
+const POPUP_HEIGHT = 300;
 
 export const HistoryControl: React.FC = () => {
     const { playerId, playerName } = useOBR();

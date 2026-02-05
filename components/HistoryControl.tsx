@@ -10,7 +10,7 @@ import { useOBR } from '../obr';
 import clsx from 'clsx';
 
 // Popover Dimensions
-const BTN_SIZE = 60;
+const BTN_SIZE = 100; // Increased to ensure button isn't clipped
 const POPUP_WIDTH = 300;
 const POPUP_HEIGHT = 400; // Enough for result card
 

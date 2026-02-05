@@ -631,21 +631,25 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* History Toggle Button */}
-      <button
-        onClick={() => setIsHistoryOpen(true)}
-        className="fixed bottom-4 right-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
-        title="Open Roll History"
-      >
-        <Icons.Menu size={24} />
-      </button>
+      {/* History Toggle Button - Only in Overlay */}
+      {isOverlay && (
+        <>
+          <button
+            onClick={() => setIsHistoryOpen(true)}
+            className="fixed bottom-4 right-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 pointer-events-auto"
+            title="Open Roll History"
+          >
+            <Icons.Menu size={24} />
+          </button>
 
-      {/* History Panel */}
-      <RollHistoryPanel
-        isOpen={isHistoryOpen}
-        onClose={() => setIsHistoryOpen(false)}
-        history={rollHistory}
-      />
+          {/* History Panel */}
+          <RollHistoryPanel
+            isOpen={isHistoryOpen}
+            onClose={() => setIsHistoryOpen(false)}
+            history={rollHistory}
+          />
+        </>
+      )}
     </div>
   );
 };

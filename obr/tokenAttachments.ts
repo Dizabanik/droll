@@ -1,21 +1,34 @@
 /**
  * Token Attachment Helpers
  * Creates stat visualizations attached to tokens:
- * - HP Bar (progress bar style)
- * - Hope, Stress, Armor pills (circles)
+ * - HP Bar (progress bar style) - at bottom
+ * - Hope, Stress, Armor circles - on sides like gm-daggerheart
+ * - Status icons - at top
  */
 
 import OBR, { buildShape, buildText, Image, Item } from "@owlbear-rodeo/sdk";
-import { DaggerheartVitals } from "./storage";
+import { DaggerheartVitals, DaggerheartStatuses } from "./storage";
 
 const ATTACHMENT_PREFIX = "com.fateweaver.attachment";
 
-// Colors matching the fullscreen menu pills
+// Colors matching the fullscreen menu
 const STAT_COLORS = {
-    hope: { fill: "rgba(180, 83, 9, 0.5)", stroke: "#fbbf24", text: "#fcd34d" },    // Amber
-    stress: { fill: "rgba(88, 28, 135, 0.5)", stroke: "#c084fc", text: "#d8b4fe" }, // Purple
-    hp: { fill: "rgba(127, 29, 29, 0.6)", stroke: "#fca5a5", bar: "#ef4444" },      // Red
-    armor: { fill: "rgba(12, 74, 110, 0.5)", stroke: "#7dd3fc", text: "#bae6fd" },  // Sky blue
+    hope: { fill: "#000000", stroke: "#fbbf24" },      // Amber
+    stress: { fill: "#000000", stroke: "#c084fc" },    // Purple
+    armor: { fill: "#000000", stroke: "#7dd3fc" },     // Sky blue
+    hp: { fill: "#000000", stroke: "#fca5a5", bar: "#dc2626" }, // Red
+};
+
+// Status badge colors and abbreviations
+const STATUS_BADGES: Record<keyof DaggerheartStatuses, { color: string; bg: string; abbr: string }> = {
+    vulnerable: { color: "#fca5a5", bg: "#450a0a", abbr: "VUL" },
+    blinded: { color: "#a1a1aa", bg: "#27272a", abbr: "BLN" },
+    frightened: { color: "#c084fc", bg: "#3b0764", abbr: "FRT" },
+    hidden: { color: "#86efac", bg: "#052e16", abbr: "HID" },
+    restrained: { color: "#fcd34d", bg: "#451a03", abbr: "RST" },
+    slowed: { color: "#7dd3fc", bg: "#0c4a6e", abbr: "SLW" },
+    weakened: { color: "#fb923c", bg: "#431407", abbr: "WKN" },
+    empowered: { color: "#facc15", bg: "#422006", abbr: "EMP" },
 };
 
 interface TokenBounds {
@@ -48,22 +61,28 @@ const getToken = async (tokenId: string): Promise<Image | null> => {
     }
 };
 
-export const createTokenAttachments = async (tokenId: string, vitals: DaggerheartVitals): Promise<void> => {
+export const createTokenAttachments = async (
+    tokenId: string,
+    vitals: DaggerheartVitals,
+    statuses?: DaggerheartStatuses
+): Promise<void> => {
     const token = await getToken(tokenId);
     const bounds = await getTokenBounds(tokenId);
     if (!token || !bounds) return;
 
     const items: Item[] = [];
+    const absWidth = Math.abs(bounds.width);
+    const absHeight = Math.abs(bounds.height);
 
-    // === HP BAR (at bottom of token) ===
-    const barHeight = Math.abs(bounds.height * 0.08);
-    const barWidth = Math.abs(bounds.width * 0.9);
-    const border = Math.max(2, barWidth * 0.01);
+    // === HP BAR (like gm-daggerheart: height/4.85, positioned at bottom with height/10 offset) ===
+    const barHeight = Math.abs(absHeight / 4);
+    const barWidth = absWidth;
+    const border = Math.floor(absWidth / 100); // Thinner border
     const hpPercentage = vitals.hpMax > 0 ? vitals.hp / vitals.hpMax : 0;
 
     const barPosition = {
-        x: bounds.position.x + (bounds.width - barWidth) / 2,
-        y: bounds.position.y + bounds.height - barHeight - bounds.height * 0.05,
+        x: bounds.position.x,
+        y: bounds.position.y + absHeight - barHeight - absHeight / 10,
     };
 
     // HP Bar Background
@@ -72,7 +91,7 @@ export const createTokenAttachments = async (tokenId: string, vitals: Daggerhear
         .width(barWidth)
         .height(barHeight)
         .fillColor("#000000")
-        .fillOpacity(0.6)
+        .fillOpacity(0.5)
         .strokeColor(STAT_COLORS.hp.stroke)
         .strokeWidth(border)
         .position(barPosition)
@@ -93,7 +112,7 @@ export const createTokenAttachments = async (tokenId: string, vitals: Daggerhear
         .width(fillWidth)
         .height(barHeight - border * 2)
         .fillColor(STAT_COLORS.hp.bar)
-        .fillOpacity(0.7)
+        .fillOpacity(0.6)
         .strokeWidth(0)
         .position({ x: barPosition.x + border, y: barPosition.y + border })
         .attachedTo(tokenId)
@@ -106,28 +125,28 @@ export const createTokenAttachments = async (tokenId: string, vitals: Daggerhear
         .name(`${ATTACHMENT_PREFIX}.hp.fill`)
         .build();
 
-    // HP Text (centered on bar)
+    // HP Text (like gm-daggerheart: centered, fontWeight 600, strokeWidth 2)
     const hpText = buildText()
         .textType("PLAIN")
-        .width(barWidth)
+        .width(barWidth + 100)
         .height(barHeight)
-        .position(barPosition)
+        .position({ x: barPosition.x - 50, y: barPosition.y })
         .attachedTo(tokenId)
         .layer(token.layer)
         .plainText(`${vitals.hp}/${vitals.hpMax}`)
         .locked(true)
         .textAlign("CENTER")
         .textAlignVertical("MIDDLE")
-        .fontWeight(700)
+        .fontWeight(600)
         .fillColor("#ffffff")
         .strokeColor("#000000")
         .strokeWidth(2)
-        .fontSize(Math.max(10, barHeight * 0.7))
+        .fontSize(barHeight * 0.7)
         .lineHeight(1)
         .disableHit(true)
         .disableAttachmentBehavior(["ROTATION"])
         .visible(token.visible)
-        .zIndex(token.zIndex + 3)
+        .zIndex(token.zIndex + 4)
         .name(`${ATTACHMENT_PREFIX}.hp.text`)
         .build();
 
@@ -136,74 +155,231 @@ export const createTokenAttachments = async (tokenId: string, vitals: Daggerhear
     hpText.metadata[ATTACHMENT_PREFIX] = { type: "hp.text" };
     items.push(hpBg, hpFill, hpText);
 
-    // === STAT PILLS (above HP bar) ===
-    const pillRadius = Math.min(bounds.width, bounds.height) * 0.1;
-    const pillSpacing = pillRadius * 2.5;
-    const pillY = barPosition.y - pillRadius * 2.2;
-    const pillCenterX = bounds.position.x + bounds.width / 2;
+    // === STAT CIRCLES (positioned on sides like gm-daggerheart) ===
+    const shapeHeight = absHeight / 2.3;
+    const shapeWidth = absWidth / 3;
+    const circleSize = shapeWidth * 0.7;
+    const fontSize = barHeight - 3;
 
-    // 3 pills: Hope, Stress, Armor
-    const pillStats = [
-        { key: "hope" as const, value: vitals.hope },
-        { key: "stress" as const, value: vitals.stress },
-        { key: "armor" as const, value: vitals.armor },
-    ];
+    // Left side: Hope (top-left) and Stress (bottom-left)
+    // Hope - top left
+    const hopeX = bounds.position.x;
+    const hopeY = barPosition.y - shapeHeight - absHeight / 20;
 
-    const pillStartX = pillCenterX - pillSpacing;
+    const hopeCircle = buildShape()
+        .shapeType("CIRCLE")
+        .width(circleSize)
+        .height(circleSize)
+        .fillColor(STAT_COLORS.hope.fill)
+        .fillOpacity(0.5)
+        .strokeColor(STAT_COLORS.hope.stroke)
+        .strokeWidth(shapeWidth / 25)
+        .position({ x: hopeX, y: hopeY })
+        .attachedTo(tokenId)
+        .layer(token.layer)
+        .locked(true)
+        .disableHit(true)
+        .disableAttachmentBehavior(["ROTATION"])
+        .visible(token.visible)
+        .zIndex(token.zIndex + 2)
+        .name(`${ATTACHMENT_PREFIX}.hope.bg`)
+        .build();
 
-    for (let i = 0; i < pillStats.length; i++) {
-        const stat = pillStats[i];
-        const colors = STAT_COLORS[stat.key];
-        const posX = pillStartX + (pillSpacing * i);
+    const hopeText = buildText()
+        .textType("PLAIN")
+        .width(circleSize)
+        .height(circleSize)
+        .position({ x: hopeX, y: hopeY })
+        .attachedTo(tokenId)
+        .layer(token.layer)
+        .plainText(`${vitals.hope}`)
+        .locked(true)
+        .textAlign("CENTER")
+        .textAlignVertical("MIDDLE")
+        .fontWeight(600)
+        .fillColor("#ffffff")
+        .strokeColor("#000000")
+        .strokeWidth(2)
+        .fontSize(fontSize)
+        .lineHeight(1)
+        .disableHit(true)
+        .disableAttachmentBehavior(["ROTATION"])
+        .visible(token.visible)
+        .zIndex(token.zIndex + 4)
+        .name(`${ATTACHMENT_PREFIX}.hope.text`)
+        .build();
 
-        // Pill background
-        const pill = buildShape()
-            .shapeType("CIRCLE")
-            .width(pillRadius * 2)
-            .height(pillRadius * 2)
-            .fillColor(colors.fill)
-            .fillOpacity(0.9)
-            .strokeColor(colors.stroke)
-            .strokeWidth(Math.max(2, pillRadius * 0.12))
-            .position({ x: posX - pillRadius, y: pillY - pillRadius })
-            .attachedTo(tokenId)
-            .layer(token.layer)
-            .locked(true)
-            .disableHit(true)
-            .disableAttachmentBehavior(["ROTATION"])
-            .visible(token.visible)
-            .zIndex(token.zIndex + 2)
-            .name(`${ATTACHMENT_PREFIX}.${stat.key}.bg`)
-            .build();
+    // Stress - left side, below hope
+    const stressX = bounds.position.x + shapeWidth * 0.34;
+    const stressY = barPosition.y - shapeHeight * 0.4;
 
-        // Pill value text
-        const pillText = buildText()
-            .textType("PLAIN")
-            .width(pillRadius * 2)
-            .height(pillRadius * 2)
-            .position({ x: posX - pillRadius, y: pillY - pillRadius })
-            .attachedTo(tokenId)
-            .layer(token.layer)
-            .plainText(`${stat.value}`)
-            .locked(true)
-            .textAlign("CENTER")
-            .textAlignVertical("MIDDLE")
-            .fontWeight(700)
-            .fillColor("#ffffff")
-            .strokeColor("#000000")
-            .strokeWidth(2)
-            .fontSize(Math.max(12, pillRadius * 0.9))
-            .lineHeight(1)
-            .disableHit(true)
-            .disableAttachmentBehavior(["ROTATION"])
-            .visible(token.visible)
-            .zIndex(token.zIndex + 3)
-            .name(`${ATTACHMENT_PREFIX}.${stat.key}.text`)
-            .build();
+    const stressCircle = buildShape()
+        .shapeType("HEXAGON")
+        .width(circleSize)
+        .height(circleSize)
+        .fillColor(STAT_COLORS.stress.fill)
+        .fillOpacity(0.5)
+        .strokeColor(STAT_COLORS.stress.stroke)
+        .strokeWidth(shapeWidth / 25)
+        .position({ x: stressX, y: stressY })
+        .attachedTo(tokenId)
+        .layer(token.layer)
+        .locked(true)
+        .disableHit(true)
+        .disableAttachmentBehavior(["ROTATION"])
+        .visible(token.visible)
+        .zIndex(token.zIndex + 2)
+        .name(`${ATTACHMENT_PREFIX}.stress.bg`)
+        .build();
 
-        pill.metadata[ATTACHMENT_PREFIX] = { type: `${stat.key}.bg` };
-        pillText.metadata[ATTACHMENT_PREFIX] = { type: `${stat.key}.text` };
-        items.push(pill, pillText);
+    const stressText = buildText()
+        .textType("PLAIN")
+        .width(circleSize)
+        .height(circleSize)
+        .position({ x: stressX, y: stressY })
+        .attachedTo(tokenId)
+        .layer(token.layer)
+        .plainText(`${vitals.stress}`)
+        .locked(true)
+        .textAlign("CENTER")
+        .textAlignVertical("MIDDLE")
+        .fontWeight(600)
+        .fillColor("#ffffff")
+        .strokeColor("#000000")
+        .strokeWidth(2)
+        .fontSize(fontSize)
+        .lineHeight(1)
+        .disableHit(true)
+        .disableAttachmentBehavior(["ROTATION"])
+        .visible(token.visible)
+        .zIndex(token.zIndex + 4)
+        .name(`${ATTACHMENT_PREFIX}.stress.text`)
+        .build();
+
+    // Armor - right side
+    const armorX = bounds.position.x + absWidth - circleSize;
+    const armorY = barPosition.y - shapeHeight - absHeight / 20;
+
+    const armorCircle = buildShape()
+        .shapeType("CIRCLE")
+        .width(circleSize)
+        .height(circleSize)
+        .fillColor(STAT_COLORS.armor.fill)
+        .fillOpacity(0.5)
+        .strokeColor(STAT_COLORS.armor.stroke)
+        .strokeWidth(shapeWidth / 25)
+        .position({ x: armorX, y: armorY })
+        .attachedTo(tokenId)
+        .layer(token.layer)
+        .locked(true)
+        .disableHit(true)
+        .disableAttachmentBehavior(["ROTATION"])
+        .visible(token.visible)
+        .zIndex(token.zIndex + 2)
+        .name(`${ATTACHMENT_PREFIX}.armor.bg`)
+        .build();
+
+    const armorText = buildText()
+        .textType("PLAIN")
+        .width(circleSize)
+        .height(circleSize)
+        .position({ x: armorX, y: armorY })
+        .attachedTo(tokenId)
+        .layer(token.layer)
+        .plainText(`${vitals.armor}`)
+        .locked(true)
+        .textAlign("CENTER")
+        .textAlignVertical("MIDDLE")
+        .fontWeight(600)
+        .fillColor("#ffffff")
+        .strokeColor("#000000")
+        .strokeWidth(2)
+        .fontSize(fontSize)
+        .lineHeight(1)
+        .disableHit(true)
+        .disableAttachmentBehavior(["ROTATION"])
+        .visible(token.visible)
+        .zIndex(token.zIndex + 4)
+        .name(`${ATTACHMENT_PREFIX}.armor.text`)
+        .build();
+
+    hopeCircle.metadata[ATTACHMENT_PREFIX] = { type: "hope.bg" };
+    hopeText.metadata[ATTACHMENT_PREFIX] = { type: "hope.text" };
+    stressCircle.metadata[ATTACHMENT_PREFIX] = { type: "stress.bg" };
+    stressText.metadata[ATTACHMENT_PREFIX] = { type: "stress.text" };
+    armorCircle.metadata[ATTACHMENT_PREFIX] = { type: "armor.bg" };
+    armorText.metadata[ATTACHMENT_PREFIX] = { type: "armor.text" };
+
+    items.push(hopeCircle, hopeText, stressCircle, stressText, armorCircle, armorText);
+
+    // === STATUS ICONS (at top of token) ===
+    if (statuses) {
+        const activeStatuses = Object.entries(statuses)
+            .filter(([_, active]) => active)
+            .map(([key]) => key as keyof DaggerheartStatuses);
+
+        if (activeStatuses.length > 0) {
+            const badgeSize = absWidth / 6;
+            const badgeSpacing = badgeSize * 1.15;
+            const totalWidth = activeStatuses.length * badgeSpacing - (badgeSpacing - badgeSize);
+            const startX = bounds.position.x + (absWidth - totalWidth) / 2;
+            const badgeY = bounds.position.y - badgeSize * 1.3;
+
+            for (let i = 0; i < activeStatuses.length; i++) {
+                const statusKey = activeStatuses[i];
+                const statusInfo = STATUS_BADGES[statusKey];
+                const badgeX = startX + (badgeSpacing * i);
+
+                // Badge background
+                const badge = buildShape()
+                    .shapeType("CIRCLE")
+                    .width(badgeSize)
+                    .height(badgeSize)
+                    .fillColor(statusInfo.bg)
+                    .fillOpacity(0.8)
+                    .strokeColor(statusInfo.color)
+                    .strokeWidth(Math.max(2, badgeSize / 15))
+                    .position({ x: badgeX, y: badgeY })
+                    .attachedTo(tokenId)
+                    .layer(token.layer)
+                    .locked(true)
+                    .disableHit(true)
+                    .disableAttachmentBehavior(["ROTATION"])
+                    .visible(token.visible)
+                    .zIndex(token.zIndex + 5)
+                    .name(`${ATTACHMENT_PREFIX}.status.${statusKey}.bg`)
+                    .build();
+
+                // Badge text (abbreviation)
+                const badgeText = buildText()
+                    .textType("PLAIN")
+                    .width(badgeSize)
+                    .height(badgeSize)
+                    .position({ x: badgeX, y: badgeY })
+                    .attachedTo(tokenId)
+                    .layer(token.layer)
+                    .plainText(statusInfo.abbr)
+                    .locked(true)
+                    .textAlign("CENTER")
+                    .textAlignVertical("MIDDLE")
+                    .fontWeight(700)
+                    .fillColor(statusInfo.color)
+                    .strokeColor("#000000")
+                    .strokeWidth(1)
+                    .fontSize(badgeSize * 0.5)
+                    .lineHeight(1)
+                    .disableHit(true)
+                    .disableAttachmentBehavior(["ROTATION"])
+                    .visible(token.visible)
+                    .zIndex(token.zIndex + 6)
+                    .name(`${ATTACHMENT_PREFIX}.status.${statusKey}.text`)
+                    .build();
+
+                badge.metadata[ATTACHMENT_PREFIX] = { type: `status.${statusKey}.bg` };
+                badgeText.metadata[ATTACHMENT_PREFIX] = { type: `status.${statusKey}.text` };
+                items.push(badge, badgeText);
+            }
+        }
     }
 
     try {
@@ -213,7 +389,11 @@ export const createTokenAttachments = async (tokenId: string, vitals: Daggerhear
     }
 };
 
-export const updateTokenAttachments = async (tokenId: string, vitals: DaggerheartVitals): Promise<void> => {
+export const updateTokenAttachments = async (
+    tokenId: string,
+    vitals: DaggerheartVitals,
+    statuses?: DaggerheartStatuses
+): Promise<void> => {
     try {
         const attachments = await OBR.scene.items.getItemAttachments([tokenId]);
         const ourAttachments = attachments.filter(item =>
@@ -221,37 +401,13 @@ export const updateTokenAttachments = async (tokenId: string, vitals: Daggerhear
         );
 
         if (ourAttachments.length === 0) {
-            await createTokenAttachments(tokenId, vitals);
+            await createTokenAttachments(tokenId, vitals, statuses);
             return;
         }
 
-        // Get token bounds for HP bar width calculation
-        const bounds = await getTokenBounds(tokenId);
-        if (!bounds) return;
-
-        const barWidth = Math.abs(bounds.width * 0.9);
-        const border = Math.max(2, barWidth * 0.01);
-        const hpPercentage = vitals.hpMax > 0 ? vitals.hp / vitals.hpMax : 0;
-        const fillWidth = hpPercentage > 0 ? (barWidth - border * 2) * hpPercentage : 0;
-
-        // Update values
-        await OBR.scene.items.updateItems(ourAttachments, (items) => {
-            for (const item of items) {
-                if (item.name === `${ATTACHMENT_PREFIX}.hp.fill`) {
-                    // Update HP bar fill width
-                    (item as any).width = fillWidth;
-                } else if (item.name === `${ATTACHMENT_PREFIX}.hp.text`) {
-                    // Update HP text
-                    (item as any).text.plainText = `${vitals.hp}/${vitals.hpMax}`;
-                } else if (item.name === `${ATTACHMENT_PREFIX}.hope.text`) {
-                    (item as any).text.plainText = `${vitals.hope}`;
-                } else if (item.name === `${ATTACHMENT_PREFIX}.stress.text`) {
-                    (item as any).text.plainText = `${vitals.stress}`;
-                } else if (item.name === `${ATTACHMENT_PREFIX}.armor.text`) {
-                    (item as any).text.plainText = `${vitals.armor}`;
-                }
-            }
-        });
+        // Delete and recreate for simplicity (handles status changes)
+        await deleteTokenAttachments(tokenId);
+        await createTokenAttachments(tokenId, vitals, statuses);
     } catch (e) {
         console.error("Failed to update token attachments:", e);
     }

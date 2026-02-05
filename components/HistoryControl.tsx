@@ -6,7 +6,7 @@ import { HistoryEntry } from './RollHistoryPanel';
 import { RollResults } from './ui/RollResults';
 import { DaggerheartStats } from './DaggerheartStats';
 import OBR from "@owlbear-rodeo/sdk";
-import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, TokenAttachments } from '../obr';
+import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
 
 // Popover Dimensions
@@ -29,10 +29,26 @@ export const HistoryControl: React.FC = () => {
         try {
             const tokenId = await OBRStorage.getSelectedTokenId();
             if (tokenId) {
-                await TokenAttachments.update(tokenId, vitals);
+                const statuses = await OBRStorage.getDaggerheartStatuses();
+                await TokenAttachments.update(tokenId, vitals, statuses);
             }
         } catch (e) {
             console.error("Failed to sync vitals to token:", e);
+        }
+    }, []);
+
+    // Handle statuses change - sync to token attachments
+    const handleStatusesChange = useCallback(async (statuses: DaggerheartStatuses) => {
+        try {
+            const tokenId = await OBRStorage.getSelectedTokenId();
+            if (tokenId) {
+                const vitals = await OBRStorage.getDaggerheartVitals();
+                if (vitals) {
+                    await TokenAttachments.update(tokenId, vitals, statuses);
+                }
+            }
+        } catch (e) {
+            console.error("Failed to sync statuses to token:", e);
         }
     }, []);
 
@@ -198,7 +214,7 @@ export const HistoryControl: React.FC = () => {
                                 Daggerheart
                             </h2>
                         </div>
-                        <DaggerheartStats onVitalsChange={handleVitalsChange} />
+                        <DaggerheartStats onVitalsChange={handleVitalsChange} onStatusesChange={handleStatusesChange} />
                     </motion.div>
 
                     {/* Right Panel - Roll History */}

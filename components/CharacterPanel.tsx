@@ -264,6 +264,23 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
         }
     };
 
+    // Update custom stat value
+    const updateCustomStat = async (statId: string, delta: number) => {
+        const updated = customStats.map(s =>
+            s.id === statId ? { ...s, value: s.value + delta } : s
+        );
+        setCustomStats(updated);
+
+        // Save to storage
+        const stats = await OBRStorage.getStats();
+        if (stats) {
+            await OBRStorage.setStats({
+                ...stats,
+                customStats: updated
+            });
+        }
+    };
+
     const handleTokenSelect = async (tokenId: string, imageUrl: string) => {
         // Remove attachments from old token
         const oldTokenId = await OBRStorage.getSelectedTokenId();
@@ -372,16 +389,17 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
             {/* Custom Stats Row (if any, up to 3) */}
             {customStats.length > 0 && (
                 <div className="flex justify-center gap-2">
-                    {customStats.slice(0, 3).map((stat, i) => (
+                    {customStats.slice(0, 3).map((stat) => (
                         <VerticalStatPill
-                            key={i}
+                            key={stat.id}
                             label={stat.name.slice(0, 3).toUpperCase()}
                             value={stat.value}
                             color="text-zinc-300"
                             bgClass="border-zinc-500/50 bg-zinc-800/50"
                             showSign={true}
-                            onIncrement={() => { }}
-                            onDecrement={() => { }}
+                            onIncrement={() => updateCustomStat(stat.id, 1)}
+                            onDecrement={() => updateCustomStat(stat.id, -1)}
+                            onValueClick={() => handleStatRoll(stat.name, stat.value)}
                         />
                     ))}
                 </div>

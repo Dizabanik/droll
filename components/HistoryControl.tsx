@@ -12,8 +12,8 @@ import { useOBR } from '../obr';
 
 // Popover Dimensions
 const BTN_SIZE = 60;
-const POPUP_WIDTH = 320;
-const POPUP_HEIGHT = 280;
+const POPUP_WIDTH = 420;
+const POPUP_HEIGHT = 380;
 
 export const HistoryControl: React.FC = () => {
     const { playerId, playerName } = useOBR();
@@ -53,38 +53,19 @@ export const HistoryControl: React.FC = () => {
         }
     }, []);
 
-    // Handle stat roll from Character Panel - trigger Daggerheart roll
-    const handleStatRoll = useCallback(async (statKey: string, statValue: number) => {
-        try {
-            const playerId = await OBR.player.getId().catch(() => 'local');
-            const playerName = await OBR.player.getName().catch(() => 'Player');
-            const playerColor = await OBR.player.getColor().catch(() => '#3b82f6');
+    // Handle stat roll from Character Panel - trigger roll via custom event (same as dice chains)
+    const handleStatRoll = useCallback((statKey: string, statValue: number) => {
+        const statLabel = statKey.charAt(0).toUpperCase() + statKey.slice(1);
 
-            // Create a Daggerheart roll message
-            const message: import('../obr/broadcast').DiceRollStartMessage = {
-                type: 'ROLL_START',
-                playerId,
-                playerName,
-                playerColor,
-                presetName: `${statKey.charAt(0).toUpperCase() + statKey.slice(1)} Check`,
-                itemName: 'Daggerheart Stat',
-                instant: false,
-                diceConfig: [],
-                steps: [{
-                    id: 'dh-stat-roll',
-                    label: `${statKey.charAt(0).toUpperCase() + statKey.slice(1)} Check`,
-                    type: 'daggerheart',
-                    formula: `2d12+${statValue}`,
-                    damageType: 'none',
-                }],
-                variables: { [statKey]: statValue },
-            };
-
-            // Send the roll via broadcast
-            await OBRBroadcast.send(message);
-        } catch (e) {
-            console.error("Failed to trigger stat roll:", e);
-        }
+        // Dispatch custom event that App.tsx will listen to
+        const event = new CustomEvent('fateweaver:statroll', {
+            detail: {
+                statKey,
+                statValue,
+                statLabel,
+            }
+        });
+        window.dispatchEvent(event);
     }, []);
 
     // Load history on mount

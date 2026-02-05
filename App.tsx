@@ -234,6 +234,48 @@ const App: React.FC = () => {
     OBRStorage.setStats(stats);
   }, [stats, isLoaded, isOverlay, isPopover]);
 
+  // Listen for storage changes to sync stats from fullscreen to main window
+  useEffect(() => {
+    const handleStorageChange = async () => {
+      const newStats = await OBRStorage.getStats();
+      if (newStats) {
+        setStats(newStats);
+      }
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
+
+  // Listen for stat roll events from CharacterPanel to trigger rolls
+  useEffect(() => {
+    const handleStatRoll = (e: Event) => {
+      const event = e as CustomEvent<{ statKey: string; statValue: number; statLabel: string }>;
+      const { statKey, statValue, statLabel } = event.detail;
+
+      // Create a temporary preset for this roll
+      const statRollPreset: DicePreset = {
+        id: `stat-roll-${statKey}`,
+        name: `${statLabel} Check`,
+        variables: [],
+        steps: [{
+          id: 'dh-stat-roll',
+          label: `${statLabel} Check`,
+          type: 'daggerheart',
+          formula: `2d12+${statValue}`,
+          damageType: 'none',
+        }]
+      };
+
+      // Trigger the roller
+      setActiveRollPreset(statRollPreset);
+      setActiveRollVars({});
+      setActiveRollItemName(`${statLabel} Check`);
+    };
+
+    window.addEventListener('fateweaver:statroll', handleStatRoll);
+    return () => window.removeEventListener('fateweaver:statroll', handleStatRoll);
+  }, []);
+
   const activeItem = items.find(i => i.id === activeItemId);
 
   const createItem = () => {

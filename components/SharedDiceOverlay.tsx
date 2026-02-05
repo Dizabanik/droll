@@ -157,30 +157,16 @@ export const SharedDiceOverlay: React.FC = () => {
                 <div key={roll.rollId} className="absolute inset-0">
 
 
-                    {/* Result Panel */}
+                    {/* Result Panel - Removed in favor of Popover Control */}
+                    {/* 
                     <AnimatePresence>
                         {roll.results.length > 0 && (
                             <div className="absolute bottom-20 left-1/2 transform -translate-x-1/2 pointer-events-auto">
-                                <RollResults
-                                    results={roll.results}
-                                    isComplete={roll.isComplete}
-                                    onClose={() => {
-                                        // Allow manually closing by removing from active rolls
-                                        setActiveRolls(p => {
-                                            const n = new Map(p);
-                                            n.delete(roll.playerId);
-                                            return n;
-                                        });
-                                    }}
-                                    grandTotal={roll.grandTotal}
-                                    breakdown={roll.breakdown}
-                                    itemName={roll.itemName}
-                                    presetName={roll.presetName}
-                                    hideCloseButton={false}
-                                />
+                                <RollResults ... />
                             </div>
                         )}
-                    </AnimatePresence>
+                    </AnimatePresence> 
+                    */}
                 </div>
             ))}
         </div>

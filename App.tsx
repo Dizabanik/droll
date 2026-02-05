@@ -6,7 +6,7 @@ import { DiceChainEditor } from './components/DiceChainEditor';
 import { Roller } from './components/Roller';
 import { VariableModal } from './components/VariableModal';
 import { CharacterSheet } from './components/CharacterSheet';
-import { SharedDiceOverlay } from './components/SharedDiceOverlay';
+import { HistoryControl } from './components/HistoryControl';
 import { RollHistoryPanel, HistoryEntry } from './components/RollHistoryPanel';
 import { Icons } from './components/ui/Icons';
 import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage } from './obr';
@@ -68,11 +68,14 @@ const INITIAL_STATS: CharacterStats = {
 const App: React.FC = () => {
   const { ready, isOBR, playerName, playerId } = useOBR();
 
-  // Overlay Mode Detection
+  // Overlay / Popover Mode Detection
   const [isOverlay, setIsOverlay] = useState(false);
+  const [isPopover, setIsPopover] = useState(false);
+
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     setIsOverlay(query.get('overlay') === 'true');
+    setIsPopover(query.get('popover') === 'true');
   }, []);
 
   const [items, setItems] = useState<Item[]>(INITIAL_ITEMS);
@@ -193,21 +196,33 @@ const App: React.FC = () => {
   // Open the overlay window on mount (if acting as controller)
   useEffect(() => {
     if (ready && isOBR && !isOverlay) {
-      // We are the controller. Try to open the overlay.
+      // We are the controller. Try to open the overlay AND the popover.
       import('@owlbear-rodeo/sdk').then(({ default: OBR }) => {
+        // 1. Visual Overlay (Fullscreen, Non-Interactive)
         OBR.modal.open({
           id: 'com.fateweaver.dice.overlay',
           url: window.location.pathname + '?overlay=true',
-          height: 400, // Placeholder
+          height: 400,
           width: 400,
           fullScreen: true,
           hideBackdrop: true,
           hidePaper: true,
-          disablePointerEvents: false, // Allow events so we can click buttons (managed by CSS)
+          disablePointerEvents: true,
         }).catch(e => console.error("Failed to open overlay:", e));
+
+        // 2. Interactive Controls (Popover, Anchored Bottom-Right)
+        OBR.popover.open({
+          id: 'com.fateweaver.dice.controls',
+          url: window.location.pathname + '?popover=true',
+          width: 60,
+          height: 60,
+          anchorOrigin: { horizontal: 'RIGHT', vertical: 'BOTTOM' },
+          disableClickAway: true,
+          hidePaper: true,
+        }).catch(e => console.error("Failed to open popover:", e));
       });
     }
-  }, [ready, isOBR, isOverlay]);
+  }, [ready, isOBR, isOverlay, isPopover]);
 
   // Save items when they change
   useEffect(() => {
@@ -344,32 +359,16 @@ const App: React.FC = () => {
     }
   };
 
-  // If Overlay Mode, render ONLY the overlay
-  if (isOverlay) {
+  // If Popover Mode, render Controls
+  if (isPopover) {
     return (
-      <div className="w-screen h-screen overflow-hidden bg-transparent pointer-events-none">
-        <SharedDiceOverlay />
-
-        {/* History Toggle Button - Overlay Only */}
-        <button
-          onClick={() => setIsHistoryOpen(true)}
-          className="fixed bottom-4 right-4 z-[100] p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 pointer-events-auto"
-          title="Open Roll History"
-        >
-          <Icons.Menu size={24} />
-        </button>
-
-        {/* History Panel */}
-        <div className="pointer-events-auto">
-          <RollHistoryPanel
-            isOpen={isHistoryOpen}
-            onClose={() => setIsHistoryOpen(false)}
-            history={rollHistory}
-          />
-        </div>
+      <div className="w-full h-full overflow-hidden bg-transparent">
+        <HistoryControl />
       </div>
     );
   }
+
+
 
   // Show loading while OBR is initializing
   if (!ready) {
@@ -636,7 +635,6 @@ const App: React.FC = () => {
         )}
 
         {/* Roller Overlay */}
-        {/* Roller Overlay */}
         {activeRollPreset && (
           <Roller
             preset={activeRollPreset}
@@ -649,6 +647,25 @@ const App: React.FC = () => {
           />
         )}
       </div>
+
+      {/* History Toggle Button - Available in Plugin Window */}
+      {!isOverlay && (
+        <>
+          <button
+            onClick={() => setIsHistoryOpen(true)}
+            className="fixed bottom-4 right-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
+            title="Open Roll History"
+          >
+            <Icons.Menu size={24} />
+          </button>
+
+          <RollHistoryPanel
+            isOpen={isHistoryOpen}
+            onClose={() => setIsHistoryOpen(false)}
+            history={rollHistory}
+          />
+        </>
+      )}
 
     </div>
   );

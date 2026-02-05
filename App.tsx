@@ -367,8 +367,8 @@ const App: React.FC = () => {
 
   return (
     <div className="flex h-screen bg-background text-primary font-sans overflow-hidden">
-      {/* Shared Dice Overlay for other players' rolls */}
-      <SharedDiceOverlay />
+      {/* SharedDiceOverlay removed from Controller view to prevent double-popups */}
+      {/* <SharedDiceOverlay /> */}
 
       {/* Hidden file input for import */}
       <input
@@ -637,7 +637,7 @@ const App: React.FC = () => {
         <>
           <button
             onClick={() => setIsHistoryOpen(true)}
-            className="fixed bottom-4 left-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 pointer-events-auto"
+            className="fixed bottom-4 left-4 z-[100] p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 pointer-events-auto"
             title="Open Roll History"
           >
             <Icons.Menu size={24} />

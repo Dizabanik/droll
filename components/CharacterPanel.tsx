@@ -21,12 +21,12 @@ const DEFAULT_CHARACTER: DaggerheartCharacter = {
 };
 
 const STAT_NAMES = [
-    { key: 'agility', label: 'AGI', color: 'text-green-400', bg: 'border-green-500/50 bg-green-900/30' },
-    { key: 'strength', label: 'STR', color: 'text-red-400', bg: 'border-red-500/50 bg-red-900/30' },
-    { key: 'finesse', label: 'FIN', color: 'text-sky-400', bg: 'border-sky-500/50 bg-sky-900/30' },
-    { key: 'instinct', label: 'INS', color: 'text-amber-400', bg: 'border-amber-500/50 bg-amber-900/30' },
-    { key: 'presence', label: 'PRE', color: 'text-purple-400', bg: 'border-purple-500/50 bg-purple-900/30' },
-    { key: 'knowledge', label: 'KNO', color: 'text-blue-400', bg: 'border-blue-500/50 bg-blue-900/30' },
+    { key: 'agility', label: 'AGI', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
+    { key: 'strength', label: 'STR', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
+    { key: 'finesse', label: 'FIN', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
+    { key: 'instinct', label: 'INS', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
+    { key: 'presence', label: 'PRE', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
+    { key: 'knowledge', label: 'KNO', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
 ] as const;
 
 // === Vertical Stat Pill Component ===
@@ -57,7 +57,7 @@ const VerticalStatPill: React.FC<VerticalStatPillProps> = ({
         <div className={clsx(
             "flex flex-col items-center rounded-xl border overflow-hidden",
             bgClass,
-            large ? "w-16" : "w-12"
+            large ? "w-20" : "w-14"
         )}>
             {/* Increment Button */}
             <button
@@ -282,7 +282,7 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ customStats = []
                 {/* Portrait */}
                 <button
                     onClick={() => setShowTokenPicker(true)}
-                    className="w-24 h-24 rounded-xl border-2 border-zinc-700 hover:border-accent overflow-hidden transition-all bg-zinc-800 flex items-center justify-center"
+                    className="w-32 h-32 rounded-xl border-2 border-zinc-700 hover:border-accent overflow-hidden transition-all bg-zinc-800 flex items-center justify-center"
                 >
                     {tokenImage ? (
                         <img src={tokenImage} alt="Character" className="w-full h-full object-cover" />

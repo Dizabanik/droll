@@ -39,6 +39,22 @@ export interface RollHistoryEntry {
   itemName: string;
   grandTotal: number;
   breakdown: string;
+  results?: Array<{
+    stepId: string;
+    uniqueId: string;
+    label: string;
+    total: number;
+    rolls: number[];
+    formula: string;
+    type: 'standard' | 'daggerheart';
+    damageType: string;
+    skipped: boolean;
+    addToSum?: boolean;
+    wasCrit?: boolean;
+    dhHope?: number;
+    dhFear?: number;
+    dhOutcome?: 'hope' | 'fear' | 'crit';
+  }>;
 }
 
 export interface DaggerheartCharacter {

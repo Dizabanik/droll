@@ -59,10 +59,10 @@ export const HistoryControl: React.FC = () => {
             try {
                 const saved = await OBRStorage.getRollHistory();
                 if (saved && saved.length > 0) {
-                    // Convert RollHistoryEntry to HistoryEntry (add empty results array)
+                    // Convert RollHistoryEntry to HistoryEntry (use saved results or empty array)
                     const entries: HistoryEntry[] = saved.map(e => ({
                         ...e,
-                        results: [], // We don't store full results in storage
+                        results: (e.results || []) as HistoryEntry['results'],
                     }));
                     setRollHistory(entries);
                 }
@@ -78,7 +78,7 @@ export const HistoryControl: React.FC = () => {
     // Save history when it changes
     useEffect(() => {
         if (!isLoaded) return;
-        // Convert to storage format (strip results to save space)
+        // Convert to storage format (now includes full results)
         const storageEntries: RollHistoryEntry[] = rollHistory.slice(0, 20).map(e => ({
             id: e.id,
             timestamp: e.timestamp,
@@ -88,6 +88,7 @@ export const HistoryControl: React.FC = () => {
             itemName: e.itemName,
             grandTotal: e.grandTotal,
             breakdown: e.breakdown,
+            results: e.results,
         }));
         OBRStorage.setRollHistory(storageEntries);
     }, [rollHistory, isLoaded]);
@@ -207,7 +208,7 @@ export const HistoryControl: React.FC = () => {
                         animate={{ x: 0 }}
                         exit={{ x: '-100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="relative z-10 w-full max-w-sm bg-zinc-950 border-r border-zinc-800 shadow-2xl flex flex-col overflow-y-auto"
+                        className="relative z-10 flex-1 bg-zinc-950 border-r border-zinc-800 shadow-2xl flex flex-col overflow-y-auto"
                     >
                         <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
                             <h2 className="text-white font-bold flex items-center gap-2">
@@ -224,7 +225,7 @@ export const HistoryControl: React.FC = () => {
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.1 }}
-                        className="relative z-10 flex-1 bg-zinc-950/90 border-x border-zinc-800 shadow-2xl flex flex-col overflow-hidden max-w-sm"
+                        className="relative z-10 flex-1 bg-zinc-950/90 border-x border-zinc-800 shadow-2xl flex flex-col overflow-hidden"
                     >
                         <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
                             <h2 className="text-white font-bold flex items-center gap-2">
@@ -241,7 +242,7 @@ export const HistoryControl: React.FC = () => {
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="relative z-10 ml-auto w-full max-w-md bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col"
+                        className="relative z-10 flex-1 bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col"
                     >
                         <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
                             <h2 className="text-white font-bold flex items-center gap-2">

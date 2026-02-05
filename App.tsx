@@ -152,7 +152,7 @@ const App: React.FC = () => {
 
   // Load data from OBR storage on mount (only in main controller mode)
   useEffect(() => {
-    if (!ready || isOverlay || isPopover) return;
+    if (!ready || isOverlay || isPopover || isLoaded) return;
 
     const loadData = async () => {
       try {
@@ -191,7 +191,7 @@ const App: React.FC = () => {
     };
 
     loadData();
-  }, [ready]);
+  }, [ready, isOverlay, isPopover]);
 
   // Open the overlay window on mount (if acting as controller)
   useEffect(() => {

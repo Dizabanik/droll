@@ -39,6 +39,7 @@ interface VerticalStatPillProps {
     large?: boolean;
     onIncrement: () => void;
     onDecrement: () => void;
+    onValueClick?: () => void;
 }
 
 const VerticalStatPill: React.FC<VerticalStatPillProps> = ({
@@ -50,6 +51,7 @@ const VerticalStatPill: React.FC<VerticalStatPillProps> = ({
     large = false,
     onIncrement,
     onDecrement,
+    onValueClick,
 }) => {
     const displayValue = showSign ? (value >= 0 ? `+${value}` : `${value}`) : `${value}`;
 
@@ -70,18 +72,23 @@ const VerticalStatPill: React.FC<VerticalStatPillProps> = ({
                 +
             </button>
 
-            {/* Value & Label */}
-            <div className={clsx(
-                "flex flex-col items-center justify-center bg-black/40 w-full",
-                large ? "py-3" : "py-2"
-            )}>
+            {/* Value & Label - Clickable for rolls */}
+            <button
+                onClick={onValueClick}
+                disabled={!onValueClick}
+                className={clsx(
+                    "flex flex-col items-center justify-center bg-black/40 w-full transition-all",
+                    large ? "py-3" : "py-2",
+                    onValueClick && "hover:bg-white/10 cursor-pointer"
+                )}
+            >
                 <span className={clsx("font-mono font-bold", color, large ? "text-2xl" : "text-xl")}>
                     {displayValue}
                 </span>
                 <span className="text-[10px] uppercase font-bold tracking-wider text-zinc-400">
                     {label}
                 </span>
-            </div>
+            </button>
 
             {/* Decrement Button */}
             <button
@@ -167,21 +174,31 @@ const TokenPicker: React.FC<TokenPickerProps> = ({ isOpen, onClose, onSelect }) 
 
 // === Main Character Panel ===
 interface CharacterPanelProps {
-    customStats?: Array<{ name: string; value: number }>;
+    onRoll?: (statKey: string, statValue: number) => void;
 }
 
-export const CharacterPanel: React.FC<CharacterPanelProps> = ({ customStats = [] }) => {
+export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
     const [character, setCharacter] = useState<DaggerheartCharacter>(DEFAULT_CHARACTER);
+    const [daggerheartStats, setDaggerheartStats] = useState<Record<string, number>>({});
+    const [customStats, setCustomStats] = useState<Array<{ id: string; name: string; value: number }>>([]);
     const [isLoaded, setIsLoaded] = useState(false);
     const [tokenImage, setTokenImage] = useState<string | null>(null);
     const [showTokenPicker, setShowTokenPicker] = useState(false);
 
-    // Load character data
+    // Load character data and sync with CharacterStats
     useEffect(() => {
         const load = async () => {
             try {
+                // Load DaggerheartCharacter (evasion, level, thresholds, skulls)
                 const saved = await OBRStorage.getDaggerheartCharacter();
                 if (saved) setCharacter(saved);
+
+                // Load CharacterStats (daggerheartStats and customStats)
+                const stats = await OBRStorage.getStats();
+                if (stats) {
+                    setDaggerheartStats(stats.daggerheartStats || {});
+                    setCustomStats(stats.customStats || []);
+                }
 
                 // Load token image
                 const tokenId = await OBRStorage.getSelectedTokenId();
@@ -198,19 +215,53 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ customStats = []
             }
         };
         load();
+
+        // Listen for storage changes (cross-component sync)
+        const handleStorageChange = async () => {
+            const stats = await OBRStorage.getStats();
+            if (stats) {
+                setDaggerheartStats(stats.daggerheartStats || {});
+                setCustomStats(stats.customStats || []);
+            }
+        };
+        window.addEventListener('storage', handleStorageChange);
+        return () => window.removeEventListener('storage', handleStorageChange);
     }, []);
 
-    // Save character on change
+    // Save character on change (evasion, level, thresholds, skulls only)
     useEffect(() => {
         if (!isLoaded) return;
         OBRStorage.setDaggerheartCharacter(character);
     }, [character, isLoaded]);
 
-    const updateStat = (key: keyof DaggerheartCharacter, delta: number) => {
+    // Save daggerheart stats changes
+    const updateDaggerheartStat = async (key: string, delta: number) => {
+        const newValue = (daggerheartStats[key] || 0) + delta;
+        setDaggerheartStats(prev => ({ ...prev, [key]: newValue }));
+
+        // Save to CharacterStats storage
+        const stats = await OBRStorage.getStats();
+        if (stats) {
+            await OBRStorage.setStats({
+                ...stats,
+                daggerheartStats: { ...stats.daggerheartStats, [key]: newValue }
+            });
+        }
+    };
+
+    // Update DaggerheartCharacter fields (evasion, level, thresholds, skulls)
+    const updateCharacterStat = (key: keyof DaggerheartCharacter, delta: number) => {
         setCharacter(prev => ({
             ...prev,
             [key]: typeof prev[key] === 'number' ? prev[key] + delta : prev[key],
         }));
+    };
+
+    // Handle rolling a stat (Daggerheart 2d12 + stat)
+    const handleStatRoll = (statKey: string, statValue: number) => {
+        if (onRoll) {
+            onRoll(statKey, statValue);
+        }
     };
 
     const handleTokenSelect = async (tokenId: string, imageUrl: string) => {
@@ -254,11 +305,12 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ customStats = []
                         <VerticalStatPill
                             key={stat.key}
                             label={stat.label}
-                            value={character[stat.key as keyof DaggerheartCharacter] as number}
+                            value={daggerheartStats[stat.key] || 0}
                             color={stat.color}
                             bgClass={stat.bg}
-                            onIncrement={() => updateStat(stat.key as keyof DaggerheartCharacter, 1)}
-                            onDecrement={() => updateStat(stat.key as keyof DaggerheartCharacter, -1)}
+                            onIncrement={() => updateDaggerheartStat(stat.key, 1)}
+                            onDecrement={() => updateDaggerheartStat(stat.key, -1)}
+                            onValueClick={() => handleStatRoll(stat.key, daggerheartStats[stat.key] || 0)}
                         />
                     ))}
                 </div>
@@ -267,11 +319,12 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ customStats = []
                         <VerticalStatPill
                             key={stat.key}
                             label={stat.label}
-                            value={character[stat.key as keyof DaggerheartCharacter] as number}
+                            value={daggerheartStats[stat.key] || 0}
                             color={stat.color}
                             bgClass={stat.bg}
-                            onIncrement={() => updateStat(stat.key as keyof DaggerheartCharacter, 1)}
-                            onDecrement={() => updateStat(stat.key as keyof DaggerheartCharacter, -1)}
+                            onIncrement={() => updateDaggerheartStat(stat.key, 1)}
+                            onDecrement={() => updateDaggerheartStat(stat.key, -1)}
+                            onValueClick={() => handleStatRoll(stat.key, daggerheartStats[stat.key] || 0)}
                         />
                     ))}
                 </div>
@@ -300,8 +353,8 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ customStats = []
                         bgClass="border-emerald-500/50 bg-emerald-900/30"
                         showSign={false}
                         large={true}
-                        onIncrement={() => updateStat('evasion', 1)}
-                        onDecrement={() => updateStat('evasion', -1)}
+                        onIncrement={() => updateCharacterStat('evasion', 1)}
+                        onDecrement={() => updateCharacterStat('evasion', -1)}
                     />
                     <VerticalStatPill
                         label="LVL"
@@ -310,8 +363,8 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ customStats = []
                         bgClass="border-yellow-500/50 bg-yellow-900/30"
                         showSign={false}
                         large={true}
-                        onIncrement={() => updateStat('level', 1)}
-                        onDecrement={() => updateStat('level', -1)}
+                        onIncrement={() => updateCharacterStat('level', 1)}
+                        onDecrement={() => updateCharacterStat('level', -1)}
                     />
                 </div>
             </div>

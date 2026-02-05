@@ -18,16 +18,16 @@ const STAT_COLORS = {
     armor: { stroke: "#7dd3fc" },     // Sky blue
 };
 
-// Status badge colors and abbreviations
+// Status badge colors and abbreviations - matching fullscreen menu (DaggerheartStats.tsx)
 const STATUS_BADGES: Record<keyof DaggerheartStatuses, { color: string; bg: string; abbr: string }> = {
-    vulnerable: { color: "#fca5a5", bg: "#450a0a", abbr: "VUL" },
-    blinded: { color: "#a1a1aa", bg: "#27272a", abbr: "BLN" },
-    frightened: { color: "#c084fc", bg: "#3b0764", abbr: "FRT" },
-    hidden: { color: "#86efac", bg: "#052e16", abbr: "HID" },
-    restrained: { color: "#fcd34d", bg: "#451a03", abbr: "RST" },
-    slowed: { color: "#7dd3fc", bg: "#0c4a6e", abbr: "SLW" },
-    weakened: { color: "#fb923c", bg: "#431407", abbr: "WKN" },
-    empowered: { color: "#facc15", bg: "#422006", abbr: "EMP" },
+    vulnerable: { color: "#f87171", bg: "#450a0a", abbr: "VUL" },    // text-red-400
+    blinded: { color: "#c084fc", bg: "#3b0764", abbr: "BLN" },       // text-purple-400
+    frightened: { color: "#facc15", bg: "#422006", abbr: "FRT" },   // text-yellow-400
+    hidden: { color: "#94a3b8", bg: "#1e293b", abbr: "HID" },        // text-slate-400
+    restrained: { color: "#fb923c", bg: "#431407", abbr: "RST" },   // text-orange-400
+    slowed: { color: "#60a5fa", bg: "#1e3a8a", abbr: "SLW" },        // text-blue-400
+    weakened: { color: "#f472b6", bg: "#831843", abbr: "WKN" },      // text-pink-400
+    empowered: { color: "#34d399", bg: "#064e3b", abbr: "EMP" },     // text-emerald-400
 };
 
 interface TokenBounds {

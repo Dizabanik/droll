@@ -53,6 +53,40 @@ export const HistoryControl: React.FC = () => {
         }
     }, []);
 
+    // Handle stat roll from Character Panel - trigger Daggerheart roll
+    const handleStatRoll = useCallback(async (statKey: string, statValue: number) => {
+        try {
+            const playerId = await OBR.player.getId().catch(() => 'local');
+            const playerName = await OBR.player.getName().catch(() => 'Player');
+            const playerColor = await OBR.player.getColor().catch(() => '#3b82f6');
+
+            // Create a Daggerheart roll message
+            const message: import('../obr/broadcast').DiceRollStartMessage = {
+                type: 'ROLL_START',
+                playerId,
+                playerName,
+                playerColor,
+                presetName: `${statKey.charAt(0).toUpperCase() + statKey.slice(1)} Check`,
+                itemName: 'Daggerheart Stat',
+                instant: false,
+                diceConfig: [],
+                steps: [{
+                    id: 'dh-stat-roll',
+                    label: `${statKey.charAt(0).toUpperCase() + statKey.slice(1)} Check`,
+                    type: 'daggerheart',
+                    formula: `2d12+${statValue}`,
+                    damageType: 'none',
+                }],
+                variables: { [statKey]: statValue },
+            };
+
+            // Send the roll via broadcast
+            await OBRBroadcast.send(message);
+        } catch (e) {
+            console.error("Failed to trigger stat roll:", e);
+        }
+    }, []);
+
     // Load history on mount
     useEffect(() => {
         const loadHistory = async () => {
@@ -233,7 +267,7 @@ export const HistoryControl: React.FC = () => {
                                 Character
                             </h2>
                         </div>
-                        <CharacterPanel />
+                        <CharacterPanel onRoll={handleStatRoll} />
                     </motion.div>
 
                     {/* Right Panel - Roll History */}

@@ -76,9 +76,15 @@ export const HistoryControl: React.FC = () => {
         let height = BTN_SIZE;
 
         if (historyOpen) {
-            // FULLSCREEN mode when history is open
-            width = window.innerWidth || 1920;
-            height = window.innerHeight || 1080;
+            // FULLSCREEN mode - use OBR viewport dimensions
+            try {
+                width = await OBR.viewport.getWidth();
+                height = await OBR.viewport.getHeight();
+            } catch {
+                // Fallback to large fixed values
+                width = 1920;
+                height = 1080;
+            }
         } else if (hasPopup) {
             // Small popup mode
             width = POPUP_WIDTH;

@@ -7,12 +7,11 @@ import { RollResults } from './ui/RollResults';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage } from '../obr';
 import { useOBR } from '../obr';
-import clsx from 'clsx';
 
 // Popover Dimensions
-const BTN_SIZE = 100; // Increased to ensure button isn't clipped
-const POPUP_WIDTH = 300;
-const POPUP_HEIGHT = 400; // Enough for result card
+const BTN_SIZE = 60;
+const POPUP_WIDTH = 320;
+const POPUP_HEIGHT = 280;
 
 export const HistoryControl: React.FC = () => {
     const { playerId, playerName } = useOBR();
@@ -34,6 +33,7 @@ export const HistoryControl: React.FC = () => {
             if (message.type === 'ROLL_COMPLETE') {
                 const msg = message as RollCompleteMessage;
 
+                // 1. Update History
                 const resolvedName = (msg.playerId === playerId) ? (playerName || 'Me') : 'Player';
                 const newEntry: HistoryEntry = {
                     id: `${msg.playerId}-${Date.now()}`,
@@ -48,56 +48,44 @@ export const HistoryControl: React.FC = () => {
                 };
                 setRollHistory(prev => [newEntry, ...prev].slice(0, 20));
 
-                // Show Popup
-                setActiveResult(msg);
+                // 2. Show Popup Logic (only if history panel is closed)
+                if (!isHistoryOpen) {
+                    setActiveResult(msg);
 
-                // Auto-hide popup after 4s
-                if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
-                resultTimerRef.current = window.setTimeout(() => {
-                    setActiveResult(null);
-                }, 4000);
+                    // Auto-hide popup after 4s
+                    if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
+                    resultTimerRef.current = window.setTimeout(() => {
+                        setActiveResult(null);
+                    }, 4000);
+                }
             }
         });
         return () => {
             unsubscribe();
             if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
         };
-    }, [playerId, playerName]);
+    }, [playerId, playerName, isHistoryOpen]);
 
-    // Handle Resize Logic
+    // Resize Window Effect
     useEffect(() => {
-        if (isHistoryOpen) {
-            resizePopover(true, !!activeResult);
-        } else {
-            // Delay shrink to allow exit animation if we are closing
-            const timer = setTimeout(() => {
-                resizePopover(false, !!activeResult);
-            }, 300);
-            return () => clearTimeout(timer);
-        }
-    }, [isHistoryOpen]);
-
-    // Handle Popup Resize (Immediate if history closed)
-    useEffect(() => {
-        if (!isHistoryOpen) {
-            resizePopover(false, !!activeResult);
-        }
-    }, [activeResult]);
+        resizePopover(isHistoryOpen, !!activeResult);
+    }, [isHistoryOpen, activeResult]);
 
     const resizePopover = async (historyOpen: boolean, hasPopup: boolean) => {
+        let width = BTN_SIZE;
+        let height = BTN_SIZE;
+
+        if (historyOpen) {
+            // FULLSCREEN mode when history is open
+            width = window.innerWidth || 1920;
+            height = window.innerHeight || 1080;
+        } else if (hasPopup) {
+            // Small popup mode
+            width = POPUP_WIDTH;
+            height = BTN_SIZE + 16 + POPUP_HEIGHT;
+        }
+
         try {
-            let width = BTN_SIZE;
-            let height = BTN_SIZE;
-
-            if (historyOpen) {
-                // Fullscreen Mode
-                width = await OBR.viewport.getWidth();
-                height = await OBR.viewport.getHeight();
-            } else if (hasPopup) {
-                width = POPUP_WIDTH; // Popup Width
-                height = POPUP_HEIGHT; // Button + Popup space
-            }
-
             await OBR.popover.open({
                 id: 'com.fateweaver.dice.controls',
                 url: window.location.pathname + '?popover=true',
@@ -112,91 +100,155 @@ export const HistoryControl: React.FC = () => {
         }
     };
 
-    return (
-        <div className={clsx("relative w-full h-full pointer-events-auto", isHistoryOpen ? "" : "flex flex-col items-end justify-end")}>
+    const openHistory = () => {
+        setIsHistoryOpen(true);
+        // Clear any active popup when opening history
+        if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
+        setActiveResult(null);
+    };
 
-            {/* 1. Backdrop (When Open) */}
-            <AnimatePresence>
-                {isHistoryOpen && (
+    const closeHistory = () => {
+        setIsHistoryOpen(false);
+    };
+
+    return (
+        <div className="w-full h-full relative">
+            {/* Fullscreen History Mode */}
+            {isHistoryOpen && (
+                <div className="fixed inset-0 z-50">
+                    {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        // Clicking backdrop closes history
-                        onClick={() => setIsHistoryOpen(false)}
-                        className="fixed inset-0 bg-black/50 backdrop-blur-sm z-0"
+                        className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+                        onClick={closeHistory}
                     />
-                )}
-            </AnimatePresence>
 
-            {/* 2. Sidebar (When Open) */}
-            <AnimatePresence>
-                {isHistoryOpen && (
+                    {/* History Panel - Slide in from right */}
                     <motion.div
                         initial={{ x: '100%' }}
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-                        className="absolute right-0 top-0 h-full w-[400px] z-10 shadow-2xl bg-zinc-900 border-l border-zinc-700"
-                        // Prevent backdrop click when clicking sidebar
-                        onClick={(e) => e.stopPropagation()}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="absolute top-0 right-0 bottom-0 w-full max-w-md bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col"
                     >
-                        {/* Header is handled by embedded panel or here? 
-                             User said "remove history popup (small one)", implying they just want the content.
-                             RollHistoryPanel embedded mode renders just the content.
-                         */}
-                        <div className="h-full flex flex-col pt-16"> {/* Padding top for the close button area if needed, or button is fixed */}
-                            <RollHistoryPanel
-                                isOpen={true}
-                                onClose={() => setIsHistoryOpen(false)}
-                                history={rollHistory}
-                                embedded={true}
-                            />
+                        <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
+                            <h2 className="text-white font-bold flex items-center gap-2">
+                                <Icons.Menu size={20} className="text-accent" />
+                                Roll History
+                            </h2>
+                            <button
+                                onClick={closeHistory}
+                                className="p-2 hover:bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition-colors"
+                            >
+                                <Icons.Close size={20} />
+                            </button>
+                        </div>
+
+                        <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                            {rollHistory.length === 0 ? (
+                                <div className="text-center text-zinc-600 py-10">
+                                    <Icons.Dice size={48} className="mx-auto mb-2 opacity-20" />
+                                    <p>No rolls recorded yet.</p>
+                                </div>
+                            ) : (
+                                rollHistory.map((entry) => (
+                                    <div key={entry.id} className="relative pl-4 border-l-2 border-zinc-800 hover:border-accent transition-colors">
+                                        <div className="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-zinc-800 border-2 border-zinc-950" />
+
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                                                    {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                <h3 className="text-white font-medium text-sm">
+                                                    {entry.playerName}
+                                                </h3>
+                                            </div>
+                                            <div className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded">
+                                                {entry.presetName}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-zinc-900/50 rounded-lg p-2 border border-zinc-800/50">
+                                            <div className="flex justify-between items-baseline mb-2 pb-2 border-b border-white/5">
+                                                <span className="text-xs text-zinc-400">{entry.itemName}</span>
+                                                <span className="text-lg font-mono font-bold text-white">{entry.grandTotal}</span>
+                                            </div>
+
+                                            <div className="space-y-1.5">
+                                                {entry.results.map(res => (
+                                                    <div key={res.uniqueId} className={`flex justify-between items-center px-2 py-1.5 rounded text-xs ${res.wasCrit ? "bg-yellow-500/10 text-yellow-200" : "bg-zinc-950/50 text-zinc-300"
+                                                        }`}>
+                                                        <div className="flex items-center gap-2">
+                                                            <span>{res.total}</span>
+                                                            <span className="text-zinc-500 text-[10px]">{res.damageType.slice(0, 3).toUpperCase()}</span>
+                                                        </div>
+                                                        <span className="text-zinc-600 text-[10px] font-mono">{res.formula}</span>
+                                                    </div>
+                                                ))}
+                                            </div>
+
+                                            {entry.breakdown && (
+                                                <div className="mt-2 text-[10px] text-right text-zinc-500 font-mono">
+                                                    {entry.breakdown}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </motion.div>
-                )}
-            </AnimatePresence>
 
-            {/* 3. Popup Result (Above Button) - Only show if Sidebar CLOSED */}
-            <AnimatePresence>
-                {activeResult && !isHistoryOpen && (
-                    <motion.div
-                        initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                        className="mb-4 mr-2 relative z-20"
+                    {/* Close Button - Same position as history button */}
+                    <button
+                        onClick={closeHistory}
+                        className="absolute bottom-4 right-4 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 z-[60]"
+                        title="Close History"
                     >
-                        <RollResults
-                            results={activeResult.results}
-                            isComplete={true}
-                            onClose={() => setActiveResult(null)}
-                            grandTotal={activeResult.grandTotal}
-                            breakdown={activeResult.breakdown}
-                            itemName={''}
-                            presetName={'Roll Result'}
-                            hideCloseButton={false}
-                        />
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                        <Icons.Close size={24} />
+                    </button>
+                </div>
+            )}
 
-            {/* 4. Main Toggle Button (Fixed Position) 
-                It stays in the same place. 
-                When Open: Shows 'X'.
-                When Closed: Shows 'Menu'.
-            */}
-            <button
-                onClick={() => setIsHistoryOpen(!isHistoryOpen)}
-                className={clsx(
-                    "absolute bottom-4 right-4 z-50 p-3 rounded-full shadow-lg border transition-all active:scale-95",
-                    isHistoryOpen
-                        ? "bg-zinc-700 text-white border-zinc-500 hover:bg-zinc-600"
-                        : "bg-zinc-800 text-zinc-400 border-zinc-700 hover:text-white hover:bg-zinc-700"
-                )}
-                title={isHistoryOpen ? "Close History" : "Open Roll History"}
-            >
-                {isHistoryOpen ? <Icons.Close size={24} /> : <Icons.Menu size={24} />}
-            </button>
+            {/* Normal Mode - Button + Popup */}
+            {!isHistoryOpen && (
+                <div className="flex flex-col items-end justify-end h-full w-full pointer-events-auto">
+                    {/* Result Popup (Above Button) */}
+                    <AnimatePresence>
+                        {activeResult && (
+                            <motion.div
+                                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                                animate={{ opacity: 1, y: 0, scale: 1 }}
+                                exit={{ opacity: 0, y: 20, scale: 0.9 }}
+                                className="mb-4"
+                            >
+                                <RollResults
+                                    results={activeResult.results}
+                                    isComplete={true}
+                                    onClose={() => setActiveResult(null)}
+                                    grandTotal={activeResult.grandTotal}
+                                    breakdown={activeResult.breakdown}
+                                    itemName={''}
+                                    presetName={'Roll Result'}
+                                    hideCloseButton={false}
+                                />
+                            </motion.div>
+                        )}
+                    </AnimatePresence>
+
+                    {/* History Toggle Button */}
+                    <button
+                        onClick={openHistory}
+                        className="p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
+                        title="Open Roll History"
+                    >
+                        <Icons.Menu size={24} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

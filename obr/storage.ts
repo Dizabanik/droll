@@ -8,9 +8,45 @@ import { Item, CharacterStats } from "../types";
 
 const METADATA_KEY = "com.fateweaver.dice";
 
+export interface DaggerheartVitals {
+  hope: number;
+  hopeMax: number;
+  stress: number;
+  stressMax: number;
+  hp: number;
+  hpMax: number;
+  armor: number;
+  armorMax: number;
+}
+
+export interface DaggerheartStatuses {
+  vulnerable: boolean;
+  blinded: boolean;
+  frightened: boolean;
+  hidden: boolean;
+  restrained: boolean;
+  slowed: boolean;
+  weakened: boolean;
+  empowered: boolean;
+}
+
+export interface RollHistoryEntry {
+  id: string;
+  timestamp: number;
+  playerId: string;
+  playerName: string;
+  presetName: string;
+  itemName: string;
+  grandTotal: number;
+  breakdown: string;
+}
+
 interface FateWeaverMetadata {
   items?: Item[];
   stats?: CharacterStats;
+  rollHistory?: RollHistoryEntry[];
+  daggerheartVitals?: DaggerheartVitals;
+  daggerheartStatuses?: DaggerheartStatuses;
 }
 
 /**
@@ -139,4 +175,26 @@ export const OBRStorage = {
   exportData,
   importData,
   isOBREnvironment,
+  // New functions
+  getRollHistory: async (): Promise<RollHistoryEntry[]> => {
+    const data = await getPlayerData();
+    return data.rollHistory || [];
+  },
+  setRollHistory: async (history: RollHistoryEntry[]): Promise<void> => {
+    await setPlayerData({ rollHistory: history.slice(0, 20) });
+  },
+  getDaggerheartVitals: async (): Promise<DaggerheartVitals | undefined> => {
+    const data = await getPlayerData();
+    return data.daggerheartVitals;
+  },
+  setDaggerheartVitals: async (vitals: DaggerheartVitals): Promise<void> => {
+    await setPlayerData({ daggerheartVitals: vitals });
+  },
+  getDaggerheartStatuses: async (): Promise<DaggerheartStatuses | undefined> => {
+    const data = await getPlayerData();
+    return data.daggerheartStatuses;
+  },
+  setDaggerheartStatuses: async (statuses: DaggerheartStatuses): Promise<void> => {
+    await setPlayerData({ daggerheartStatuses: statuses });
+  },
 };

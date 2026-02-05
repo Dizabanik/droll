@@ -92,3 +92,4 @@ export const OBRProvider: React.FC<OBRProviderProps> = ({ children }) => {
 
 export { OBRBroadcast } from "./broadcast";
 export { OBRStorage, isOBREnvironment } from "./storage";
+export type { RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses } from "./storage";

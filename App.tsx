@@ -150,9 +150,9 @@ const App: React.FC = () => {
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load data from OBR storage on mount
+  // Load data from OBR storage on mount (only in main controller mode)
   useEffect(() => {
-    if (!ready) return;
+    if (!ready || isOverlay || isPopover) return;
 
     const loadData = async () => {
       try {
@@ -216,19 +216,19 @@ const App: React.FC = () => {
     }
   }, [ready, isOBR, isOverlay, isPopover]);
 
-  // Save items when they change
+  // Save items when they change (only in main controller mode)
   useEffect(() => {
-    if (!isLoaded || isOverlay) return;
+    if (!isLoaded || isOverlay || isPopover) return;
     console.log("Saving items...");
     OBRStorage.setItems(items);
-  }, [items, isLoaded, isOverlay]);
+  }, [items, isLoaded, isOverlay, isPopover]);
 
-  // Save stats when they change
+  // Save stats when they change (only in main controller mode)
   useEffect(() => {
-    if (!isLoaded || isOverlay) return;
+    if (!isLoaded || isOverlay || isPopover) return;
     console.log("Saving stats...");
     OBRStorage.setStats(stats);
-  }, [stats, isLoaded, isOverlay]);
+  }, [stats, isLoaded, isOverlay, isPopover]);
 
   const activeItem = items.find(i => i.id === activeItemId);
 

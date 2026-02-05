@@ -2,10 +2,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Icons } from './ui/Icons';
-import { RollHistoryPanel, HistoryEntry } from './RollHistoryPanel';
+import { HistoryEntry } from './RollHistoryPanel';
 import { RollResults } from './ui/RollResults';
+import { DaggerheartStats } from './DaggerheartStats';
 import OBR from "@owlbear-rodeo/sdk";
-import { OBRBroadcast, DiceRollMessage, RollCompleteMessage } from '../obr';
+import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry } from '../obr';
 import { useOBR } from '../obr';
 
 // Popover Dimensions
@@ -17,10 +18,50 @@ export const HistoryControl: React.FC = () => {
     const { playerId, playerName } = useOBR();
     const [isHistoryOpen, setIsHistoryOpen] = useState(false);
     const [rollHistory, setRollHistory] = useState<HistoryEntry[]>([]);
+    const [isLoaded, setIsLoaded] = useState(false);
 
     // Active Result Popup State
     const [activeResult, setActiveResult] = useState<RollCompleteMessage | null>(null);
     const resultTimerRef = useRef<number | null>(null);
+
+    // Load history on mount
+    useEffect(() => {
+        const loadHistory = async () => {
+            try {
+                const saved = await OBRStorage.getRollHistory();
+                if (saved && saved.length > 0) {
+                    // Convert RollHistoryEntry to HistoryEntry (add empty results array)
+                    const entries: HistoryEntry[] = saved.map(e => ({
+                        ...e,
+                        results: [], // We don't store full results in storage
+                    }));
+                    setRollHistory(entries);
+                }
+            } catch (e) {
+                console.error("Failed to load history:", e);
+            } finally {
+                setIsLoaded(true);
+            }
+        };
+        loadHistory();
+    }, []);
+
+    // Save history when it changes
+    useEffect(() => {
+        if (!isLoaded) return;
+        // Convert to storage format (strip results to save space)
+        const storageEntries: RollHistoryEntry[] = rollHistory.slice(0, 20).map(e => ({
+            id: e.id,
+            timestamp: e.timestamp,
+            playerId: e.playerId,
+            playerName: e.playerName,
+            presetName: e.presetName,
+            itemName: e.itemName,
+            grandTotal: e.grandTotal,
+            breakdown: e.breakdown,
+        }));
+        OBRStorage.setRollHistory(storageEntries);
+    }, [rollHistory, isLoaded]);
 
     // Initial Resize to Button Only
     useEffect(() => {
@@ -119,9 +160,9 @@ export const HistoryControl: React.FC = () => {
 
     return (
         <div className="w-full h-full relative">
-            {/* Fullscreen History Mode */}
+            {/* Fullscreen Menu Mode */}
             {isHistoryOpen && (
-                <div className="fixed inset-0 z-50">
+                <div className="fixed inset-0 z-50 flex">
                     {/* Backdrop */}
                     <motion.div
                         initial={{ opacity: 0 }}
@@ -131,13 +172,30 @@ export const HistoryControl: React.FC = () => {
                         onClick={closeHistory}
                     />
 
-                    {/* History Panel - Slide in from right */}
+                    {/* Left Panel - Daggerheart Stats */}
+                    <motion.div
+                        initial={{ x: '-100%' }}
+                        animate={{ x: 0 }}
+                        exit={{ x: '-100%' }}
+                        transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+                        className="relative z-10 w-full max-w-sm bg-zinc-950 border-r border-zinc-800 shadow-2xl flex flex-col overflow-y-auto"
+                    >
+                        <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
+                            <h2 className="text-white font-bold flex items-center gap-2">
+                                <Icons.Dice size={20} className="text-accent" />
+                                Daggerheart
+                            </h2>
+                        </div>
+                        <DaggerheartStats />
+                    </motion.div>
+
+                    {/* Right Panel - Roll History */}
                     <motion.div
                         initial={{ x: '100%' }}
                         animate={{ x: 0 }}
                         exit={{ x: '100%' }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-                        className="absolute top-0 right-0 bottom-0 w-full max-w-md bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col"
+                        className="relative z-10 ml-auto w-full max-w-md bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col"
                     >
                         <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
                             <h2 className="text-white font-bold flex items-center gap-2">
@@ -183,18 +241,20 @@ export const HistoryControl: React.FC = () => {
                                                 <span className="text-lg font-mono font-bold text-white">{entry.grandTotal}</span>
                                             </div>
 
-                                            <div className="space-y-1.5">
-                                                {entry.results.map(res => (
-                                                    <div key={res.uniqueId} className={`flex justify-between items-center px-2 py-1.5 rounded text-xs ${res.wasCrit ? "bg-yellow-500/10 text-yellow-200" : "bg-zinc-950/50 text-zinc-300"
-                                                        }`}>
-                                                        <div className="flex items-center gap-2">
-                                                            <span>{res.total}</span>
-                                                            <span className="text-zinc-500 text-[10px]">{res.damageType.slice(0, 3).toUpperCase()}</span>
+                                            {entry.results && entry.results.length > 0 && (
+                                                <div className="space-y-1.5">
+                                                    {entry.results.map(res => (
+                                                        <div key={res.uniqueId} className={`flex justify-between items-center px-2 py-1.5 rounded text-xs ${res.wasCrit ? "bg-yellow-500/10 text-yellow-200" : "bg-zinc-950/50 text-zinc-300"
+                                                            }`}>
+                                                            <div className="flex items-center gap-2">
+                                                                <span>{res.total}</span>
+                                                                <span className="text-zinc-500 text-[10px]">{res.damageType.slice(0, 3).toUpperCase()}</span>
+                                                            </div>
+                                                            <span className="text-zinc-600 text-[10px] font-mono">{res.formula}</span>
                                                         </div>
-                                                        <span className="text-zinc-600 text-[10px] font-mono">{res.formula}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
+                                                    ))}
+                                                </div>
+                                            )}
 
                                             {entry.breakdown && (
                                                 <div className="mt-2 text-[10px] text-right text-zinc-500 font-mono">
@@ -212,7 +272,7 @@ export const HistoryControl: React.FC = () => {
                     <button
                         onClick={closeHistory}
                         className="absolute bottom-4 right-4 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 z-[60]"
-                        title="Close History"
+                        title="Close Menu"
                     >
                         <Icons.Close size={24} />
                     </button>
@@ -249,7 +309,7 @@ export const HistoryControl: React.FC = () => {
                     <button
                         onClick={openHistory}
                         className="p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
-                        title="Open Roll History"
+                        title="Open Menu"
                     >
                         <Icons.Menu size={24} />
                     </button>

@@ -224,7 +224,7 @@ export const createTokenAttachments = async (
         .strokeColor(STAT_COLORS.stress.stroke)
         .position({
             x: barPosition.x + shapeSize * 0.34,
-            y: bounds.position.y + absHeight - shapeSize * 0.77 - absHeight / 10,
+            y: bounds.position.y + absHeight - shapeSize * 0.77,
         })
         .attachedTo(tokenId)
         .layer(token.layer)
@@ -242,7 +242,7 @@ export const createTokenAttachments = async (
         .height(height)
         .position({
             x: barPosition.x,
-            y: bounds.position.y + absHeight - shapeSize - absHeight / 10
+            y: bounds.position.y + absHeight - shapeSize
         })
         .attachedTo(tokenId)
         .layer(token.layer)

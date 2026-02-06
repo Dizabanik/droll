@@ -155,6 +155,7 @@ const App: React.FC = () => {
             type: 'daggerheart',
             formula: `2d12+${statValue}`,
             damageType: 'none',
+            addToSum: true
           }]
         };
 

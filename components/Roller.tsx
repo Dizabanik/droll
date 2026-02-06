@@ -60,27 +60,47 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
       // Override config dice for Daggerheart to match visual split logic
       if (step.type === 'daggerheart') {
-        // Logic: N dice. Even: N/2 Hope, N/2 Fear. Odd: (N-1)/2 Hope, (N-1)/2 Fear, 1 Standard.
         const cleanFormula = (step.formula || '0').split('#')[0].trim();
-        const match = cleanFormula.toLowerCase().match(/^(\d*)d(\d+)/);
-        const count = match && match[1] ? parseInt(match[1]) : 1;
-        const sides = match ? parseInt(match[2]) : 12; // Default to d12 if parsing fails for DH
 
-        const hopeCount = Math.floor(count / 2);
-        const fearCount = Math.floor(count / 2);
-        const stdCount = count % 2;
+        // CHANGED: Use matchAll with global regex to find ALL dice terms (e.g. 2d12 AND 2d6)
+        const diceRegex = /(\d*)d(\d+)/g;
+        const matches = [...cleanFormula.matchAll(diceRegex)];
 
         const dhDice: PendingDie[] = [];
 
-        if (hopeCount > 0) formulaParts.push(`${hopeCount}d${sides}{Hope} # ${step.id}_hope`);
-        if (fearCount > 0) formulaParts.push(`${fearCount}d${sides}{Fear} # ${step.id}_fear`);
-        if (stdCount > 0) formulaParts.push(`${stdCount}d${sides} # ${step.id}_std`);
+        if (matches.length > 0) {
+          matches.forEach((match, index) => {
+            const count = match[1] ? parseInt(match[1]) : 1;
+            const sides = parseInt(match[2]);
 
-        // Rebuild config dice to match these expected pools for mapping later
-        for (let i = 0; i < hopeCount; i++) dhDice.push({ id: generateId(), sides, type: 'hope' });
-        for (let i = 0; i < fearCount; i++) dhDice.push({ id: generateId(), sides, type: 'fear' });
-        // For the 'odd' standard die in DH, we treat it as standard type
-        for (let i = 0; i < stdCount; i++) dhDice.push({ id: generateId(), sides, type: 'standard' });
+            // Logic: The FIRST dice group found (index 0) gets the Hope/Fear split.
+            if (index === 0) {
+              const hopeCount = Math.floor(count / 2);
+              const fearCount = Math.floor(count / 2);
+              const stdCount = count % 2;
+
+              if (hopeCount > 0) formulaParts.push(`${hopeCount}d${sides}{Hope} # ${step.id}_hope`);
+              if (fearCount > 0) formulaParts.push(`${fearCount}d${sides}{Fear} # ${step.id}_fear`);
+              if (stdCount > 0) formulaParts.push(`${stdCount}d${sides} # ${step.id}_std`);
+
+              for (let i = 0; i < hopeCount; i++) dhDice.push({ id: generateId(), sides, type: 'hope' });
+              for (let i = 0; i < fearCount; i++) dhDice.push({ id: generateId(), sides, type: 'fear' });
+              for (let i = 0; i < stdCount; i++) dhDice.push({ id: generateId(), sides, type: 'standard' });
+            }
+            // Logic: All SUBSEQUENT dice groups are added as standard dice.
+            else {
+              formulaParts.push(`${count}d${sides} # ${step.id}_std`);
+              for (let i = 0; i < count; i++) dhDice.push({ id: generateId(), sides, type: 'standard' });
+            }
+          });
+        } else {
+          // Fallback default if parsing fails completely
+          const sides = 12;
+          formulaParts.push(`1d${sides}{Hope} # ${step.id}_hope`);
+          formulaParts.push(`1d${sides}{Fear} # ${step.id}_fear`);
+          dhDice.push({ id: generateId(), sides, type: 'hope' });
+          dhDice.push({ id: generateId(), sides, type: 'fear' });
+        }
 
         config.dice = dhDice;
       } else {
@@ -143,9 +163,11 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
     // 4. Parse Dice+ Groups into convenient map
     const tagMap: Record<string, number[]> = {};
+    console.log("[Roller] DicePlus groups:", diceResult.groups);
     if (diceResult.groups) {
       diceResult.groups.forEach((group: any) => {
         const tag = group.description?.trim();
+        console.log("[Roller] Group:", { tag, dice: group.dice });
         if (tag) {
           if (!tagMap[tag]) tagMap[tag] = [];
           if (group.dice) {
@@ -156,6 +178,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
         }
       });
     }
+    console.log("[Roller] TagMap:", tagMap);
 
     // A. First Pass: Collect Values & Determine Global Crit
     let chainHasCrit = false;

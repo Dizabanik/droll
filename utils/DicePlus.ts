@@ -109,37 +109,57 @@ class DicePlusService {
 
     // Fallback for local dev or timeout
     private mockResult(formula: string): DicePlusResult {
-        // Basic parser for mock purposes: "1d20+5" -> just rand(20)
-        // This is just to keep the automation chain moving
-        const parts = formula.match(/(\d+)d(\d+)/);
-        let sides = 20;
-        let count = 1;
-        if (parts) {
-            count = parseInt(parts[1]);
-            sides = parseInt(parts[2]);
-        }
+        // Parse all dice expressions with their tags
+        // Formula format: "1d12{Hope} # step_hope + 1d12{Fear} # step_fear + 1d6 # step_std"
+        const parts = formula.split('+').map(p => p.trim());
 
-        const results = [];
+        const results: { sides: number; result: number }[] = [];
+        const groups: any[] = [];
         let total = 0;
-        for (let i = 0; i < count; i++) {
-            const val = Math.ceil(Math.random() * sides);
-            results.push({ sides, result: val });
-            total += val;
+
+        for (const part of parts) {
+            // Split by # to get dice expression and tag
+            const [diceExpr, tag] = part.split('#').map(s => s.trim());
+
+            // Check if it's a modifier (just a number)
+            const modMatch = diceExpr.match(/^[+-]?\d+$/);
+            if (modMatch) {
+                total += parseInt(modMatch[0]);
+                continue;
+            }
+
+            // Parse dice expression like "1d12{Hope}" or "2d6"
+            const diceMatch = diceExpr.match(/(\d*)d(\d+)/);
+            if (diceMatch) {
+                const count = diceMatch[1] ? parseInt(diceMatch[1]) : 1;
+                const sides = parseInt(diceMatch[2]);
+
+                const groupDice: any[] = [];
+                for (let i = 0; i < count; i++) {
+                    const val = Math.ceil(Math.random() * sides);
+                    results.push({ sides, result: val });
+                    groupDice.push({ value: val, diceType: `d${sides}` });
+                    total += val;
+                }
+
+                // Add group with description (tag)
+                if (tag) {
+                    groups.push({
+                        description: tag,
+                        dice: groupDice,
+                        diceType: `d${sides}`
+                    });
+                }
+            }
         }
 
-        // Add modifier if present
-        const modMatch = formula.match(/[+-](\d+)/);
-        if (modMatch) {
-            total += parseInt(modMatch[0]);
-        }
-
-        console.log("[Dice+] Mock result:", { formula, results, total });
+        console.log("[Dice+] Mock result:", { formula, results, total, groups });
 
         return {
             formula,
             results,
             total,
-            groups: []
+            groups
         };
     }
 

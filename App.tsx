@@ -228,8 +228,16 @@ const App: React.FC = () => {
   }, [items, isLoaded, isOverlay, isPopover]);
 
   // Save stats when they change (only in main controller mode)
+  // Use ref to track if change came from storage event to avoid loop
+  const statsFromStorageRef = useRef(false);
+
   useEffect(() => {
     if (!isLoaded || isOverlay || isPopover) return;
+    if (statsFromStorageRef.current) {
+      // Skip save - this change came from storage event
+      statsFromStorageRef.current = false;
+      return;
+    }
     console.log("Saving stats...");
     OBRStorage.setStats(stats);
   }, [stats, isLoaded, isOverlay, isPopover]);
@@ -239,6 +247,7 @@ const App: React.FC = () => {
     const handleStorageChange = async () => {
       const newStats = await OBRStorage.getStats();
       if (newStats) {
+        statsFromStorageRef.current = true;
         setStats(newStats);
       }
     };

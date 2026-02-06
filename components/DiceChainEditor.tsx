@@ -195,29 +195,35 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                       value={step.statModifier || ''}
                       onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { statModifier: e.target.value || undefined })}
                       className={clsx(
-                        "w-full bg-zinc-900/50 border border-zinc-800 rounded px-2 py-1.5 text-sm focus:border-accent focus:outline-none",
+                        "w-full bg-black border border-zinc-800 rounded px-2 py-1.5 text-sm focus:border-accent focus:outline-none",
                         step.statModifier ? "text-accent" : "text-zinc-500"
                       )}
                     >
                       <option value="">(None)</option>
 
-                      <optgroup label="DnD Attributes (Modifier)">
-                        {dndAttrs.map(k => (
-                          <option key={`dnd_attr:${k}`} value={`dnd_attr:${k}`}>{k.toUpperCase()}</option>
-                        ))}
-                      </optgroup>
+                      {characterStats.activeSystem === 'dnd5e' && (
+                        <>
+                          <optgroup label="DnD Attributes (Modifier)">
+                            {dndAttrs.map(k => (
+                              <option key={`dnd_attr:${k}`} value={`dnd_attr:${k}`}>{k.toUpperCase()}</option>
+                            ))}
+                          </optgroup>
 
-                      <optgroup label="DnD Skills (Value)">
-                        {dndSkills.map(k => (
-                          <option key={`dnd_skill:${k}`} value={`dnd_skill:${k}`}>{k}</option>
-                        ))}
-                      </optgroup>
+                          <optgroup label="DnD Skills (Value)">
+                            {dndSkills.map(k => (
+                              <option key={`dnd_skill:${k}`} value={`dnd_skill:${k}`}>{k}</option>
+                            ))}
+                          </optgroup>
+                        </>
+                      )}
 
-                      <optgroup label="Daggerheart (Value)">
-                        {dhStats.map(k => (
-                          <option key={`dh:${k}`} value={`dh:${k}`}>{k.charAt(0).toUpperCase() + k.slice(1)}</option>
-                        ))}
-                      </optgroup>
+                      {characterStats.activeSystem === 'daggerheart' && (
+                        <optgroup label="Daggerheart (Value)">
+                          {dhStats.map(k => (
+                            <option key={`dh:${k}`} value={`dh:${k}`}>{k.charAt(0).toUpperCase() + k.slice(1)}</option>
+                          ))}
+                        </optgroup>
+                      )}
 
                       {customStats.length > 0 && (
                         <optgroup label="Custom">
@@ -255,7 +261,7 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                             else updateStep(idx, {
                               condition: {
                                 dependsOnStepId: e.target.value,
-                                operator: '>',
+                                operator: '>=',
                                 compareTarget: 'value',
                                 value: 10
                               }
@@ -277,8 +283,8 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { condition: { ...step.condition!, operator: e.target.value as ConditionOperator } })}
                               className="bg-zinc-800 text-xs text-zinc-400 rounded px-1 py-1 border-none w-20"
                             >
-                              <option value=">">&gt;</option>
-                              <option value="<">&lt;</option>
+                              <option value=">=">≥</option>
+                              <option value="<=">≤</option>
                               <option value="==">=</option>
                               <option value="is_hope">Is Hope</option>
                               <option value="is_fear">Is Fear</option>

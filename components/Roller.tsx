@@ -348,6 +348,9 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
     OBRBroadcast.send({
       type: 'ROLL_COMPLETE',
       playerId: playerId || 'unknown',
+      playerName: playerName || 'Unknown Player',
+      presetName: preset.name,
+      itemName: itemName,
       results: calculatedResults,
       grandTotal,
       breakdown,

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OBRStorage, OBRBroadcast, FearUpdateMessage } from '../obr';
+import OBR from "@owlbear-rodeo/sdk";
 import clsx from 'clsx';
 
 const MAX_FEAR = 12;
@@ -15,12 +16,33 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
     const [showSkullEffect, setShowSkullEffect] = useState(false);
     const fromBroadcastRef = useRef(false);
 
-    // Load fear from storage on mount
+    // Metadata key for shared Fear state
+    const METADATA_KEY = 'com.fateweaver.fear';
+
+    // Load initial fear from Room Metadata
     useEffect(() => {
         const load = async () => {
             try {
-                const saved = await OBRStorage.getFear();
-                if (saved !== null) setFear(saved);
+                // Check OBR metadata first
+                if (OBR.isAvailable) {
+                    const metadata = await OBR.room.getMetadata();
+                    const roomFear = metadata[METADATA_KEY] as number;
+                    if (typeof roomFear === 'number') {
+                        setFear(roomFear);
+                    } else {
+                        // Fallback to local storage if no room data (start of session)
+                        const saved = await OBRStorage.getFear();
+                        if (saved !== null) {
+                            setFear(saved);
+                            // Sync local -> room
+                            OBR.room.setMetadata({ [METADATA_KEY]: saved });
+                        }
+                    }
+                } else {
+                    // Fallback for standalone
+                    const saved = await OBRStorage.getFear();
+                    if (saved !== null) setFear(saved);
+                }
             } catch (e) {
                 console.error("Failed to load fear:", e);
             } finally {
@@ -30,15 +52,23 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
         load();
     }, []);
 
-    // Listen for fear updates from other players via broadcast
+    // Listen for room metadata changes (Sync source of truth)
+    useEffect(() => {
+        if (!OBR.isAvailable) return;
+        return OBR.room.onMetadataChange(metadata => {
+            const roomFear = metadata[METADATA_KEY] as number;
+            if (typeof roomFear === 'number') {
+                setFear(roomFear);
+            }
+        });
+    }, []);
+
+    // Also listen for effect broadcasts (Visuals only)
     useEffect(() => {
         const unsubscribe = OBRBroadcast.onMessage((message) => {
             if (message.type === 'FEAR_UPDATE') {
                 const fearMsg = message as FearUpdateMessage;
-                fromBroadcastRef.current = true;
-                setFear(fearMsg.fear);
-
-                // Show effect if this was a fear increase
+                // Note: We trust metadata for value, but broadcast triggers effect
                 if (fearMsg.showEffect) {
                     setShowSkullEffect(true);
                     setTimeout(() => setShowSkullEffect(false), 1500);
@@ -48,51 +78,40 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
         return () => unsubscribe();
     }, []);
 
-    // Save fear on change and broadcast to other players
-    useEffect(() => {
-        if (!isLoaded) return;
+    // Save changes to Room Metadata
+    const updateFear = useCallback(async (newFear: number, showEffect: boolean) => {
+        setFear(newFear);
 
-        // Save to storage
-        OBRStorage.setFear(fear);
-
-        // Don't broadcast if this came from a broadcast (prevent loops)
-        if (fromBroadcastRef.current) {
-            fromBroadcastRef.current = false;
-            return;
+        // 1. Save to OBR Room (Source of Truth)
+        if (OBR.isAvailable) {
+            OBR.room.setMetadata({ [METADATA_KEY]: newFear });
         }
-    }, [fear, isLoaded]);
 
-    const addFear = useCallback(() => {
-        if (fear < MAX_FEAR) {
-            const newFear = fear + 1;
-            setFear(newFear);
+        // 2. Save to local storage (Backup/Standalone)
+        OBRStorage.setFear(newFear);
 
-            // Trigger local fullscreen skull effect
+        // 3. Broadcast effect if needed
+        if (showEffect) {
+            // Local effect
             setShowSkullEffect(true);
             setTimeout(() => setShowSkullEffect(false), 1500);
 
-            // Broadcast to all players with effect flag
+            // Network effect
             OBRBroadcast.send({
                 type: 'FEAR_UPDATE',
                 fear: newFear,
                 showEffect: true,
             });
         }
-    }, [fear]);
+    }, []);
 
-    const removeFear = useCallback(() => {
-        if (fear > 0) {
-            const newFear = fear - 1;
-            setFear(newFear);
+    const addFear = () => {
+        if (fear < MAX_FEAR) updateFear(fear + 1, true);
+    };
 
-            // Broadcast to all players without effect
-            OBRBroadcast.send({
-                type: 'FEAR_UPDATE',
-                fear: newFear,
-                showEffect: false,
-            });
-        }
-    }, [fear]);
+    const removeFear = () => {
+        if (fear > 0) updateFear(fear - 1, false);
+    };
 
     return (
         <>
@@ -129,7 +148,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                             className="relative"
                         >
                             <img
-                                src="/skull.png"
+                                src="skull.png"
                                 alt="Fear"
                                 className={clsx(
                                     "w-8 h-8 object-contain transition-all",
@@ -186,7 +205,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                             className="relative"
                         >
                             <img
-                                src="/skull.png"
+                                src="skull.png"
                                 alt="FEAR!"
                                 className="w-80 h-80 object-contain drop-shadow-[0_0_60px_rgba(239,68,68,0.8)]"
                             />

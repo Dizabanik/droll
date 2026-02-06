@@ -140,14 +140,13 @@ export const HistoryControl: React.FC = () => {
                 const msg = message as RollCompleteMessage;
 
                 // 1. Update History
-                const resolvedName = (msg.playerId === playerId) ? (playerName || 'Me') : 'Player';
                 const newEntry: HistoryEntry = {
                     id: `${msg.playerId}-${Date.now()}`,
                     timestamp: Date.now(),
                     playerId: msg.playerId,
-                    playerName: resolvedName,
-                    presetName: 'Roll',
-                    itemName: '',
+                    playerName: msg.playerName,
+                    presetName: msg.presetName,
+                    itemName: msg.itemName,
                     results: msg.results,
                     grandTotal: msg.grandTotal,
                     breakdown: msg.breakdown

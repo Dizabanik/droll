@@ -42,6 +42,9 @@ export interface DiceValuesMessage {
 export interface RollCompleteMessage {
     type: 'ROLL_COMPLETE';
     playerId: string;
+    playerName: string;
+    presetName: string;
+    itemName: string;
     results: StepResult[];
     grandTotal: number;
     breakdown: string;

@@ -6,14 +6,15 @@ import { HistoryEntry } from './RollHistoryPanel';
 import { RollResults } from './ui/RollResults';
 import { DaggerheartStats } from './DaggerheartStats';
 import { CharacterPanel } from './CharacterPanel';
+import { FearTracker } from './FearTracker';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
 
 // Popover Dimensions
 const BTN_SIZE = 60;
-const POPUP_WIDTH = 420;
-const POPUP_HEIGHT = 380;
+const POPUP_WIDTH = 520;
+const POPUP_HEIGHT = 460;
 
 export const HistoryControl: React.FC = () => {
     const { playerId, playerName } = useOBR();
@@ -51,6 +52,26 @@ export const HistoryControl: React.FC = () => {
         } catch (e) {
             console.error("Failed to sync statuses to token:", e);
         }
+    }, []);
+
+    // Sync token attachments on mount (scene load) - ensures token shows correct stats immediately
+    useEffect(() => {
+        const syncTokenOnLoad = async () => {
+            try {
+                const tokenId = await OBRStorage.getSelectedTokenId();
+                if (tokenId) {
+                    const vitals = await OBRStorage.getDaggerheartVitals();
+                    const statuses = await OBRStorage.getDaggerheartStatuses();
+                    if (vitals) {
+                        await TokenAttachments.update(tokenId, vitals, statuses);
+                        console.log("Token stats synced on scene load");
+                    }
+                }
+            } catch (e) {
+                console.error("Failed to sync token on load:", e);
+            }
+        };
+        syncTokenOnLoad();
     }, []);
 
     // Handle stat roll from Character Panel - trigger roll via broadcast (cross-iframe)
@@ -171,7 +192,7 @@ export const HistoryControl: React.FC = () => {
             }
         } else if (hasPopup) {
             // Small popup mode
-            width = POPUP_WIDTH;
+            width = POPUP_WIDTH + 16;
             height = BTN_SIZE + 16 + POPUP_HEIGHT;
         }
 
@@ -214,6 +235,17 @@ export const HistoryControl: React.FC = () => {
                         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
                         onClick={closeHistory}
                     />
+
+                    {/* Fear Tracker - Top Center */}
+                    <motion.div
+                        initial={{ y: -50, opacity: 0 }}
+                        animate={{ y: 0, opacity: 1 }}
+                        exit={{ y: -50, opacity: 0 }}
+                        transition={{ delay: 0.1 }}
+                        className="absolute top-4 left-1/2 -translate-x-1/2 z-30"
+                    >
+                        <FearTracker />
+                    </motion.div>
 
                     {/* Left Panel - Daggerheart Stats */}
                     <motion.div

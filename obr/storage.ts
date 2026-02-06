@@ -83,6 +83,7 @@ interface FateWeaverData {
   daggerheartStatuses?: DaggerheartStatuses;
   daggerheartCharacter?: DaggerheartCharacter;
   selectedTokenId?: string;
+  fear?: number;
 }
 
 /**
@@ -227,5 +228,14 @@ export const OBRStorage = {
   },
   setDaggerheartCharacter: async (character: DaggerheartCharacter): Promise<void> => {
     setData({ daggerheartCharacter: character });
+  },
+
+  // Fear tracker (GM resource)
+  getFear: async (): Promise<number | null> => {
+    const data = getData();
+    return data.fear !== undefined ? data.fear : null;
+  },
+  setFear: async (fear: number): Promise<void> => {
+    setData({ fear });
   },
 };

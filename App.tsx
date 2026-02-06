@@ -150,7 +150,7 @@ const App: React.FC = () => {
           name: `${statLabel} Check`,
           variables: [],
           steps: [{
-            id: 'dh-stat-roll',
+            id: 'dh_stat_roll',
             label: `${statLabel} Check`,
             type: 'daggerheart',
             formula: `2d12+${statValue}`,

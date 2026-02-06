@@ -261,7 +261,7 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                                     condition: {
                                       checkSource: 'step_result',
                                       dependsOnStepId: preset.steps[0]?.id || '',
-                                      operator: '>',
+                                      operator: '>=',
                                       compareTarget: 'value',
                                       value: 10
                                     }
@@ -271,7 +271,7 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                                     condition: {
                                       checkSource: 'variable',
                                       checkVariableId: preset.variables?.[0]?.id || '',
-                                      operator: '>',
+                                      operator: '>=',
                                       compareTarget: 'value',
                                       value: 0
                                     }
@@ -325,8 +325,6 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { condition: { ...step.condition!, operator: e.target.value as ConditionOperator } })}
                               className="bg-zinc-800 text-xs text-zinc-400 rounded px-1 py-1 border-none w-20"
                             >
-                              <option value=">">&gt;</option>
-                              <option value="<">&lt;</option>
                               <option value=">=">≥</option>
                               <option value="<=">≤</option>
                               <option value="==">=</option>
@@ -394,6 +392,6 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
           <Icons.Add size={16} /> Add Step
         </button>
       </div>
-    </div>
+    </div >
   );
 };

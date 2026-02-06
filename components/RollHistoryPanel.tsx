@@ -89,6 +89,30 @@ export const RollHistoryPanel: React.FC<RollHistoryPanelProps> = ({ isOpen, onCl
                                             <div className="flex items-center gap-2">
                                                 <span>{res.total}</span>
                                                 <span className="text-zinc-500 text-[10px]">{res.damageType.slice(0, 3).toUpperCase()}</span>
+                                                {/* Hope/Fear display for Daggerheart rolls */}
+                                                {res.type === 'daggerheart' && res.dhHope !== undefined && res.dhFear !== undefined && (
+                                                    <div className="flex items-center gap-1 ml-1">
+                                                        <span className={clsx(
+                                                            "px-1 rounded text-[9px] font-bold",
+                                                            res.dhOutcome === 'hope' || res.dhOutcome === 'crit'
+                                                                ? "bg-blue-500/30 text-blue-300"
+                                                                : "bg-blue-500/10 text-blue-400/60"
+                                                        )}>
+                                                            H:{res.dhHope}
+                                                        </span>
+                                                        <span className={clsx(
+                                                            "px-1 rounded text-[9px] font-bold",
+                                                            res.dhOutcome === 'fear'
+                                                                ? "bg-purple-500/50 text-purple-300"
+                                                                : "bg-purple-500/10 text-purple-400/60"
+                                                        )}>
+                                                            F:{res.dhFear}
+                                                        </span>
+                                                        {res.dhOutcome === 'crit' && (
+                                                            <span className="px-1 rounded text-[9px] font-bold bg-yellow-500/30 text-yellow-300">CRIT</span>
+                                                        )}
+                                                    </div>
+                                                )}
                                             </div>
                                             <span className="text-zinc-600 text-[10px] font-mono">{res.formula}</span>
                                         </div>

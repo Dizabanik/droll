@@ -103,7 +103,7 @@ const StatPill: React.FC<StatPillProps> = ({
                     type="number"
                     value={max}
                     onChange={(e) => onMaxChange(Math.max(1, parseInt(e.target.value) || 1))}
-                    className="w-10 bg-zinc-800/50 border border-zinc-700 rounded px-1 py-0.5 text-center text-sm font-mono text-white focus:outline-none focus:border-zinc-500"
+                    className="w-14 bg-zinc-800/50 border border-zinc-700 rounded px-1 py-0.5 text-center text-sm font-mono text-white focus:outline-none focus:border-zinc-500"
                 />
             </div>
         </div>

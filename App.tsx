@@ -158,10 +158,7 @@ const App: React.FC = () => {
           }]
         };
 
-        // Trigger the roller
-        setActiveRollPreset(statRollPreset);
-        setActiveRollVars({});
-        setActiveRollItemName(`${statLabel} Check`);
+        initiateRoll(statRollPreset);
       }
     });
     return () => unsubscribe();

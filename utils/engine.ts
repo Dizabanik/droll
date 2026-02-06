@@ -23,6 +23,53 @@ export const parseFormula = (formula: string) => {
   };
 };
 
+// Advanced parser for complex formulas like "2d12+d6+d4+5"
+// Returns all dice groups and total flat modifier
+export interface DiceGroup {
+  count: number;
+  sides: number;
+}
+
+export const parseFormulaAdvanced = (formula: string): { diceGroups: DiceGroup[], modifier: number } => {
+  const diceGroups: DiceGroup[] = [];
+  let modifier = 0;
+
+  // Normalize: remove spaces, ensure starts with + for consistent splitting
+  let normalized = formula.replace(/\s/g, '').toLowerCase();
+  if (!normalized.startsWith('+') && !normalized.startsWith('-')) {
+    normalized = '+' + normalized;
+  }
+
+  // Match all parts: +2d6, -d4, +5, etc.
+  const parts = normalized.match(/[+\-](\d*d\d+|\d+)/g) || [];
+
+  for (const part of parts) {
+    const sign = part.startsWith('-') ? -1 : 1;
+    const expr = part.slice(1); // Remove the sign
+
+    if (expr.includes('d')) {
+      // Dice expression
+      const dMatch = expr.match(/^(\d*)d(\d+)$/);
+      if (dMatch) {
+        const count = dMatch[1] ? parseInt(dMatch[1]) : 1;
+        const sides = parseInt(dMatch[2]);
+        // For negative dice, we could skip or treat as 0 - for now just use absolute
+        for (let i = 0; i < count; i++) {
+          diceGroups.push({ count: 1, sides });
+        }
+      }
+    } else {
+      // Flat modifier
+      const num = parseInt(expr);
+      if (!isNaN(num)) {
+        modifier += sign * num;
+      }
+    }
+  }
+
+  return { diceGroups, modifier };
+};
+
 export const getStatModifierValue = (stats: CharacterStats, key: string | undefined): number => {
   if (!key) return 0;
 
@@ -69,17 +116,32 @@ export interface PendingDie {
 
 /**
  * Returns the configuration of dice that need to be rolled for a given step.
+ * For daggerheart: Always includes 2d12 (hope/fear), plus any extra dice from formula.
  */
 export const getStepDiceConfig = (step: RollStep): { dice: PendingDie[], baseModifier: number } => {
   if (step.type === 'daggerheart') {
-    const { modifier } = parseFormula(step.formula || "0d0+0");
-    return {
-      baseModifier: modifier,
-      dice: [
-        { id: generateId(), sides: 12, type: 'hope' },
-        { id: generateId(), sides: 12, type: 'fear' }
-      ]
-    };
+    // Parse complex formula to get all dice groups and modifier
+    const { diceGroups, modifier } = parseFormulaAdvanced(step.formula || "");
+
+    // Always start with Hope and Fear d12s
+    const dice: PendingDie[] = [
+      { id: generateId(), sides: 12, type: 'hope' },
+      { id: generateId(), sides: 12, type: 'fear' }
+    ];
+
+    // Add any extra dice from formula (skip the first 2d12 if present, as we already have hope/fear)
+    let d12Count = 0;
+    for (const group of diceGroups) {
+      if (group.sides === 12 && d12Count < 2) {
+        // Skip the first two d12s since we already have hope/fear
+        d12Count++;
+        continue;
+      }
+      // Add as standard dice
+      dice.push({ id: generateId(), sides: group.sides, type: 'standard' });
+    }
+
+    return { baseModifier: modifier, dice };
   } else {
     const { count, sides, modifier } = parseFormula(step.formula);
     const dice: PendingDie[] = [];

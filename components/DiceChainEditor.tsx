@@ -247,27 +247,75 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                         <Icons.ArrowRight size={10} /> Condition (Optional)
                       </label>
                       <div className="flex flex-col gap-2">
-                        {/* Dependency Select */}
-                        <select
-                          value={step.condition?.dependsOnStepId || ''}
-                          onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
-                            if (!e.target.value) updateStep(idx, { condition: undefined });
-                            else updateStep(idx, {
-                              condition: {
-                                dependsOnStepId: e.target.value,
-                                operator: '>',
-                                compareTarget: 'value',
-                                value: 10
+                        {/* Source Type Select */}
+                        <div className="flex gap-2">
+                          <select
+                            value={step.condition ? (step.condition.checkSource || 'step_result') : ''}
+                            onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
+                              if (!e.target.value) {
+                                updateStep(idx, { condition: undefined });
+                              } else {
+                                const source = e.target.value as 'step_result' | 'variable';
+                                if (source === 'step_result') {
+                                  updateStep(idx, {
+                                    condition: {
+                                      checkSource: 'step_result',
+                                      dependsOnStepId: preset.steps[0]?.id || '',
+                                      operator: '>',
+                                      compareTarget: 'value',
+                                      value: 10
+                                    }
+                                  });
+                                } else {
+                                  updateStep(idx, {
+                                    condition: {
+                                      checkSource: 'variable',
+                                      checkVariableId: preset.variables?.[0]?.id || '',
+                                      operator: '>',
+                                      compareTarget: 'value',
+                                      value: 0
+                                    }
+                                  });
+                                }
                               }
-                            });
-                          }}
-                          className="bg-zinc-800 text-xs text-zinc-400 rounded px-2 py-1 border-none w-full"
-                        >
-                          <option value="">Always Run</option>
-                          {preset.steps.slice(0, idx).map((s, sIdx) => (
-                            <option key={s.id} value={s.id}>Result of Step {sIdx + 1}: {s.label}</option>
-                          ))}
-                        </select>
+                            }}
+                            className="bg-zinc-800 text-xs text-zinc-400 rounded px-2 py-1 border-none"
+                          >
+                            <option value="">Always Run</option>
+                            <option value="step_result">If Step Result...</option>
+                            <option value="variable">If Variable...</option>
+                          </select>
+
+                          {/* Source Selection (Step or Variable) */}
+                          {step.condition && step.condition.checkSource === 'step_result' && (
+                            <select
+                              value={step.condition.dependsOnStepId || ''}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { condition: { ...step.condition!, dependsOnStepId: e.target.value } })}
+                              className="bg-zinc-800 text-xs text-zinc-400 rounded px-2 py-1 border-none flex-1"
+                            >
+                              {preset.steps.slice(0, idx).map((s, sIdx) => (
+                                <option key={s.id} value={s.id}>Step {sIdx + 1}: {s.label}</option>
+                              ))}
+                            </select>
+                          )}
+
+                          {step.condition && step.condition.checkSource === 'variable' && (
+                            <select
+                              value={step.condition.checkVariableId || ''}
+                              onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { condition: { ...step.condition!, checkVariableId: e.target.value } })}
+                              className={clsx(
+                                "bg-zinc-800 text-xs rounded px-2 py-1 border-none flex-1",
+                                !step.condition.checkVariableId && "text-red-400",
+                                step.condition.checkVariableId && "text-zinc-400"
+                              )}
+                            >
+                              <option value="">Select Var...</option>
+                              {(preset.variables || []).map(v => (
+                                <option key={v.id} value={v.id}>{v.name}</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
 
                         {/* Operator and Value */}
                         {step.condition && (
@@ -279,10 +327,16 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                             >
                               <option value=">">&gt;</option>
                               <option value="<">&lt;</option>
+                              <option value=">=">≥</option>
+                              <option value="<=">≤</option>
                               <option value="==">=</option>
-                              <option value="is_hope">Is Hope</option>
-                              <option value="is_fear">Is Fear</option>
-                              <option value="is_crit">Is Crit</option>
+                              {step.condition.checkSource !== 'variable' && (
+                                <>
+                                  <option value="is_hope">Is Hope</option>
+                                  <option value="is_fear">Is Fear</option>
+                                  <option value="is_crit">Is Crit</option>
+                                </>
+                              )}
                             </select>
 
                             {!['is_hope', 'is_fear', 'is_crit'].includes(step.condition.operator) && (

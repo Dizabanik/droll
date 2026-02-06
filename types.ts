@@ -29,7 +29,9 @@ export interface RollVariable {
 }
 
 export interface RollCondition {
-  dependsOnStepId: string; // The step we are checking the result of
+  checkSource?: 'step_result' | 'variable'; // What to check: step result or a variable's value. Defaults to 'step_result'
+  dependsOnStepId?: string; // The step we are checking the result of (when checkSource is 'step_result')
+  checkVariableId?: string; // The variable to check (when checkSource is 'variable')
   operator: ConditionOperator;
   compareTarget: 'value' | 'variable';
   value?: number;

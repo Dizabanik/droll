@@ -91,7 +91,7 @@ export const getStepDiceConfig = (step: RollStep): { dice: PendingDie[], baseMod
 };
 
 /**
- * Checks if a step should run based on previous results.
+ * Checks if a step should run based on condition (step result or variable value).
  */
 export const checkCondition = (
   step: RollStep,
@@ -100,13 +100,27 @@ export const checkCondition = (
 ): boolean => {
   if (!step.condition) return true;
 
-  const prev = previousResults.find(r => r.stepId === step.condition!.dependsOnStepId);
+  const { checkSource = 'step_result', dependsOnStepId, checkVariableId, operator, compareTarget, value = 0, variableId } = step.condition;
 
-  if (!prev || prev.skipped) return false;
+  // Determine what value we're checking
+  let sourceValue: number;
+  let dhOutcome: 'hope' | 'fear' | 'crit' | undefined;
 
-  const { operator, compareTarget, value = 0, variableId } = step.condition;
-  const prevVal = prev.total;
+  if (checkSource === 'variable') {
+    // Check a variable's value directly
+    if (!checkVariableId) return false;
+    sourceValue = variableValues[checkVariableId] ?? 0;
+    // DH outcomes don't apply to variable checks
+    dhOutcome = undefined;
+  } else {
+    // Check a previous step's result (original behavior)
+    const prev = previousResults.find(r => r.stepId === dependsOnStepId);
+    if (!prev || prev.skipped) return false;
+    sourceValue = prev.total;
+    dhOutcome = prev.dhOutcome;
+  }
 
+  // Determine threshold
   let threshold = 0;
   if (!['is_hope', 'is_fear', 'is_crit'].includes(operator)) {
     if (compareTarget === 'variable' && variableId) {
@@ -117,14 +131,14 @@ export const checkCondition = (
   }
 
   switch (operator) {
-    case '>': return prevVal > threshold;
-    case '<': return prevVal < threshold;
-    case '>=': return prevVal >= threshold;
-    case '<=': return prevVal <= threshold;
-    case '==': return prevVal === threshold;
-    case 'is_hope': return prev.dhOutcome === 'hope' || prev.dhOutcome === 'crit';
-    case 'is_fear': return prev.dhOutcome === 'fear';
-    case 'is_crit': return prev.dhOutcome === 'crit';
+    case '>': return sourceValue > threshold;
+    case '<': return sourceValue < threshold;
+    case '>=': return sourceValue >= threshold;
+    case '<=': return sourceValue <= threshold;
+    case '==': return sourceValue === threshold;
+    case 'is_hope': return dhOutcome === 'hope' || dhOutcome === 'crit';
+    case 'is_fear': return dhOutcome === 'fear';
+    case 'is_crit': return dhOutcome === 'crit';
     default: return false;
   }
 };

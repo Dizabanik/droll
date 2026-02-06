@@ -129,7 +129,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                             className="relative"
                         >
                             <img
-                                src="../public/skull.png"
+                                src="/skull.png"
                                 alt="Fear"
                                 className={clsx(
                                     "w-8 h-8 object-contain transition-all",
@@ -186,7 +186,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                             className="relative"
                         >
                             <img
-                                src="../public/skull.png"
+                                src="/skull.png"
                                 alt="FEAR!"
                                 className="w-80 h-80 object-contain drop-shadow-[0_0_60px_rgba(239,68,68,0.8)]"
                             />

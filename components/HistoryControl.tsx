@@ -13,7 +13,7 @@ import { useOBR } from '../obr';
 
 // Popover Dimensions
 const BTN_SIZE = 60;
-const POPUP_WIDTH = 520;
+const POPUP_WIDTH = 560;  // Increased to prevent right-side cutoff
 const POPUP_HEIGHT = 460;
 
 export const HistoryControl: React.FC = () => {

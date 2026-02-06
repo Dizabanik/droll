@@ -143,7 +143,9 @@ const App: React.FC = () => {
       } else if (message.type === 'STAT_ROLL_REQUEST') {
         // Handle stat roll from fullscreen CharacterPanel
         // Only the main controller (not popover/overlay) should initiate rolls
-        if (isOverlay || isPopover) return;
+        // Check URL directly to avoid timing issues with state
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('overlay') === 'true' || params.get('popover') === 'true') return;
 
         const { statKey, statValue, statLabel } = message;
 
@@ -166,7 +168,7 @@ const App: React.FC = () => {
       }
     });
     return () => unsubscribe();
-  }, [playerId, playerName, playerMetaCache, isOverlay, isPopover]);
+  }, [playerId, playerName, playerMetaCache]);
   // dependency on playerMetaCache might cause excessive re-binds but onMessage returns unsubscribe so it's fine. 
   // actually, using functional state updates inside callback is safer to avoid dep loops.
   // usage of playerMetaCache inside callback checks the CURRENT closure value. 

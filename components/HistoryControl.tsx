@@ -153,21 +153,15 @@ export const HistoryControl: React.FC = () => {
                 };
                 setRollHistory(prev => [newEntry, ...prev].slice(0, 20));
 
-                // 2. Show Popup Logic (only if history panel is closed)
+                // 2. Show Popup Logic (persistently)
                 if (!isHistoryOpen) {
                     setActiveResult(msg);
-
-                    // Auto-hide popup after 4s
-                    if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
-                    resultTimerRef.current = window.setTimeout(() => {
-                        setActiveResult(null);
-                    }, 4000);
+                    // Removed auto-close timeout
                 }
             }
         });
         return () => {
             unsubscribe();
-            if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
         };
     }, [playerId, playerName, isHistoryOpen]);
 

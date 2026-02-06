@@ -161,71 +161,24 @@ export const createTokenAttachments = async (
 
     items.push(hpBg, hpFill, hpText);
 
+    // === COMMON SIZING ===
+    // Use same value for width/height to ensure true circles
+    const iconSize = shapeWidth * 0.65;  // Size for circles and hexagon
+    const smallGap = iconSize * 0.1;     // Small margin between Hope and Stress
 
-    // === HOPE (top-left, diamond-like shape via circle) ===
-    const hopeCircle = buildShape()
-        .shapeType("CIRCLE")
-        .width(shapeWidth * 0.7)
-        .height(shapeHeight * 0.7)
-        .fillColor("black")
-        .fillOpacity(0.5)
-        .strokeWidth(shapeWidth / 25)
-        .strokeColor(STAT_COLORS.hope.stroke)
-        .position({
-            x: barPosition.x,
-            y: bounds.position.y + absHeight - shapeHeight / 0.75 - height - absHeight / 10,
-        })
-        .attachedTo(tokenId)
-        .layer(token.layer)
-        .locked(true)
-        .disableHit(true)
-        .disableAttachmentBehavior(["ROTATION"])
-        .visible(token.visible)
-        .zIndex(token.zIndex + 2)
-        .name(`${ATTACHMENT_PREFIX}.hope.bg`)
-        .build();
+    // === STRESS HEXAGON (above HP bar, left side) ===
+    const stressX = barPosition.x;
+    const stressY = barPosition.y - iconSize - smallGap;  // Just above HP bar
 
-    const hopeText = buildText()
-        .textType("PLAIN")
-        .width(shapeWidth / 1.5)
-        .height(height)
-        .position({
-            x: barPosition.x,
-            y: bounds.position.y + absHeight - shapeHeight * 1.25 - height - absHeight / 10,
-        })
-        .attachedTo(tokenId)
-        .layer(token.layer)
-        .plainText(`${vitals.hope}`)
-        .locked(true)
-        .textAlign("CENTER")
-        .textAlignVertical("BOTTOM")
-        .fontWeight(600)
-        .fillColor("#ffffff")
-        .strokeColor("black")
-        .strokeWidth(2)
-        .fontSize(height - 3)
-        .lineHeight(1)
-        .disableHit(true)
-        .disableAttachmentBehavior(["ROTATION"])
-        .visible(token.visible)
-        .zIndex(token.zIndex + 4)
-        .name(`${ATTACHMENT_PREFIX}.hope.text`)
-        .build();
-
-
-    // === STRESS (left side, below hope, hexagon) ===
     const stressShape = buildShape()
         .shapeType("HEXAGON")
-        .width(shapeWidth * 0.7)
-        .height(shapeHeight * 0.7)
+        .width(iconSize)
+        .height(iconSize)
         .fillColor("black")
         .fillOpacity(0.5)
         .strokeWidth(shapeWidth / 25)
         .strokeColor(STAT_COLORS.stress.stroke)
-        .position({
-            x: barPosition.x + shapeWidth * 0.34,
-            y: bounds.position.y + absHeight - shapeHeight * 0.77 - absHeight / 10,
-        })
+        .position({ x: stressX, y: stressY })
         .attachedTo(tokenId)
         .layer(token.layer)
         .locked(true)
@@ -238,23 +191,20 @@ export const createTokenAttachments = async (
 
     const stressText = buildText()
         .textType("PLAIN")
-        .width(shapeWidth * 0.7)
-        .height(height)
-        .position({
-            x: barPosition.x,
-            y: bounds.position.y + absHeight - shapeHeight - absHeight / 10,
-        })
+        .width(iconSize)
+        .height(iconSize)
+        .position({ x: stressX, y: stressY })
         .attachedTo(tokenId)
         .layer(token.layer)
         .plainText(`${vitals.stress}`)
         .locked(true)
         .textAlign("CENTER")
-        .textAlignVertical("BOTTOM")
+        .textAlignVertical("MIDDLE")
         .fontWeight(600)
         .fillColor("#ffffff")
         .strokeColor("black")
         .strokeWidth(2)
-        .fontSize(height - 3)
+        .fontSize(iconSize * 0.55)
         .lineHeight(1)
         .disableHit(true)
         .disableAttachmentBehavior(["ROTATION"])
@@ -263,20 +213,66 @@ export const createTokenAttachments = async (
         .name(`${ATTACHMENT_PREFIX}.stress.text`)
         .build();
 
+    // === HOPE CIRCLE (directly above Stress, small margin) ===
+    const hopeX = stressX;
+    const hopeY = stressY - iconSize - smallGap;  // Above Stress with small gap
 
-    // === ARMOR (right side, circle) ===
+    const hopeCircle = buildShape()
+        .shapeType("CIRCLE")
+        .width(iconSize)
+        .height(iconSize)
+        .fillColor("black")
+        .fillOpacity(0.5)
+        .strokeWidth(shapeWidth / 25)
+        .strokeColor(STAT_COLORS.hope.stroke)
+        .position({ x: hopeX, y: hopeY })
+        .attachedTo(tokenId)
+        .layer(token.layer)
+        .locked(true)
+        .disableHit(true)
+        .disableAttachmentBehavior(["ROTATION"])
+        .visible(token.visible)
+        .zIndex(token.zIndex + 2)
+        .name(`${ATTACHMENT_PREFIX}.hope.bg`)
+        .build();
+
+    const hopeText = buildText()
+        .textType("PLAIN")
+        .width(iconSize)
+        .height(iconSize)
+        .position({ x: hopeX, y: hopeY })
+        .attachedTo(tokenId)
+        .layer(token.layer)
+        .plainText(`${vitals.hope}`)
+        .locked(true)
+        .textAlign("CENTER")
+        .textAlignVertical("MIDDLE")
+        .fontWeight(600)
+        .fillColor("#ffffff")
+        .strokeColor("black")
+        .strokeWidth(2)
+        .fontSize(iconSize * 0.55)
+        .lineHeight(1)
+        .disableHit(true)
+        .disableAttachmentBehavior(["ROTATION"])
+        .visible(token.visible)
+        .zIndex(token.zIndex + 4)
+        .name(`${ATTACHMENT_PREFIX}.hope.text`)
+        .build();
+
+    // === ARMOR CIRCLE (same Y level as Stress, right side) ===
+    const armorX = bounds.position.x + (bounds.width < 0 ? 0 : absWidth) - iconSize;
+    const armorY = stressY;  // Same level as Stress
+
     const armorCircle = buildShape()
         .shapeType("CIRCLE")
-        .width(shapeWidth * 0.7)
-        .height(shapeHeight * 0.7)
+        .width(iconSize)
+        .height(iconSize)
         .fillColor("black")
         .fillOpacity(0.5)
         .strokeWidth(shapeWidth / 25)
         .strokeColor(STAT_COLORS.armor.stroke)
-        .position({
-            x: bounds.position.x + (bounds.width < 0 ? 0 : absWidth) - shapeWidth / 1.5,
-            y: bounds.position.y + absHeight - shapeHeight / 0.75 - height - absHeight / 10,
-        })
+        .position({ x: armorX, y: armorY })
         .attachedTo(tokenId)
         .layer(token.layer)
         .locked(true)
@@ -289,23 +285,20 @@ export const createTokenAttachments = async (
 
     const armorText = buildText()
         .textType("PLAIN")
-        .width(shapeWidth / 1.5)
-        .height(height)
-        .position({
-            x: bounds.position.x + (bounds.width < 0 ? 0 : absWidth) - shapeWidth / 1.5,
-            y: bounds.position.y + absHeight - shapeHeight * 1.2 - height - absHeight / 10,
-        })
+        .width(iconSize)
+        .height(iconSize)
+        .position({ x: armorX, y: armorY })
         .attachedTo(tokenId)
         .layer(token.layer)
         .plainText(`${vitals.armor}`)
         .locked(true)
         .textAlign("CENTER")
-        .textAlignVertical("BOTTOM")
+        .textAlignVertical("MIDDLE")
         .fontWeight(600)
         .fillColor("#ffffff")
         .strokeColor("black")
         .strokeWidth(2)
-        .fontSize(height - 3)
+        .fontSize(iconSize * 0.55)
         .lineHeight(1)
         .disableHit(true)
         .disableAttachmentBehavior(["ROTATION"])

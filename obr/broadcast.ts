@@ -47,7 +47,14 @@ export interface RollCompleteMessage {
     breakdown: string;
 }
 
-export type DiceRollMessage = DiceRollStartMessage | DiceValuesMessage | RollCompleteMessage;
+export interface StatRollRequestMessage {
+    type: 'STAT_ROLL_REQUEST';
+    statKey: string;
+    statValue: number;
+    statLabel: string;
+}
+
+export type DiceRollMessage = DiceRollStartMessage | DiceValuesMessage | RollCompleteMessage | StatRollRequestMessage;
 
 type MessageCallback = (message: DiceRollMessage, senderId: string) => void;
 

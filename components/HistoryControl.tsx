@@ -53,19 +53,17 @@ export const HistoryControl: React.FC = () => {
         }
     }, []);
 
-    // Handle stat roll from Character Panel - trigger roll via custom event (same as dice chains)
+    // Handle stat roll from Character Panel - trigger roll via broadcast (cross-iframe)
     const handleStatRoll = useCallback((statKey: string, statValue: number) => {
         const statLabel = statKey.charAt(0).toUpperCase() + statKey.slice(1);
 
-        // Dispatch custom event that App.tsx will listen to
-        const event = new CustomEvent('fateweaver:statroll', {
-            detail: {
-                statKey,
-                statValue,
-                statLabel,
-            }
+        // Send via OBR broadcast so it reaches App.tsx in the main window
+        OBRBroadcast.send({
+            type: 'STAT_ROLL_REQUEST',
+            statKey,
+            statValue,
+            statLabel,
         });
-        window.dispatchEvent(event);
     }, []);
 
     // Load history on mount

@@ -140,6 +140,28 @@ const App: React.FC = () => {
           };
           return [newEntry, ...prev].slice(0, 20);
         });
+      } else if (message.type === 'STAT_ROLL_REQUEST') {
+        // Handle stat roll from fullscreen CharacterPanel
+        const { statKey, statValue, statLabel } = message;
+
+        // Create a temporary preset for this roll
+        const statRollPreset: DicePreset = {
+          id: `stat-roll-${statKey}`,
+          name: `${statLabel} Check`,
+          variables: [],
+          steps: [{
+            id: 'dh-stat-roll',
+            label: `${statLabel} Check`,
+            type: 'daggerheart',
+            formula: `2d12+${statValue}`,
+            damageType: 'none',
+          }]
+        };
+
+        // Trigger the roller
+        setActiveRollPreset(statRollPreset);
+        setActiveRollVars({});
+        setActiveRollItemName(`${statLabel} Check`);
       }
     });
     return () => unsubscribe();

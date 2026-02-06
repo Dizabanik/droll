@@ -81,7 +81,6 @@ export const HistoryControl: React.FC = () => {
         // Send via OBR broadcast so it reaches App.tsx in the main window
         OBRBroadcast.send({
             type: 'STAT_ROLL_REQUEST',
-            requestId: `${Date.now()}-${Math.random().toString(36).slice(2)}`,
             statKey,
             statValue,
             statLabel,

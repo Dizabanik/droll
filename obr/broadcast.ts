@@ -49,7 +49,6 @@ export interface RollCompleteMessage {
 
 export interface StatRollRequestMessage {
     type: 'STAT_ROLL_REQUEST';
-    requestId: string; // Unique ID to prevent duplicate processing
     statKey: string;
     statValue: number;
     statLabel: string;

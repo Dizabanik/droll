@@ -103,9 +103,6 @@ const App: React.FC = () => {
   // Cache for mapping results back to names
   const [playerMetaCache, setPlayerMetaCache] = useState<Record<string, { name: string, preset: string, item: string }>>({});
 
-  // Track processed request IDs to prevent duplicate roll processing
-  const processedRequestIds = useRef<Set<string>>(new Set());
-
   // Listen for Rolls for History
   useEffect(() => {
     const unsubscribe = OBRBroadcast.onMessage((message: DiceRollMessage, senderId: string) => {
@@ -146,16 +143,9 @@ const App: React.FC = () => {
       } else if (message.type === 'STAT_ROLL_REQUEST') {
         // Handle stat roll from fullscreen CharacterPanel
         // Only the main controller (not popover/overlay) should initiate rolls
-        // Check URL directly to avoid timing issues with state
-        const params = new URLSearchParams(window.location.search);
-        if (params.get('overlay') === 'true' || params.get('popover') === 'true') return;
+        if (isOverlay || isPopover) return;
 
-        // Deduplicate - prevent processing same request multiple times
-        const { requestId, statKey, statValue, statLabel } = message;
-        if (processedRequestIds.current.has(requestId)) return;
-        processedRequestIds.current.add(requestId);
-        // Clean up old IDs after 5 seconds to prevent memory leak
-        setTimeout(() => processedRequestIds.current.delete(requestId), 5000);
+        const { statKey, statValue, statLabel } = message;
 
         // Create a temporary preset for this roll
         const statRollPreset: DicePreset = {
@@ -166,7 +156,7 @@ const App: React.FC = () => {
             id: 'dh_stat_roll',
             label: `${statLabel} Check`,
             type: 'daggerheart',
-            formula: `+${statValue}`, // Just the modifier, engine adds 2d12 automatically
+            formula: `2d12+${statValue}`,
             damageType: 'none',
             addToSum: true
           }]
@@ -176,7 +166,7 @@ const App: React.FC = () => {
       }
     });
     return () => unsubscribe();
-  }, [playerId, playerName, playerMetaCache]);
+  }, [playerId, playerName, playerMetaCache, isOverlay, isPopover]);
   // dependency on playerMetaCache might cause excessive re-binds but onMessage returns unsubscribe so it's fine. 
   // actually, using functional state updates inside callback is safer to avoid dep loops.
   // usage of playerMetaCache inside callback checks the CURRENT closure value. 

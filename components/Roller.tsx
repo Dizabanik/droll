@@ -3,7 +3,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { StepResult, DicePreset, CharacterStats } from '../types';
 import { PendingDie, getStepDiceConfig, checkCondition, resolveStepResult, createSkippedResult, getStatModifierValue, getStatLabel, parseFormula, generateId } from '../utils/engine';
 import { RollResults } from './ui/RollResults';
-import { OBRBroadcast, useOBR } from '../obr';
+import { OBRBroadcast, useOBR, OBRStorage } from '../obr';
+import OBR from "@owlbear-rodeo/sdk";
 import { DicePlus, DicePlusResult } from '../utils/DicePlus';
 
 interface RollerProps {
@@ -190,55 +191,50 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
       const config = stepConfigsRef.current[step.id];
       const stepDiceValues: Record<string, number> = {};
 
+      // Daggerheart Logic
       if (step.type === 'daggerheart') {
         const hopeVals = [...(tagMap[`${step.id}_hope`] || [])];
         const fearVals = [...(tagMap[`${step.id}_fear`] || [])];
         const stdVals = [...(tagMap[`${step.id}_std`] || [])];
 
+        // Store values
         config.dice.forEach(d => {
           let val;
           if (d.type === 'hope') val = hopeVals.shift();
           else if (d.type === 'fear') val = fearVals.shift();
           else val = stdVals.shift();
-
           if (val !== undefined) stepDiceValues[d.id] = val;
         });
 
-        // DH Crit Logic: Check doubles specifically on Hope/Fear pairs?
-        // User: "for 2d12 it rolls same value on both".
-        // With >2 dice, we likely check if ANY hope matches ANY fear? Or specific pairs?
-        // Or maybe just the HIGHEST hope vs HIGHEST fear?
-        // Let's iterate all mapped hope/fear values.
+        // Crit Logic: Only if enabled for this step
+        if (step.isCrit) {
+          // Find the specific Hope and Fear dice for this step
+          const hopeDie = config.dice.find(d => d.type === 'hope');
+          const fearDie = config.dice.find(d => d.type === 'fear');
 
-        // ACTUALLY, strict Daggerheart is just 2 dice.
-        // For "3d12", if the "normal" matches, does it count?
-        // Let's stick to: if we find *any* pair of equal values on d12s in this step, it's a crit?
-        // Or strictly Hope == Fear?
-        // User said: "if roll on which crit is turned on IS CRIT ... for 2d12 it rolls same value on both".
-        // Implicitly, check values.
-        const values = Object.values(stepDiceValues);
-        // Check for duplicates
-        if (step.isCrit !== false && values.length >= 2) {
-          const unique = new Set(values);
-          if (unique.size < values.length) {
-            // Found duplicates!
-            chainHasCrit = true;
+          if (hopeDie && fearDie) {
+            const hVal = stepDiceValues[hopeDie.id];
+            const fVal = stepDiceValues[fearDie.id];
+            // DH Rule: Crit if Hope == Fear (duality dice match)
+            if (hVal !== undefined && fVal !== undefined && hVal === fVal) {
+              chainHasCrit = true;
+            }
           }
         }
 
       } else {
-        // Standard
+        // Standard Logic
         const vals = [...(tagMap[`${step.id}_std`] || [])];
         config.dice.forEach(d => {
           const val = vals.shift();
           if (val !== undefined) stepDiceValues[d.id] = val;
 
-          // Crit Check
-          // Only if step.isCrit is NOT explicitly off (undefined usually means "check natural")
-          // Actually `step.isCrit` usually tracks "forced crit".
-          // We need to check natural 20s (or max side).
-          if (val === d.sides && val === 20) { // Natural 20 is always crit trigger if d20
-            chainHasCrit = true;
+          // Crit Logic: Only if enabled for this step
+          if (step.isCrit) {
+            // Standard Rule: Crit if rolled max value (e.g. 20 on d20)
+            if (val === d.sides) {
+              chainHasCrit = true;
+            }
           }
         });
       }
@@ -319,7 +315,7 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
         result.dhHope = hopeSum;
         result.dhFear = fearSum;
-        if (hopeSum === fearSum && hopeSum > 0) result.dhOutcome = 'crit';
+        if (hopeSum === fearSum && hopeSum > 0 && step.isCrit) result.dhOutcome = 'crit';
         else if (hopeSum >= fearSum) result.dhOutcome = 'hope';
         else result.dhOutcome = 'fear';
       }
@@ -343,7 +339,71 @@ export const Roller: React.FC<RollerProps> = ({ preset, variables, characterStat
 
     // 6. Broadcast VALUES and COMPLETE
     // We can send D_VALUES first if listeners expect it, but ROLL_COMPLETE has results too.
-    // OBRBroadcast.send({ ...DICE_VALUES... }) // Optional, visualizers might need it.
+
+    // --- AUTO-UPDATE LOGIC START ---
+    calculatedResults.forEach(async res => {
+      if (res.type === 'daggerheart' && res.dhOutcome) {
+        // Handle Global Fear
+        if (res.dhOutcome === 'fear' && OBR.isAvailable) {
+          try {
+            const METADATA_KEY = 'com.fateweaver.fear';
+            const metadata = await OBR.room.getMetadata();
+            const currentFear = (metadata[METADATA_KEY] as number) || 0;
+
+            if (currentFear < 12) { // Max fear
+              const newFear = currentFear + 1;
+              OBR.room.setMetadata({ [METADATA_KEY]: newFear });
+
+              // Broadcast effect
+              OBRBroadcast.send({
+                type: 'FEAR_UPDATE',
+                fear: newFear,
+                showEffect: true,
+              });
+            }
+          } catch (e) {
+            console.error("Auto-Fear update failed:", e);
+          }
+        }
+
+        // Handle Local Stats (Hope/Stress)
+        try {
+          const currentVitals = await OBRStorage.getDaggerheartVitals();
+          if (currentVitals) {
+            let newVitals = { ...currentVitals };
+            let changed = false;
+
+            // Hope roll -> +1 Hope
+            if (res.dhOutcome === 'hope') {
+              if (newVitals.hope < newVitals.hopeMax) {
+                newVitals.hope += 1;
+                changed = true;
+              }
+            }
+
+            // Critical -> +1 Hope, -1 Stress
+            if (res.dhOutcome === 'crit') {
+              if (newVitals.hope < newVitals.hopeMax) {
+                newVitals.hope += 1;
+                changed = true;
+              }
+              if (newVitals.stress > 0) {
+                newVitals.stress -= 1;
+                changed = true;
+              }
+            }
+
+            if (changed) {
+              await OBRStorage.setDaggerheartVitals(newVitals);
+              // Trigger a specialized broadcast if needed, or rely on existing sync
+            }
+          }
+        } catch (e) {
+          console.error("Auto-Vitals update failed:", e);
+        }
+      }
+    });
+    // --- AUTO-UPDATE LOGIC END ---
 
     OBRBroadcast.send({
       type: 'ROLL_COMPLETE',

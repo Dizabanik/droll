@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { OBRStorage } from '../obr';
+import { OBRStorage, OBRBroadcast, FearUpdateMessage } from '../obr';
 import clsx from 'clsx';
 
 const MAX_FEAR = 12;
@@ -13,8 +13,9 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
     const [fear, setFear] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
     const [showSkullEffect, setShowSkullEffect] = useState(false);
+    const fromBroadcastRef = useRef(false);
 
-    // Load fear from storage
+    // Load fear from storage on mount
     useEffect(() => {
         const load = async () => {
             try {
@@ -29,24 +30,67 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
         load();
     }, []);
 
-    // Save fear on change
+    // Listen for fear updates from other players via broadcast
+    useEffect(() => {
+        const unsubscribe = OBRBroadcast.onMessage((message) => {
+            if (message.type === 'FEAR_UPDATE') {
+                const fearMsg = message as FearUpdateMessage;
+                fromBroadcastRef.current = true;
+                setFear(fearMsg.fear);
+
+                // Show effect if this was a fear increase
+                if (fearMsg.showEffect) {
+                    setShowSkullEffect(true);
+                    setTimeout(() => setShowSkullEffect(false), 1500);
+                }
+            }
+        });
+        return () => unsubscribe();
+    }, []);
+
+    // Save fear on change and broadcast to other players
     useEffect(() => {
         if (!isLoaded) return;
+
+        // Save to storage
         OBRStorage.setFear(fear);
+
+        // Don't broadcast if this came from a broadcast (prevent loops)
+        if (fromBroadcastRef.current) {
+            fromBroadcastRef.current = false;
+            return;
+        }
     }, [fear, isLoaded]);
 
     const addFear = useCallback(() => {
         if (fear < MAX_FEAR) {
-            setFear(prev => prev + 1);
-            // Trigger fullscreen skull effect
+            const newFear = fear + 1;
+            setFear(newFear);
+
+            // Trigger local fullscreen skull effect
             setShowSkullEffect(true);
             setTimeout(() => setShowSkullEffect(false), 1500);
+
+            // Broadcast to all players with effect flag
+            OBRBroadcast.send({
+                type: 'FEAR_UPDATE',
+                fear: newFear,
+                showEffect: true,
+            });
         }
     }, [fear]);
 
     const removeFear = useCallback(() => {
         if (fear > 0) {
-            setFear(prev => prev - 1);
+            const newFear = fear - 1;
+            setFear(newFear);
+
+            // Broadcast to all players without effect
+            OBRBroadcast.send({
+                type: 'FEAR_UPDATE',
+                fear: newFear,
+                showEffect: false,
+            });
         }
     }, [fear]);
 
@@ -117,7 +161,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                 </div>
             </div>
 
-            {/* Fullscreen Skull Effect */}
+            {/* Fullscreen Skull Effect - Shows for ALL players when fear is added */}
             <AnimatePresence>
                 {showSkullEffect && (
                     <motion.div

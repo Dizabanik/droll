@@ -54,7 +54,13 @@ export interface StatRollRequestMessage {
     statLabel: string;
 }
 
-export type DiceRollMessage = DiceRollStartMessage | DiceValuesMessage | RollCompleteMessage | StatRollRequestMessage;
+export interface FearUpdateMessage {
+    type: 'FEAR_UPDATE';
+    fear: number;
+    showEffect: boolean;  // Whether to show the fullscreen skull effect
+}
+
+export type DiceRollMessage = DiceRollStartMessage | DiceValuesMessage | RollCompleteMessage | StatRollRequestMessage | FearUpdateMessage;
 
 type MessageCallback = (message: DiceRollMessage, senderId: string) => void;
 

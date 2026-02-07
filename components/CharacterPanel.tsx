@@ -195,9 +195,9 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
     useEffect(() => {
         const load = async () => {
             try {
-                // Load DaggerheartCharacter (evasion, level, thresholds, skulls)
+                // Load DaggerheartCharacter (evasion, level, thresholds, skulls, essence)
                 const saved = await OBRStorage.getDaggerheartCharacter();
-                if (saved) setCharacter(saved);
+                if (saved) setCharacter({ ...DEFAULT_CHARACTER, ...saved });
 
                 // Load CharacterStats (daggerheartStats and customStats)
                 const stats = await OBRStorage.getStats();

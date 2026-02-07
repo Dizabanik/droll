@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OBRStorage, OBRBroadcast, FearUpdateMessage } from '../obr';
 import OBR from "@owlbear-rodeo/sdk";
@@ -181,56 +182,59 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
             </div>
 
             {/* Fullscreen Skull Effect - Shows for ALL players when fear is added */}
-            <AnimatePresence>
-                {showSkullEffect && (
-                    <motion.div
-                        initial={{ opacity: 0 }}
-                        animate={{ opacity: 1 }}
-                        exit={{ opacity: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-black/40"
-                    >
+            {typeof document !== 'undefined' && createPortal(
+                <AnimatePresence>
+                    {showSkullEffect && (
                         <motion.div
-                            initial={{ scale: 0.3, opacity: 0, rotate: -10 }}
-                            animate={{
-                                scale: [0.3, 1.2, 1],
-                                opacity: [0, 1, 1, 0],
-                                rotate: [-10, 5, 0]
-                            }}
-                            transition={{
-                                duration: 1.2,
-                                times: [0, 0.3, 0.6, 1],
-                                ease: "easeOut"
-                            }}
-                            className="relative"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.3 }}
+                            className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-black/40"
                         >
-                            <img
-                                src="skull.png"
-                                alt="FEAR!"
-                                className="w-80 h-80 object-contain drop-shadow-[0_0_60px_rgba(239,68,68,0.8)]"
-                            />
-                            {/* Glow pulse effect */}
                             <motion.div
-                                initial={{ opacity: 0.8, scale: 1 }}
-                                animate={{ opacity: 0, scale: 1.5 }}
-                                transition={{ duration: 0.8, ease: "easeOut" }}
-                                className="absolute inset-0 bg-red-500/30 rounded-full blur-3xl"
-                            />
-                        </motion.div>
+                                initial={{ scale: 0.3, opacity: 0, rotate: -10 }}
+                                animate={{
+                                    scale: [0.3, 1.2, 1],
+                                    opacity: [0, 1, 1, 0],
+                                    rotate: [-10, 5, 0]
+                                }}
+                                transition={{
+                                    duration: 1.2,
+                                    times: [0, 0.3, 0.6, 1],
+                                    ease: "easeOut"
+                                }}
+                                className="relative"
+                            >
+                                <img
+                                    src="skull.png"
+                                    alt="FEAR!"
+                                    className="w-80 h-80 object-contain drop-shadow-[0_0_60px_rgba(239,68,68,0.8)]"
+                                />
+                                {/* Glow pulse effect */}
+                                <motion.div
+                                    initial={{ opacity: 0.8, scale: 1 }}
+                                    animate={{ opacity: 0, scale: 1.5 }}
+                                    transition={{ duration: 0.8, ease: "easeOut" }}
+                                    className="absolute inset-0 bg-red-500/30 rounded-full blur-3xl"
+                                />
+                            </motion.div>
 
-                        {/* FEAR text */}
-                        <motion.div
-                            initial={{ opacity: 0, y: 50 }}
-                            animate={{ opacity: [0, 1, 1, 0], y: [50, 0, 0, -20] }}
-                            transition={{ duration: 1.2, times: [0, 0.2, 0.7, 1] }}
-                            className="absolute bottom-1/4 text-red-500 font-black text-6xl tracking-widest"
-                            style={{ textShadow: '0 0 40px rgba(239,68,68,0.8), 0 0 80px rgba(239,68,68,0.5)' }}
-                        >
-                            FEAR
+                            {/* FEAR text */}
+                            <motion.div
+                                initial={{ opacity: 0, y: 50 }}
+                                animate={{ opacity: [0, 1, 1, 0], y: [50, 0, 0, -20] }}
+                                transition={{ duration: 1.2, times: [0, 0.2, 0.7, 1] }}
+                                className="absolute bottom-1/4 text-red-500 font-black text-6xl tracking-widest"
+                                style={{ textShadow: '0 0 40px rgba(239,68,68,0.8), 0 0 80px rgba(239,68,68,0.5)' }}
+                            >
+                                FEAR
+                            </motion.div>
                         </motion.div>
-                    </motion.div>
-                )}
-            </AnimatePresence>
+                    )}
+                </AnimatePresence>,
+                document.body
+            )}
         </>
     );
 };

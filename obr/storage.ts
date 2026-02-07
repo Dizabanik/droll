@@ -1,13 +1,13 @@
 /**
  * Storage Service
  * Uses localStorage for persistent per-player data
- * Works the same way in both Owlbear Rodeo and standalone mode
+ * scoped to the current Campaign (Room ID) if available
  */
 
 import { Item, CharacterStats } from "../types";
 import OBR from "@owlbear-rodeo/sdk";
 
-const STORAGE_KEY = "fateweaver_data";
+const GLOBAL_STORAGE_KEY = "fateweaver_data";
 
 export interface DaggerheartVitals {
   hope: number;
@@ -113,52 +113,74 @@ export const isOBREnvironment = (): boolean => {
 };
 
 /**
- * Get all stored data from localStorage
+ * Get the storage key for the current campaign
+ * Returns simple global key if not in OBR or not ready
  */
-const METADATA_KEY = "com.fateweaver.data";
+const getStorageKey = async (): Promise<string> => {
+  if (isOBREnvironment()) {
+    try {
+      // Ensure OBR is ready before asking for ID
+      // Since this runs often, we assume OBR.onReady is handled at app root, 
+      // but room.id should be available if we are inside the room.
+      const roomId = await OBR.room.id;
+      return `${GLOBAL_STORAGE_KEY}_${roomId}`;
+    } catch (e) {
+      console.warn("Could not get Room ID, falling back to global storage:", e);
+      return GLOBAL_STORAGE_KEY;
+    }
+  }
+  return GLOBAL_STORAGE_KEY;
+};
 
 /**
- * Get all stored data from OBR Player Metadata (or localStorage fallback if outside OBR)
+ * Get all stored data from localStorage
+ * Handles migration from Global -> Campaign storage
  */
 const getData = async (): Promise<FateWeaverData> => {
   try {
-    if (isOBREnvironment()) {
-      const metadata = await OBR.player.getMetadata();
-      return (metadata[METADATA_KEY] as FateWeaverData) || {};
-    } else {
-      const data = localStorage.getItem(STORAGE_KEY);
-      return data ? JSON.parse(data) : {};
+    const key = await getStorageKey();
+    const data = localStorage.getItem(key);
+
+    if (data) {
+      return JSON.parse(data);
     }
+
+    // MIGRATION: If no data found in scoped key, check standard global key
+    if (key !== GLOBAL_STORAGE_KEY) {
+      const globalData = localStorage.getItem(GLOBAL_STORAGE_KEY);
+      if (globalData) {
+        console.log("Migrating data from Global to Campaign storage...");
+        // Copy to new key immediately so next time it's found
+        localStorage.setItem(key, globalData);
+        return JSON.parse(globalData);
+      }
+    }
+
+    return {};
   } catch (e) {
-    console.error("Failed to read data:", e);
+    console.error("Failed to read from localStorage:", e);
     return {};
   }
 };
 
 /**
- * Save data to OBR Player Metadata (or localStorage fallback)
+ * Save data to localStorage (merges with existing)
  */
 const setData = async (data: Partial<FateWeaverData>): Promise<void> => {
   try {
-    if (isOBREnvironment()) {
-      const existing = await getData(); // Need to fetch existing to merge, though metadata merge might be partial? 
-      // OBR metadata merge is usually shallow at root, so we should merge our object manually
-      const merged = { ...existing, ...data };
-      await OBR.player.setMetadata({ [METADATA_KEY]: merged });
-    } else {
-      const existing = await getData();
-      const merged = { ...existing, ...data };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    const key = await getStorageKey();
+    const existing = await getData();
+    const merged = { ...existing, ...data };
+    localStorage.setItem(key, JSON.stringify(merged));
 
-      // Dispatch storage event for cross-tab sync (local only)
-      const event = new StorageEvent("storage", {
-        key: STORAGE_KEY,
-        newValue: JSON.stringify(merged),
-      });
-      window.dispatchEvent(event);
-    }
+    // Dispatch storage event for cross-tab sync
+    const event = new StorageEvent("storage", {
+      key: key,
+      newValue: JSON.stringify(merged),
+    });
+    window.dispatchEvent(event);
   } catch (e) {
-    console.error("Failed to write data:", e);
+    console.error("Failed to write to localStorage:", e);
   }
 };
 
@@ -204,11 +226,8 @@ export const exportData = async (): Promise<string> => {
 export const importData = async (jsonString: string): Promise<boolean> => {
   try {
     const data = JSON.parse(jsonString);
-    if (isOBREnvironment()) {
-      await OBR.player.setMetadata({ [METADATA_KEY]: data });
-    } else {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
-    }
+    const key = await getStorageKey();
+    localStorage.setItem(key, JSON.stringify(data));
     return true;
   } catch (e) {
     console.error("Failed to import data:", e);

@@ -373,7 +373,7 @@ export const DaggerheartStats: React.FC<DaggerheartStatsProps> = ({
                         <MoneyInput label="1k Stones" value={money.primevalK} onChange={(v) => updateMoney('primevalK', v)} />
                         <MoneyInput label="10k Stones" value={money.primeval10K} onChange={(v) => updateMoney('primeval10K', v)} />
                         <div className="col-span-2">
-                            <MoneyInput label="Immortal Essence" value={money.immortalEssence} onChange={(v) => updateMoney('immortalEssence', v)} />
+                            <MoneyInput label="Immortal Essence Stones" value={money.immortalEssence} onChange={(v) => updateMoney('immortalEssence', v)} />
                         </div>
                     </div>
                 </div>

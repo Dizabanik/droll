@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { OBRStorage, DaggerheartVitals, DaggerheartStatuses } from '../obr/storage';
+import { OBRStorage, DaggerheartVitals, DaggerheartStatuses, DaggerheartMoney } from '../obr/storage';
 import { Icons } from './ui/Icons';
 import clsx from 'clsx';
 
@@ -25,6 +25,14 @@ const DEFAULT_STATUSES: DaggerheartStatuses = {
     slowed: false,
     weakened: false,
     empowered: false,
+};
+
+const DEFAULT_MONEY: DaggerheartMoney = {
+    primevalFragment: 0,
+    primevalStone: 0,
+    primevalK: 0,
+    primeval10K: 0,
+    immortalEssence: 0,
 };
 
 const DAGGERHEART_STATUSES = [
@@ -110,6 +118,62 @@ const StatPill: React.FC<StatPillProps> = ({
     );
 };
 
+const MoneyInput: React.FC<{ label: string; value: number; onChange: (val: number) => void }> = ({ label, value, onChange }) => {
+    const [inputValue, setInputValue] = useState("");
+    const [isFocused, setIsFocused] = useState(false);
+
+    // Initial value
+    useEffect(() => {
+        if (!isFocused) setInputValue(value.toString());
+    }, [value, isFocused]);
+
+    const handleBlur = () => {
+        setIsFocused(false);
+        let newValue = value;
+        const input = inputValue.trim();
+
+        if (input.startsWith('+')) {
+            newValue += parseInt(input.substring(1)) || 0;
+        } else if (input.startsWith('-')) {
+            newValue -= parseInt(input.substring(1)) || 0;
+        } else {
+            const parsed = parseInt(input);
+            if (!isNaN(parsed)) newValue = parsed;
+        }
+
+        onChange(newValue);
+        setInputValue(newValue.toString());
+    };
+
+    const handleKeyDown = (e: React.KeyboardEvent) => {
+        if (e.key === 'Enter') {
+            (e.target as HTMLInputElement).blur();
+        }
+    };
+
+    return (
+        <div className="flex flex-col relative w-full">
+            <label className="text-[10px] uppercase font-bold text-zinc-500 mb-0.5">{label}</label>
+            <div className="relative">
+                {isFocused && (
+                    <div className="absolute -top-6 left-0 right-0 text-center text-xs font-mono text-zinc-400 bg-black/80 rounded py-0.5 pointer-events-none border border-zinc-700 z-10">
+                        {value}
+                    </div>
+                )}
+                <input
+                    type="text"
+                    value={inputValue}
+                    onFocus={() => { setIsFocused(true); setInputValue(""); }}
+                    onBlur={handleBlur}
+                    onKeyDown={handleKeyDown}
+                    onChange={(e) => setInputValue(e.target.value)}
+                    className="w-full bg-black/40 border border-zinc-700 rounded px-2 py-1 text-sm font-mono text-zinc-300 focus:border-accent focus:bg-black/60 outline-none text-right"
+                />
+            </div>
+        </div>
+    );
+};
+
 interface DaggerheartStatsProps {
     // Optional callbacks for external state sync
     onVitalsChange?: (vitals: DaggerheartVitals) => void;
@@ -122,18 +186,21 @@ export const DaggerheartStats: React.FC<DaggerheartStatsProps> = ({
 }) => {
     const [vitals, setVitals] = useState<DaggerheartVitals>(DEFAULT_VITALS);
     const [statuses, setStatuses] = useState<DaggerheartStatuses>(DEFAULT_STATUSES);
+    const [money, setMoney] = useState<DaggerheartMoney>(DEFAULT_MONEY);
     const [isLoaded, setIsLoaded] = useState(false);
 
     // Load on mount
     useEffect(() => {
         const load = async () => {
             try {
-                const [savedVitals, savedStatuses] = await Promise.all([
+                const [savedVitals, savedStatuses, savedMoney] = await Promise.all([
                     OBRStorage.getDaggerheartVitals(),
                     OBRStorage.getDaggerheartStatuses(),
+                    OBRStorage.getDaggerheartMoney(),
                 ]);
                 if (savedVitals) setVitals(savedVitals);
                 if (savedStatuses) setStatuses(savedStatuses);
+                if (savedMoney) setMoney(savedMoney);
             } catch (e) {
                 console.error("Failed to load Daggerheart data:", e);
             } finally {
@@ -156,6 +223,12 @@ export const DaggerheartStats: React.FC<DaggerheartStatsProps> = ({
         OBRStorage.setDaggerheartStatuses(statuses);
         onStatusesChange?.(statuses);
     }, [statuses, isLoaded, onStatusesChange]);
+
+    // Save money on change
+    useEffect(() => {
+        if (!isLoaded) return;
+        OBRStorage.setDaggerheartMoney(money);
+    }, [money, isLoaded]);
 
     const updateVital = (key: keyof DaggerheartVitals, delta: number) => {
         setVitals(prev => {
@@ -184,6 +257,10 @@ export const DaggerheartStats: React.FC<DaggerheartStatsProps> = ({
 
     const toggleStatus = (key: keyof DaggerheartStatuses) => {
         setStatuses(prev => ({ ...prev, [key]: !prev[key] }));
+    };
+
+    const updateMoney = (key: keyof DaggerheartMoney, val: number) => {
+        setMoney(prev => ({ ...prev, [key]: val }));
     };
 
     if (!isLoaded) {
@@ -263,6 +340,20 @@ export const DaggerheartStats: React.FC<DaggerheartStatsProps> = ({
                             {status.label}
                         </button>
                     ))}
+                </div>
+            </div>
+
+            {/* Money Section */}
+            <div>
+                <h3 className="text-xs uppercase font-bold text-zinc-500 tracking-wider mb-3">Wealth</h3>
+                <div className="grid grid-cols-2 gap-3">
+                    <MoneyInput label="1/8 Stone" value={money.primevalFragment} onChange={(v) => updateMoney('primevalFragment', v)} />
+                    <MoneyInput label="Primeval Stone" value={money.primevalStone} onChange={(v) => updateMoney('primevalStone', v)} />
+                    <MoneyInput label="1k Stones" value={money.primevalK} onChange={(v) => updateMoney('primevalK', v)} />
+                    <MoneyInput label="10k Stones" value={money.primeval10K} onChange={(v) => updateMoney('primeval10K', v)} />
+                    <div className="col-span-2">
+                        <MoneyInput label="Immortal Essence" value={money.immortalEssence} onChange={(v) => updateMoney('immortalEssence', v)} />
+                    </div>
                 </div>
             </div>
         </div>

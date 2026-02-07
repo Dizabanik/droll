@@ -392,9 +392,6 @@ export const HistoryControl: React.FC = () => {
                 </div>
             )}
 
-            {/* Countdown Tracker - Always Visible */}
-            <CountdownTracker />
-
             {/* Normal Mode - Button + Popup */}
             {!isHistoryOpen && (
                 <div className="flex flex-col items-end justify-end h-full w-full pointer-events-auto">

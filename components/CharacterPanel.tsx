@@ -3,6 +3,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { OBRStorage, TokenAttachments, DaggerheartCharacter } from '../obr';
 import { Icons } from './ui/Icons';
+import { EssenceSphere } from './EssenceSphere';
 import clsx from 'clsx';
 import OBR, { Image } from "@owlbear-rodeo/sdk";
 
@@ -18,6 +19,11 @@ const DEFAULT_CHARACTER: DaggerheartCharacter = {
     minorThreshold: 3,
     majorThreshold: 6,
     skulls: 0,
+    // Essence Defaults
+    essenceCurrent: 0,
+    essenceMax: 10,
+    essenceRank: 1,
+    essenceStage: 1,
 };
 
 const STAT_NAMES = [
@@ -250,6 +256,13 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
     };
 
     // Update DaggerheartCharacter fields (evasion, level, thresholds, skulls)
+    // Generic update handler
+    const updateCharacter = (updates: Partial<DaggerheartCharacter>) => {
+        const newChar = { ...character, ...updates };
+        setCharacter(newChar);
+        OBRStorage.setDaggerheartCharacter(newChar);
+    };
+
     const updateCharacterStat = (key: keyof DaggerheartCharacter, delta: number) => {
         setCharacter(prev => ({
             ...prev,
@@ -380,11 +393,24 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
                         bgClass="border-yellow-500/50 bg-yellow-900/30"
                         showSign={false}
                         large={true}
-                        onIncrement={() => updateCharacterStat('level', 1)}
-                        onDecrement={() => updateCharacterStat('level', -1)}
+                        onIncrement={() => updateCharacter({ level: character.level + 1 })}
+                        onDecrement={() => updateCharacter({ level: Math.max(1, character.level - 1) })}
                     />
                 </div>
             </div>
+
+            {/* Essence Sphere */}
+            <div className="mx-auto my-2">
+                <EssenceSphere
+                    current={character.essenceCurrent}
+                    max={character.essenceMax}
+                    rank={character.essenceRank}
+                    stage={character.essenceStage}
+                    onChange={(updates) => updateCharacter({ ...updates, essenceCurrent: updates.current, essenceMax: updates.max, essenceRank: updates.rank, essenceStage: updates.stage })}
+                />
+            </div>
+
+            {/* Custom Stats Row (if any, up to 3) */}
 
             {/* Custom Stats Row (if any, up to 3) */}
             {customStats.length > 0 && (

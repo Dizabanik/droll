@@ -73,6 +73,19 @@ export interface DaggerheartCharacter {
   majorThreshold: number;
   // Skull damage tracker (0-11)
   skulls: number;
+  // Primeval Essence
+  essenceCurrent: number;
+  essenceMax: number;
+  essenceRank: number; // 1-5
+  essenceStage: number; // 1-4
+}
+
+export interface DaggerheartMoney {
+  primevalFragment: number; // 1/8 Stone
+  primevalStone: number;
+  primevalK: number; // 1k Stone
+  primeval10K: number; // 10k Stone
+  immortalEssence: number;
 }
 
 interface FateWeaverData {
@@ -82,6 +95,7 @@ interface FateWeaverData {
   daggerheartVitals?: DaggerheartVitals;
   daggerheartStatuses?: DaggerheartStatuses;
   daggerheartCharacter?: DaggerheartCharacter;
+  daggerheartMoney?: DaggerheartMoney;
   selectedTokenId?: string;
   fear?: number;
 }
@@ -206,12 +220,22 @@ export const OBRStorage = {
     setData({ daggerheartVitals: vitals });
   },
 
-  // Daggerheart statuses
+  // Daggerheart Statuses
   getDaggerheartStatuses: async (): Promise<DaggerheartStatuses | undefined> => {
     return getData().daggerheartStatuses;
   },
   setDaggerheartStatuses: async (statuses: DaggerheartStatuses): Promise<void> => {
     setData({ daggerheartStatuses: statuses });
+  },
+
+
+
+  // Daggerheart Money
+  getDaggerheartMoney: async (): Promise<DaggerheartMoney | undefined> => {
+    return getData().daggerheartMoney;
+  },
+  setDaggerheartMoney: async (money: DaggerheartMoney): Promise<void> => {
+    setData({ daggerheartMoney: money });
   },
 
   // Selected token

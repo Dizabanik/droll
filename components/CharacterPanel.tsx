@@ -406,7 +406,14 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
                     max={character.essenceMax}
                     rank={character.essenceRank}
                     stage={character.essenceStage}
-                    onChange={(updates) => updateCharacter({ ...updates, essenceCurrent: updates.current, essenceMax: updates.max, essenceRank: updates.rank, essenceStage: updates.stage })}
+                    onChange={(updates) => {
+                        const charUpdates: Partial<DaggerheartCharacter> = {};
+                        if (updates.current !== undefined) charUpdates.essenceCurrent = updates.current;
+                        if (updates.max !== undefined) charUpdates.essenceMax = updates.max;
+                        if (updates.rank !== undefined) charUpdates.essenceRank = updates.rank;
+                        if (updates.stage !== undefined) charUpdates.essenceStage = updates.stage;
+                        updateCharacter(charUpdates);
+                    }}
                 />
             </div>
 

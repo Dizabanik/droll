@@ -8,6 +8,7 @@ import { RollResults } from './ui/RollResults';
 import { DaggerheartStats } from './DaggerheartStats';
 import { CharacterPanel } from './CharacterPanel';
 import { FearTracker } from './FearTracker';
+import { CountdownTracker } from './CountdownTracker';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
@@ -241,6 +242,8 @@ export const HistoryControl: React.FC = () => {
                         <FearTracker />
                     </motion.div>
 
+
+
                     {/* Left Panel - Daggerheart Stats */}
                     <motion.div
                         initial={{ x: '-100%' }}
@@ -388,6 +391,9 @@ export const HistoryControl: React.FC = () => {
                     </button>
                 </div>
             )}
+
+            {/* Countdown Tracker - Always Visible */}
+            <CountdownTracker />
 
             {/* Normal Mode - Button + Popup */}
             {!isHistoryOpen && (

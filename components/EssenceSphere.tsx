@@ -86,31 +86,29 @@ export const EssenceSphere: React.FC<EssenceSphereProps> = ({
                 </div>
 
                 {/* The Sphere (BIGGER, 3 parts) */}
-                <div className="relative group select-none">
-                    {/* Increase Button (Top) */}
+                <div
+                    className={clsx(
+                        "w-28 h-28 rounded-full flex flex-col items-center justify-center border-4 border-black/20 transition-all duration-300 overflow-hidden relative shadow-[0_0_15px_rgba(0,0,0,0.5)] group select-none",
+                        sphereColor
+                    )}
+                >
+                    {/* Value (Middle - Behind buttons visually but centralized) */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
+                        <span className="text-4xl font-bold font-mono text-black/80 drop-shadow-sm leading-none">{current}</span>
+                    </div>
+
+                    {/* Increase Button (Top Half) */}
                     <button
                         onClick={() => onChange({ current: Math.min(max, current + 1) })}
-                        className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-black/60 hover:bg-zinc-700 hover:text-black/80 transition-colors shadow-md font-bold"
+                        className="absolute inset-x-0 top-0 h-1/2 z-20 flex items-start justify-center pt-1 text-black/40 hover:text-black/80 hover:bg-black/10 transition-all font-bold text-2xl active:bg-black/20"
                     >
                         +
                     </button>
 
-                    <div
-                        className={clsx(
-                            "w-28 h-28 rounded-full flex flex-col items-center justify-center border-4 border-black/20 transition-all duration-300 overflow-hidden relative",
-                            sphereColor, // Using sphereColor from original logic
-                            "shadow-[0_0_15px_rgba(0,0,0,0.5)]"
-                        )}
-                    >
-                        <div className="flex flex-col items-center">
-                            <span className="text-4xl font-bold font-mono text-black/80 drop-shadow-sm leading-none">{current}</span>
-                        </div>
-                    </div>
-
-                    {/* Decrease Button (Bottom) */}
+                    {/* Decrease Button (Bottom Half) */}
                     <button
                         onClick={() => onChange({ current: Math.max(0, current - 1) })}
-                        className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-black/60 hover:bg-zinc-700 hover:text-black/80 transition-colors shadow-md font-bold"
+                        className="absolute inset-x-0 bottom-0 h-1/2 z-20 flex items-end justify-center pb-1 text-black/40 hover:text-black/80 hover:bg-black/10 transition-all font-bold text-2xl active:bg-black/20"
                     >
                         -
                     </button>

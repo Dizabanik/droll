@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { OBRStorage, TokenAttachments, DaggerheartCharacter } from '../obr';
 import { Icons } from './ui/Icons';
 import { EssenceSphere } from './EssenceSphere';
@@ -16,14 +16,19 @@ const DEFAULT_CHARACTER: DaggerheartCharacter = {
     knowledge: 0,
     evasion: 10,
     level: 1,
-    minorThreshold: 3,
-    majorThreshold: 6,
+    thresholdMinor: 0,
+    thresholdMajor: 0,
+    thresholdSevere: 0,
     skulls: 0,
-    // Essence Defaults
     essenceCurrent: 0,
-    essenceMax: 10,
+    essenceMax: 0,
     essenceRank: 1,
     essenceStage: 1,
+    customStats: [],
+    settings: {
+        showStrain: true,
+        showReverendInsanity: false,
+    },
 };
 
 const STAT_NAMES = [
@@ -178,6 +183,89 @@ const TokenPicker: React.FC<TokenPickerProps> = ({ isOpen, onClose, onSelect }) 
     );
 };
 
+// === Settings Modal ===
+interface SettingsModalProps {
+    isOpen: boolean;
+    onClose: () => void;
+    settings: DaggerheartCharacter['settings'];
+    onToggle: (key: keyof DaggerheartCharacter['settings']) => void;
+}
+
+const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onToggle }) => {
+    if (!isOpen) return null;
+
+    return (
+        <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            onClick={onClose}
+        >
+            <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                exit={{ scale: 0.9, opacity: 0 }}
+                className="bg-zinc-950 rounded-xl border border-zinc-700 p-6 max-w-sm w-full shadow-2xl"
+                onClick={(e) => e.stopPropagation()}
+            >
+                <div className="flex justify-between items-center mb-6">
+                    <h3 className="text-white font-bold text-lg">Character Settings</h3>
+                    <button onClick={onClose} className="text-zinc-400 hover:text-white">
+                        <Icons.Close size={20} />
+                    </button>
+                </div>
+
+                <div className="space-y-4">
+                    {/* Strain Tracker Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                        <div className="flex flex-col">
+                            <span className="text-sm font-bold text-zinc-200">Strain Tracker</span>
+                            <span className="text-xs text-zinc-500">Show the 11-skull damage tracker</span>
+                        </div>
+                        <button
+                            onClick={() => onToggle('showStrain')}
+                            className={clsx(
+                                "w-12 h-6 rounded-full relative transition-colors",
+                                settings.showStrain ? "bg-accent" : "bg-zinc-700"
+                            )}
+                        >
+                            <div className={clsx(
+                                "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
+                                settings.showStrain ? "left-7" : "left-1"
+                            )} />
+                        </button>
+                    </div>
+
+                    {/* Reverend Insanity Mode Toggle */}
+                    <div className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-800">
+                        <div className="flex flex-col">
+                            <span className="text-sm font-bold text-zinc-200">Reverend Insanity</span>
+                            <span className="text-xs text-zinc-500">Enable Primeval Essence & Wealth</span>
+                        </div>
+                        <button
+                            onClick={() => onToggle('showReverendInsanity')}
+                            className={clsx(
+                                "w-12 h-6 rounded-full relative transition-colors",
+                                settings.showReverendInsanity ? "bg-accent" : "bg-zinc-700"
+                            )}
+                        >
+                            <div className={clsx(
+                                "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
+                                settings.showReverendInsanity ? "left-7" : "left-1"
+                            )} />
+                        </button>
+                    </div>
+                </div>
+
+                <div className="mt-6 text-center text-[10px] text-zinc-600">
+                    Changes are saved automatically to your character.
+                </div>
+            </motion.div>
+        </motion.div>
+    );
+};
+
 // === Main Character Panel ===
 interface CharacterPanelProps {
     onRoll?: (statKey: string, statValue: number) => void;
@@ -190,6 +278,7 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
     const [isLoaded, setIsLoaded] = useState(false);
     const [tokenImage, setTokenImage] = useState<string | null>(null);
     const [showTokenPicker, setShowTokenPicker] = useState(false);
+    const [showSettings, setShowSettings] = useState(false);
 
     // Load character data and sync with CharacterStats
     useEffect(() => {
@@ -197,6 +286,7 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
             try {
                 // Load DaggerheartCharacter (evasion, level, thresholds, skulls, essence)
                 const saved = await OBRStorage.getDaggerheartCharacter();
+                // Merge with DEFAULT to ensure new fields (settings) exist
                 if (saved) setCharacter({ ...DEFAULT_CHARACTER, ...saved });
 
                 // Load CharacterStats (daggerheartStats and customStats)
@@ -266,7 +356,7 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
     const updateCharacterStat = (key: keyof DaggerheartCharacter, delta: number) => {
         setCharacter(prev => ({
             ...prev,
-            [key]: typeof prev[key] === 'number' ? prev[key] + delta : prev[key],
+            [key]: typeof prev[key] === 'number' ? (prev[key] as number) + delta : prev[key],
         }));
     };
 
@@ -323,13 +413,26 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
         }
     };
 
+    const toggleSetting = (key: keyof DaggerheartCharacter['settings']) => {
+        const newSettings = { ...character.settings, [key]: !character.settings[key] };
+        updateCharacter({ settings: newSettings });
+    };
+
     // Separator positions: after 3rd (index 2), 7th (index 6), 10th (index 9)
     const separatorAfter = [2, 6, 9];
 
     return (
-        <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto">
+        <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto relative">
+            {/* Settings Button (Top Right) */}
+            <button
+                onClick={() => setShowSettings(true)}
+                className="absolute top-2 right-2 p-2 text-zinc-500 hover:text-white transition-colors hover:bg-zinc-800 rounded-lg"
+            >
+                <Icons.Settings size={18} />
+            </button>
+
             {/* Stats Grid - 2 rows of 3 */}
-            <div className="flex flex-col gap-2">
+            <div className="flex flex-col gap-2 mt-4">
                 <div className="flex justify-center gap-2">
                     {STAT_NAMES.slice(0, 3).map((stat) => (
                         <VerticalStatPill
@@ -399,25 +502,25 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
                 </div>
             </div>
 
-            {/* Essence Sphere */}
-            <div className="mx-auto my-2">
-                <EssenceSphere
-                    current={character.essenceCurrent}
-                    max={character.essenceMax}
-                    rank={character.essenceRank}
-                    stage={character.essenceStage}
-                    onChange={(updates) => {
-                        const charUpdates: Partial<DaggerheartCharacter> = {};
-                        if (updates.current !== undefined) charUpdates.essenceCurrent = updates.current;
-                        if (updates.max !== undefined) charUpdates.essenceMax = updates.max;
-                        if (updates.rank !== undefined) charUpdates.essenceRank = updates.rank;
-                        if (updates.stage !== undefined) charUpdates.essenceStage = updates.stage;
-                        updateCharacter(charUpdates);
-                    }}
-                />
-            </div>
-
-            {/* Custom Stats Row (if any, up to 3) */}
+            {/* Essence Sphere (Conditional Mode) */}
+            {character.settings.showReverendInsanity && (
+                <div className="mx-auto my-2">
+                    <EssenceSphere
+                        current={character.essenceCurrent}
+                        max={character.essenceMax}
+                        rank={character.essenceRank}
+                        stage={character.essenceStage}
+                        onChange={(updates) => {
+                            const charUpdates: Partial<DaggerheartCharacter> = {};
+                            if (updates.current !== undefined) charUpdates.essenceCurrent = updates.current;
+                            if (updates.max !== undefined) charUpdates.essenceMax = updates.max;
+                            if (updates.rank !== undefined) charUpdates.essenceRank = updates.rank;
+                            if (updates.stage !== undefined) charUpdates.essenceStage = updates.stage;
+                            updateCharacter(charUpdates);
+                        }}
+                    />
+                </div>
+            )}
 
             {/* Custom Stats Row (if any, up to 3) */}
             {customStats.length > 0 && (
@@ -445,8 +548,8 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
                 </div>
                 <input
                     type="number"
-                    value={character.minorThreshold}
-                    onChange={(e) => setCharacter(prev => ({ ...prev, minorThreshold: parseInt(e.target.value) || 0 }))}
+                    value={character.thresholdMinor}
+                    onChange={(e) => setCharacter(prev => ({ ...prev, thresholdMinor: parseInt(e.target.value) || 0 }))}
                     className="w-12 px-2 py-1 bg-zinc-800 border border-zinc-600 rounded text-center text-white font-mono"
                 />
                 <div className="px-3 py-1.5 rounded-lg bg-orange-900/40 border border-orange-500/50 text-orange-400 text-sm font-bold">
@@ -454,43 +557,59 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
                 </div>
                 <input
                     type="number"
-                    value={character.majorThreshold}
-                    onChange={(e) => setCharacter(prev => ({ ...prev, majorThreshold: parseInt(e.target.value) || 0 }))}
+                    value={character.thresholdMajor}
+                    onChange={(e) => setCharacter(prev => ({ ...prev, thresholdMajor: parseInt(e.target.value) || 0 }))}
                     className="w-12 px-2 py-1 bg-zinc-800 border border-zinc-600 rounded text-center text-white font-mono"
                 />
                 <div className="px-3 py-1.5 rounded-lg bg-red-900/40 border border-red-500/50 text-red-400 text-sm font-bold">
                     Severe
                 </div>
+                <input
+                    type="number"
+                    value={character.thresholdSevere}
+                    onChange={(e) => setCharacter(prev => ({ ...prev, thresholdSevere: parseInt(e.target.value) || 0 }))}
+                    className="w-12 px-2 py-1 bg-zinc-800 border border-zinc-600 rounded text-center text-white font-mono"
+                />
             </div>
 
-            {/* Skull Tracker */}
-            <div className="flex items-center justify-center gap-0.5 flex-wrap">
-                {Array.from({ length: 11 }).map((_, i) => (
-                    <React.Fragment key={i}>
-                        <button
-                            onClick={() => handleSkullClick(i)}
-                            className={clsx(
-                                "p-1.5 rounded transition-all",
-                                i < character.skulls
-                                    ? "text-red-400 bg-red-900/30"
-                                    : "text-zinc-600 hover:text-zinc-400"
+            {/* Skull Tracker (Conditional Mode) */}
+            {character.settings.showStrain && (
+                <div className="flex items-center justify-center gap-0.5 flex-wrap">
+                    {Array.from({ length: 11 }).map((_, i) => (
+                        <React.Fragment key={i}>
+                            <button
+                                onClick={() => handleSkullClick(i)}
+                                className={clsx(
+                                    "p-1.5 rounded transition-all",
+                                    i < character.skulls
+                                        ? "text-red-400 bg-red-900/30"
+                                        : "text-zinc-600 hover:text-zinc-400"
+                                )}
+                            >
+                                <Icons.Death size={20} />
+                            </button>
+                            {/* Separators after 3rd (i=2), 7th (i=6), 10th (i=9) */}
+                            {separatorAfter.includes(i) && (
+                                <div className="w-px h-6 bg-zinc-600 mx-1" />
                             )}
-                        >
-                            <Icons.Death size={20} />
-                        </button>
-                        {/* Separators after 3rd (i=2), 7th (i=6), 10th (i=9) */}
-                        {separatorAfter.includes(i) && (
-                            <div className="w-px h-6 bg-zinc-600 mx-1" />
-                        )}
-                    </React.Fragment>
-                ))}
-            </div>
+                        </React.Fragment>
+                    ))}
+                </div>
+            )}
 
             {/* Token Picker Modal */}
             <TokenPicker
                 isOpen={showTokenPicker}
                 onClose={() => setShowTokenPicker(false)}
                 onSelect={handleTokenSelect}
+            />
+
+            {/* Settings Modal */}
+            <SettingsModal
+                isOpen={showSettings}
+                onClose={() => setShowSettings(false)}
+                settings={character.settings}
+                onToggle={toggleSetting}
             />
         </div>
     );

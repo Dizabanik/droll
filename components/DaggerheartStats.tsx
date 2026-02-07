@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { OBRStorage, DaggerheartVitals, DaggerheartStatuses, DaggerheartMoney } from '../obr/storage';
+import { OBRStorage, DaggerheartVitals, DaggerheartStatuses, DaggerheartMoney, DaggerheartCharacter } from '../obr/storage';
 import { Icons } from './ui/Icons';
 import clsx from 'clsx';
 
@@ -263,9 +263,29 @@ export const DaggerheartStats: React.FC<DaggerheartStatsProps> = ({
         setMoney(prev => ({ ...prev, [key]: val }));
     };
 
+    // Load character settings from storage to determine visibility
+    const [character, setCharacter] = useState<DaggerheartCharacter | null>(null);
+    useEffect(() => {
+        const loadChar = async () => {
+            const char = await OBRStorage.getDaggerheartCharacter();
+            if (char) setCharacter(char);
+        };
+        loadChar();
+
+        // Listen for storage changes to settings
+        const handleStorage = async () => {
+            const char = await OBRStorage.getDaggerheartCharacter();
+            if (char) setCharacter(char);
+        };
+        window.addEventListener('storage', handleStorage);
+        return () => window.removeEventListener('storage', handleStorage);
+    }, []);
+
     if (!isLoaded) {
         return <div className="text-zinc-500 text-sm p-4">Loading...</div>;
     }
+
+    const showWealth = character?.settings?.showReverendInsanity;
 
     return (
         <div className="flex flex-col gap-6 p-4">
@@ -343,19 +363,21 @@ export const DaggerheartStats: React.FC<DaggerheartStatsProps> = ({
                 </div>
             </div>
 
-            {/* Money Section */}
-            <div>
-                <h3 className="text-xs uppercase font-bold text-zinc-500 tracking-wider mb-3">Wealth</h3>
-                <div className="grid grid-cols-2 gap-3">
-                    <MoneyInput label="1/8 Stone" value={money.primevalFragment} onChange={(v) => updateMoney('primevalFragment', v)} />
-                    <MoneyInput label="Primeval Stone" value={money.primevalStone} onChange={(v) => updateMoney('primevalStone', v)} />
-                    <MoneyInput label="1k Stones" value={money.primevalK} onChange={(v) => updateMoney('primevalK', v)} />
-                    <MoneyInput label="10k Stones" value={money.primeval10K} onChange={(v) => updateMoney('primeval10K', v)} />
-                    <div className="col-span-2">
-                        <MoneyInput label="Immortal Essence" value={money.immortalEssence} onChange={(v) => updateMoney('immortalEssence', v)} />
+            {/* Money Section (Conditional) */}
+            {showWealth && (
+                <div>
+                    <h3 className="text-xs uppercase font-bold text-zinc-500 tracking-wider mb-3">Wealth</h3>
+                    <div className="grid grid-cols-2 gap-3">
+                        <MoneyInput label="1/8 Stone" value={money.primevalFragment} onChange={(v) => updateMoney('primevalFragment', v)} />
+                        <MoneyInput label="Primeval Stone" value={money.primevalStone} onChange={(v) => updateMoney('primevalStone', v)} />
+                        <MoneyInput label="1k Stones" value={money.primevalK} onChange={(v) => updateMoney('primevalK', v)} />
+                        <MoneyInput label="10k Stones" value={money.primeval10K} onChange={(v) => updateMoney('primeval10K', v)} />
+                        <div className="col-span-2">
+                            <MoneyInput label="Immortal Essence" value={money.immortalEssence} onChange={(v) => updateMoney('immortalEssence', v)} />
+                        </div>
                     </div>
                 </div>
-            </div>
+            )}
         </div>
     );
 };

@@ -8,7 +8,7 @@ import { RollResults } from './ui/RollResults';
 import { DaggerheartStats } from './DaggerheartStats';
 import { CharacterPanel } from './CharacterPanel';
 import { FearTracker } from './FearTracker';
-import { CountdownTracker } from './CountdownTracker';
+// import { CountdownTracker } from './CountdownTracker';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
@@ -233,11 +233,12 @@ export const HistoryControl: React.FC = () => {
 
                     {/* Fear Tracker - Top Center */}
                     <motion.div
-                        initial={{ y: -50, opacity: 0 }}
-                        animate={{ y: 0, opacity: 1 }}
-                        exit={{ y: -50, opacity: 0 }}
+                        initial={{ y: -50, opacity: 0, x: '-50%' }}
+                        animate={{ y: 0, opacity: 1, x: '-50%' }}
+                        exit={{ y: -50, opacity: 0, x: '-50%' }}
                         transition={{ delay: 0.1 }}
-                        className="absolute top-4 left-1/2 -translate-x-1/2 z-30"
+                        className="absolute top-4 left-1/2 z-30"
+                        style={{ transform: 'translateX(-50%)' }} // Force centering
                     >
                         <FearTracker />
                     </motion.div>

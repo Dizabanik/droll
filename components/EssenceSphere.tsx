@@ -87,34 +87,33 @@ export const EssenceSphere: React.FC<EssenceSphereProps> = ({
 
                 {/* The Sphere (BIGGER, 3 parts) */}
                 <div className="relative group select-none">
+                    {/* Increase Button (Top) */}
+                    <button
+                        onClick={() => onChange({ current: Math.min(max, current + 1) })}
+                        className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-black/60 hover:bg-zinc-700 hover:text-black/80 transition-colors shadow-md font-bold"
+                    >
+                        +
+                    </button>
+
                     <div
                         className={clsx(
                             "w-28 h-28 rounded-full flex flex-col items-center justify-center border-4 border-black/20 transition-all duration-300 overflow-hidden relative",
-                            sphereColor,
-                            "shadow-[0_0_20px_rgba(0,0,0,0.5)]"
+                            sphereColor, // Using sphereColor from original logic
+                            "shadow-[0_0_15px_rgba(0,0,0,0.5)]"
                         )}
                     >
-                        {/* Upper Part (Plus) */}
-                        <div
-                            onClick={() => onChange({ current: Math.min(max, current + 1) })}
-                            className="absolute top-0 left-0 right-0 h-[35%] w-full flex items-start justify-center pt-1 cursor-pointer hover:bg-white/10 active:bg-white/20 transition-colors z-10"
-                        >
-                            <span className="text-white/40 font-bold text-xl drop-shadow-sm">+</span>
-                        </div>
-
-                        {/* Middle Part (Value) */}
-                        <div className="flex flex-col items-center justify-center h-[30%] z-0 pointer-events-none">
-                            <span className="text-4xl font-bold font-mono text-black/80 drop-shadow-sm leading-none mt-1">{current}</span>
-                        </div>
-
-                        {/* Bottom Part (Minus) */}
-                        <div
-                            onClick={() => onChange({ current: Math.max(0, current - 1) })}
-                            className="absolute bottom-0 left-0 right-0 h-[35%] w-full flex items-end justify-center pb-1 cursor-pointer hover:bg-white/10 active:bg-white/20 transition-colors z-10"
-                        >
-                            <span className="text-white/40 font-bold text-xl drop-shadow-sm">-</span>
+                        <div className="flex flex-col items-center">
+                            <span className="text-4xl font-bold font-mono text-black/80 drop-shadow-sm leading-none">{current}</span>
                         </div>
                     </div>
+
+                    {/* Decrease Button (Bottom) */}
+                    <button
+                        onClick={() => onChange({ current: Math.max(0, current - 1) })}
+                        className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-black/60 hover:bg-zinc-700 hover:text-black/80 transition-colors shadow-md font-bold"
+                    >
+                        -
+                    </button>
                 </div>
 
                 {/* Max Input Column */}

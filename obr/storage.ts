@@ -9,6 +9,12 @@ import OBR from "@owlbear-rodeo/sdk";
 
 const GLOBAL_STORAGE_KEY = "fateweaver_data";
 
+export interface OBRCustomStat {
+  id: string;
+  name: string;
+  value: number;
+}
+
 export interface DaggerheartVitals {
   hope: number;
   hopeMax: number;
@@ -59,27 +65,42 @@ export interface RollHistoryEntry {
 }
 
 export interface DaggerheartCharacter {
-  // 6 core stats (can be negative or positive)
+  // 6 core stats (can bexport interface DaggerheartCharacter {
   agility: number;
   strength: number;
   finesse: number;
   instinct: number;
   presence: number;
   knowledge: number;
-  // Evasion and Level
   evasion: number;
   level: number;
-  // Damage thresholds
-  minorThreshold: number;
-  majorThreshold: number;
-  // Skull damage tracker (0-11)
-  skulls: number;
-  // Primeval Essence
+  thresholdMinor: number;
+  thresholdMajor: number;
+  thresholdSevere: number;
+  skulls: number; // 0-11
   essenceCurrent: number;
   essenceMax: number;
   essenceRank: number; // 1-5
   essenceStage: number; // 1-4
+  customStats: OBRCustomStat[];
+  settings: {
+    showStrain: boolean;
+    showReverendInsanity: boolean;
+  };
 }
+
+export const DEFAULT_CHARACTER: DaggerheartCharacter = {
+  agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0,
+  evasion: 10, level: 1,
+  thresholdMinor: 0, thresholdMajor: 0, thresholdSevere: 0,
+  skulls: 0,
+  essenceCurrent: 0, essenceMax: 0, essenceRank: 1, essenceStage: 1,
+  customStats: [],
+  settings: {
+    showStrain: true,
+    showReverendInsanity: false, // Hidden by default
+  },
+};
 
 export interface DaggerheartMoney {
   primevalFragment: number; // 1/8 Stone

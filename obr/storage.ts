@@ -5,6 +5,7 @@
  */
 
 import { Item, CharacterStats } from "../types";
+import OBR from "@owlbear-rodeo/sdk";
 
 const STORAGE_KEY = "fateweaver_data";
 
@@ -114,33 +115,50 @@ export const isOBREnvironment = (): boolean => {
 /**
  * Get all stored data from localStorage
  */
-const getData = (): FateWeaverData => {
+const METADATA_KEY = "com.fateweaver.data";
+
+/**
+ * Get all stored data from OBR Player Metadata (or localStorage fallback if outside OBR)
+ */
+const getData = async (): Promise<FateWeaverData> => {
   try {
-    const data = localStorage.getItem(STORAGE_KEY);
-    return data ? JSON.parse(data) : {};
+    if (isOBREnvironment()) {
+      const metadata = await OBR.player.getMetadata();
+      return (metadata[METADATA_KEY] as FateWeaverData) || {};
+    } else {
+      const data = localStorage.getItem(STORAGE_KEY);
+      return data ? JSON.parse(data) : {};
+    }
   } catch (e) {
-    console.error("Failed to read from localStorage:", e);
+    console.error("Failed to read data:", e);
     return {};
   }
 };
 
 /**
- * Save data to localStorage (merges with existing)
+ * Save data to OBR Player Metadata (or localStorage fallback)
  */
-const setData = (data: Partial<FateWeaverData>): void => {
+const setData = async (data: Partial<FateWeaverData>): Promise<void> => {
   try {
-    const existing = getData();
-    const merged = { ...existing, ...data };
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
+    if (isOBREnvironment()) {
+      const existing = await getData(); // Need to fetch existing to merge, though metadata merge might be partial? 
+      // OBR metadata merge is usually shallow at root, so we should merge our object manually
+      const merged = { ...existing, ...data };
+      await OBR.player.setMetadata({ [METADATA_KEY]: merged });
+    } else {
+      const existing = await getData();
+      const merged = { ...existing, ...data };
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(merged));
 
-    // Dispatch storage event for cross-tab sync
-    const event = new StorageEvent("storage", {
-      key: STORAGE_KEY,
-      newValue: JSON.stringify(merged),
-    });
-    window.dispatchEvent(event);
+      // Dispatch storage event for cross-tab sync (local only)
+      const event = new StorageEvent("storage", {
+        key: STORAGE_KEY,
+        newValue: JSON.stringify(merged),
+      });
+      window.dispatchEvent(event);
+    }
   } catch (e) {
-    console.error("Failed to write to localStorage:", e);
+    console.error("Failed to write data:", e);
   }
 };
 
@@ -151,39 +169,46 @@ export const getPlayerData = async (): Promise<FateWeaverData> => {
 };
 
 export const setPlayerData = async (data: Partial<FateWeaverData>): Promise<void> => {
-  setData(data);
+  await setData(data);
 };
 
 // === Item helpers ===
 
 export const getItems = async (): Promise<Item[] | undefined> => {
-  return getData().items;
+  const data = await getData();
+  return data.items;
 };
 
 export const setItems = async (items: Item[]): Promise<void> => {
-  setData({ items });
+  await setData({ items });
 };
 
 // === Stats helpers ===
 
 export const getStats = async (): Promise<CharacterStats | undefined> => {
-  return getData().stats;
+  const data = await getData();
+  return data.stats;
 };
 
 export const setStats = async (stats: CharacterStats): Promise<void> => {
-  setData({ stats });
+  await setData({ stats });
 };
 
 // === Export/Import ===
 
 export const exportData = async (): Promise<string> => {
-  return JSON.stringify(getData(), null, 2);
+  const data = await getData();
+  return JSON.stringify(data, null, 2);
 };
 
 export const importData = async (jsonString: string): Promise<boolean> => {
   try {
     const data = JSON.parse(jsonString);
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    if (isOBREnvironment()) {
+      await OBR.player.setMetadata({ [METADATA_KEY]: data });
+    } else {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+    }
     return true;
   } catch (e) {
     console.error("Failed to import data:", e);
@@ -206,60 +231,66 @@ export const OBRStorage = {
 
   // Roll history
   getRollHistory: async (): Promise<RollHistoryEntry[]> => {
-    return getData().rollHistory || [];
+    const data = await getData();
+    return data.rollHistory || [];
   },
   setRollHistory: async (history: RollHistoryEntry[]): Promise<void> => {
-    setData({ rollHistory: history.slice(0, 20) });
+    await setData({ rollHistory: history.slice(0, 20) });
   },
 
   // Daggerheart vitals
   getDaggerheartVitals: async (): Promise<DaggerheartVitals | undefined> => {
-    return getData().daggerheartVitals;
+    const data = await getData();
+    return data.daggerheartVitals;
   },
   setDaggerheartVitals: async (vitals: DaggerheartVitals): Promise<void> => {
-    setData({ daggerheartVitals: vitals });
+    await setData({ daggerheartVitals: vitals });
   },
 
   // Daggerheart Statuses
   getDaggerheartStatuses: async (): Promise<DaggerheartStatuses | undefined> => {
-    return getData().daggerheartStatuses;
+    const data = await getData();
+    return data.daggerheartStatuses;
   },
   setDaggerheartStatuses: async (statuses: DaggerheartStatuses): Promise<void> => {
-    setData({ daggerheartStatuses: statuses });
+    await setData({ daggerheartStatuses: statuses });
   },
 
 
 
   // Daggerheart Money
   getDaggerheartMoney: async (): Promise<DaggerheartMoney | undefined> => {
-    return getData().daggerheartMoney;
+    const data = await getData();
+    return data.daggerheartMoney;
   },
   setDaggerheartMoney: async (money: DaggerheartMoney): Promise<void> => {
-    setData({ daggerheartMoney: money });
+    await setData({ daggerheartMoney: money });
   },
 
   // Selected token
   getSelectedTokenId: async (): Promise<string | undefined> => {
-    return getData().selectedTokenId;
+    const data = await getData();
+    return data.selectedTokenId;
   },
   setSelectedTokenId: async (tokenId: string | undefined): Promise<void> => {
-    setData({ selectedTokenId: tokenId });
+    await setData({ selectedTokenId: tokenId });
   },
 
   // Daggerheart character (stats, evasion, level, thresholds, skulls)
   getDaggerheartCharacter: async (): Promise<DaggerheartCharacter | undefined> => {
-    return getData().daggerheartCharacter;
+    const data = await getData();
+    return data.daggerheartCharacter;
   },
   setDaggerheartCharacter: async (character: DaggerheartCharacter): Promise<void> => {
-    setData({ daggerheartCharacter: character });
+    await setData({ daggerheartCharacter: character });
   },
 
   // Fear tracker (GM resource)
   getFear: async (): Promise<number | null> => {
-    const data = getData();
+    const data = await getData();
     return data.fear !== undefined ? data.fear : null;
   },
   setFear: async (fear: number): Promise<void> => {
-    setData({ fear });
+    await setData({ fear });
   },
 };

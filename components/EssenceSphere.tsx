@@ -53,7 +53,7 @@ export const EssenceSphere: React.FC<EssenceSphereProps> = ({
         <div className="flex flex-col items-center gap-2 p-4 bg-zinc-900/50 rounded-xl border border-zinc-800">
             <h3 className="text-xs font-bold uppercase tracking-wider text-zinc-500">Primeval Essence</h3>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-6">
                 {/* Control Column Left (Rank/Stage) */}
                 <div className="flex flex-col gap-2">
                     <div className="flex flex-col">
@@ -85,38 +85,36 @@ export const EssenceSphere: React.FC<EssenceSphereProps> = ({
                     </div>
                 </div>
 
-                {/* The Sphere */}
-                <div className="relative group">
-                    {/* Increase Button (Top) */}
-                    <button
-                        onClick={() => onChange({ current: Math.min(max, current + 1) })}
-                        className="absolute -top-3 left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-400 hover:bg-zinc-700 hover:text-white transition-colors shadow-md"
-                    >
-                        +
-                    </button>
-
-                    {/* Sphere Body */}
+                {/* The Sphere (BIGGER, 3 parts) */}
+                <div className="relative group select-none">
                     <div
                         className={clsx(
-                            "w-20 h-20 rounded-full flex items-center justify-center border-4 border-black/20 transition-all duration-300",
+                            "w-28 h-28 rounded-full flex flex-col items-center justify-center border-4 border-black/20 transition-all duration-300 overflow-hidden relative",
                             sphereColor,
-                            "shadow-[0_0_15px_rgba(0,0,0,0.5)]"
+                            "shadow-[0_0_20px_rgba(0,0,0,0.5)]"
                         )}
                     >
-                        <div className="flex flex-col items-center">
-                            <span className="text-3xl font-bold font-mono text-black/80 drop-shadow-sm leading-none">{current}</span>
-                            <div className="w-8 h-0.5 bg-black/30 my-0.5 rounded-full"></div>
-                            <span className="text-xs font-bold text-black/60">{max}</span>
+                        {/* Upper Part (Plus) */}
+                        <div
+                            onClick={() => onChange({ current: Math.min(max, current + 1) })}
+                            className="absolute top-0 left-0 right-0 h-[35%] w-full flex items-start justify-center pt-1 cursor-pointer hover:bg-white/10 active:bg-white/20 transition-colors z-10"
+                        >
+                            <span className="text-white/40 font-bold text-xl drop-shadow-sm">+</span>
+                        </div>
+
+                        {/* Middle Part (Value) */}
+                        <div className="flex flex-col items-center justify-center h-[30%] z-0 pointer-events-none">
+                            <span className="text-4xl font-bold font-mono text-black/80 drop-shadow-sm leading-none mt-1">{current}</span>
+                        </div>
+
+                        {/* Bottom Part (Minus) */}
+                        <div
+                            onClick={() => onChange({ current: Math.max(0, current - 1) })}
+                            className="absolute bottom-0 left-0 right-0 h-[35%] w-full flex items-end justify-center pb-1 cursor-pointer hover:bg-white/10 active:bg-white/20 transition-colors z-10"
+                        >
+                            <span className="text-white/40 font-bold text-xl drop-shadow-sm">-</span>
                         </div>
                     </div>
-
-                    {/* Decrease Button (Bottom) */}
-                    <button
-                        onClick={() => onChange({ current: Math.max(0, current - 1) })}
-                        className="absolute -bottom-3 left-1/2 -translate-x-1/2 z-10 w-6 h-6 rounded-full bg-zinc-800 border border-zinc-600 flex items-center justify-center text-zinc-400 hover:bg-zinc-700 hover:text-white transition-colors shadow-md"
-                    >
-                        -
-                    </button>
                 </div>
 
                 {/* Max Input Column */}

@@ -28,6 +28,7 @@ export const parseFormula = (formula: string) => {
 export interface DiceGroup {
   count: number;
   sides: number;
+  sign: number; // +1 or -1
 }
 
 export const parseFormulaAdvanced = (formula: string): { diceGroups: DiceGroup[], modifier: number } => {
@@ -51,16 +52,15 @@ export const parseFormulaAdvanced = (formula: string): { diceGroups: DiceGroup[]
       // Dice expression
       const dMatch = expr.match(/^(\d*)d(\d+)$/);
       if (dMatch) {
-        const count = dMatch[1] ? parseInt(dMatch[1]) : 1;
-        const sides = parseInt(dMatch[2]);
-        // For negative dice, we could skip or treat as 0 - for now just use absolute
+        const count = dMatch[1] ? parseInt(dMatch[1], 10) : 1;
+        const sides = parseInt(dMatch[2], 10);
         for (let i = 0; i < count; i++) {
-          diceGroups.push({ count: 1, sides });
+          diceGroups.push({ count: 1, sides, sign });
         }
       }
     } else {
       // Flat modifier
-      const num = parseInt(expr);
+      const num = parseInt(expr, 10);
       if (!isNaN(num)) {
         modifier += sign * num;
       }
@@ -110,6 +110,7 @@ export const getStatLabel = (stats: CharacterStats, key: string | undefined): st
 export interface PendingDie {
   id: string;
   sides: number;
+  sign?: number; // +1 or -1
   type: 'standard' | 'hope' | 'fear';
   isCrit?: boolean; // If forced crit applies to this die
 }
@@ -125,28 +126,28 @@ export const getStepDiceConfig = (step: RollStep): { dice: PendingDie[], baseMod
 
     // Always start with Hope and Fear d12s
     const dice: PendingDie[] = [
-      { id: generateId(), sides: 12, type: 'hope' },
-      { id: generateId(), sides: 12, type: 'fear' }
+      { id: generateId(), sides: 12, sign: 1, type: 'hope' },
+      { id: generateId(), sides: 12, sign: 1, type: 'fear' }
     ];
 
-    // Add any extra dice from formula (skip the first 2d12 if present, as we already have hope/fear)
+    // Add any extra dice from formula (skip the first 2d12 if present and positive, as we already have hope/fear)
     let d12Count = 0;
     for (const group of diceGroups) {
-      if (group.sides === 12 && d12Count < 2) {
-        // Skip the first two d12s since we already have hope/fear
+      if (group.sides === 12 && d12Count < 2 && group.sign === 1) {
         d12Count++;
         continue;
       }
-      // Add as standard dice
-      dice.push({ id: generateId(), sides: group.sides, type: 'standard' });
+      dice.push({ id: generateId(), sides: group.sides, sign: group.sign, type: 'standard' });
     }
 
     return { baseModifier: modifier, dice };
   } else {
-    const { count, sides, modifier } = parseFormula(step.formula);
+    const { diceGroups, modifier } = parseFormulaAdvanced(step.formula || "");
     const dice: PendingDie[] = [];
-    for (let i = 0; i < count; i++) {
-      dice.push({ id: generateId(), sides, type: 'standard' });
+    for (const group of diceGroups) {
+      for (let i = 0; i < group.count; i++) {
+        dice.push({ id: generateId(), sides: group.sides, sign: group.sign, type: 'standard' });
+      }
     }
     return { baseModifier: modifier, dice };
   }
@@ -250,16 +251,20 @@ export const resolveStepResult = (
   } else {
     // Standard
     let currentDice = diceConfig;
-    const rolls = currentDice.map(d => diceValues[d.id]);
-    const sum = rolls.reduce((a, b) => a + b, 0);
+    const rolls = currentDice.map(d => diceValues[d.id] || 0);
+    const signedSum = currentDice.reduce((acc, d) => {
+      const val = diceValues[d.id] || 0;
+      const sign = d.sign ?? 1;
+      return acc + (sign * val);
+    }, 0);
 
-    let total = sum + totalModifier;
+    let total = signedSum + totalModifier;
     let wasCrit = forceCrit || !!step.isCrit;
 
     // Critical Hit Math: Max Dice + Rolls + Mod
     if (wasCrit && currentDice.length > 0) {
       const maxDice = currentDice.reduce((acc, d) => acc + d.sides, 0);
-      total = maxDice + sum + totalModifier;
+      total = maxDice + signedSum + totalModifier;
     }
 
     return {

@@ -191,6 +191,10 @@ export const HistoryControl: React.FC = () => {
                     setActiveResult(msg);
                     // Removed auto-close timeout
                 }
+            } else if (message.type === 'QUICK_ROLL_EXECUTE') {
+                setActiveRollPreset(message.preset);
+                setActiveRollItemName(message.itemName);
+                setActiveRollVars({});
             }
         });
         return () => {

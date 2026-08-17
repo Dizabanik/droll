@@ -13,6 +13,7 @@ export interface DieStepAssociation {
   stepId: string;
   dieId: string;
   sides: number;
+  sign: number; // +1 or -1
   type: 'standard' | 'hope' | 'fear';
 }
 
@@ -67,37 +68,41 @@ export const prepare3DRoll = (
       // 1. Hope D12 (Sunrise/Gold)
       const hopeId = generateId();
       diceList.push({ id: hopeId, type: 'D12', style: 'SUNRISE' });
-      associations.push({ stepId: step.id, dieId: hopeId, sides: 12, type: 'hope' });
+      associations.push({ stepId: step.id, dieId: hopeId, sides: 12, sign: 1, type: 'hope' });
 
       // 2. Fear D12 (Galaxy/Purple)
       const fearId = generateId();
       diceList.push({ id: fearId, type: 'D12', style: 'GALAXY' });
-      associations.push({ stepId: step.id, dieId: fearId, sides: 12, type: 'fear' });
+      associations.push({ stepId: step.id, dieId: fearId, sides: 12, sign: 1, type: 'fear' });
 
       // 3. Any extra dice in the formula (skipping the first 2 d12s if specified)
       let d12Count = 0;
       for (const group of diceGroups) {
-        if (group.sides === 12 && d12Count < 2) {
+        if (group.sides === 12 && d12Count < 2 && group.sign === 1) {
           d12Count++;
           continue;
         }
         for (let i = 0; i < group.count; i++) {
           const extraId = generateId();
           const diceType = mapSidesToDiceType(group.sides);
-          diceList.push({ id: extraId, type: diceType, style: defaultStyle });
-          associations.push({ stepId: step.id, dieId: extraId, sides: group.sides, type: 'standard' });
+          const style = group.sign === -1 ? 'IRON' : defaultStyle;
+          diceList.push({ id: extraId, type: diceType, style });
+          associations.push({ stepId: step.id, dieId: extraId, sides: group.sides, sign: group.sign, type: 'standard' });
         }
       }
     } else {
-      // Standard roll (e.g. 2d6+4 or 1d20)
-      const { count, sides, modifier } = parseFormula(step.formula);
+      // Standard roll (e.g. 1d4+1d12 or 2d6-1d4+3 or 1d20)
+      const { diceGroups, modifier } = parseFormulaAdvanced(step.formula || '');
       baseMod = modifier;
 
-      for (let i = 0; i < count; i++) {
-        const dieId = generateId();
-        const diceType = mapSidesToDiceType(sides);
-        diceList.push({ id: dieId, type: diceType, style: defaultStyle });
-        associations.push({ stepId: step.id, dieId, sides, type: 'standard' });
+      for (const group of diceGroups) {
+        for (let i = 0; i < group.count; i++) {
+          const dieId = generateId();
+          const diceType = mapSidesToDiceType(group.sides);
+          const style = group.sign === -1 ? 'IRON' : defaultStyle;
+          diceList.push({ id: dieId, type: diceType, style });
+          associations.push({ stepId: step.id, dieId, sides: group.sides, sign: group.sign, type: 'standard' });
+        }
       }
     }
 
@@ -239,6 +244,7 @@ export const execute3DFateRoll = async (
     const stepPendingDice = stepAssocs.map(a => ({
       id: a.dieId,
       sides: a.sides,
+      sign: a.sign,
       type: a.type
     }));
 

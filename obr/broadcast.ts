@@ -4,7 +4,7 @@
  */
 
 import OBR from "@owlbear-rodeo/sdk";
-import { StepResult, DamageType } from "../types";
+import { StepResult, DamageType, DicePreset } from "../types";
 import { PendingDie } from "../utils/engine";
 import { isOBREnvironment } from "./storage";
 
@@ -63,7 +63,13 @@ export interface FearUpdateMessage {
     showEffect: boolean;  // Whether to show the fullscreen skull effect
 }
 
-export type DiceRollMessage = DiceRollStartMessage | DiceValuesMessage | RollCompleteMessage | StatRollRequestMessage | FearUpdateMessage;
+export interface QuickRollExecuteMessage {
+    type: 'QUICK_ROLL_EXECUTE';
+    preset: DicePreset;
+    itemName: string;
+}
+
+export type DiceRollMessage = DiceRollStartMessage | DiceValuesMessage | RollCompleteMessage | StatRollRequestMessage | FearUpdateMessage | QuickRollExecuteMessage;
 
 type MessageCallback = (message: DiceRollMessage, senderId: string) => void;
 

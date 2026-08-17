@@ -10,6 +10,7 @@ import { HistoryControl } from './components/HistoryControl';
 import { RollHistoryPanel, HistoryEntry } from './components/RollHistoryPanel';
 import { TokenSettings } from './components/TokenSettings';
 import { QuickDiceToolbar } from './components/QuickDiceToolbar';
+import { LeftToolbarPopover } from './components/LeftToolbarPopover';
 import { Icons } from './components/ui/Icons';
 import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage, DaggerheartVitals } from './obr';
 import clsx from 'clsx';
@@ -70,14 +71,16 @@ const INITIAL_STATS: CharacterStats = {
 const App: React.FC = () => {
   const { ready, isOBR, playerName, playerId } = useOBR();
 
-  // Overlay / Popover Mode Detection
+  // Overlay / Popover / Toolbar Mode Detection
   const [isOverlay, setIsOverlay] = useState(false);
   const [isPopover, setIsPopover] = useState(false);
+  const [isToolbar, setIsToolbar] = useState(false);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     setIsOverlay(query.get('overlay') === 'true');
     setIsPopover(query.get('popover') === 'true');
+    setIsToolbar(query.get('toolbar') === 'true');
   }, []);
 
   const [items, setItems] = useState<Item[]>(INITIAL_ITEMS);
@@ -200,14 +203,13 @@ const App: React.FC = () => {
 
   // Open the overlay window on mount (if acting as controller)
   useEffect(() => {
-    if (ready && isOBR && !isOverlay) {
-      // We are the controller. Try to open the overlay AND the popover.
+    if (ready && isOBR && !isOverlay && !isPopover && !isToolbar) {
+      // We are the controller. Try to open the controls AND the left dice toolbar popovers.
       import('@owlbear-rodeo/sdk').then(({ default: OBR }) => {
-        // 1. Visual Overlay (Fullscreen, Non-Interactive)
-        // Ensure legacy overlay is closed - We only use Popover now
+        // Ensure legacy overlay is closed
         OBR.modal.close('com.fateweaver.dice.overlay');
 
-        // 2. Interactive Controls (Popover, Anchored Bottom-Right)
+        // 1. Interactive Controls (Popover, Anchored Bottom-Right)
         OBR.popover.open({
           id: 'com.fateweaver.dice.controls',
           url: window.location.pathname + '?popover=true',
@@ -216,10 +218,22 @@ const App: React.FC = () => {
           anchorOrigin: { horizontal: 'RIGHT', vertical: 'BOTTOM' },
           disableClickAway: true,
           hidePaper: true,
-        }).catch(e => console.error("Failed to open popover:", e));
+        }).catch(e => console.error("Failed to open controls popover:", e));
+
+        // 2. Persistent Left Dice Toolbar (Popover, Anchored Left-Center)
+        OBR.popover.open({
+          id: 'com.fateweaver.dice.left_toolbar',
+          url: window.location.pathname + '?toolbar=true',
+          width: 68,
+          height: 520,
+          anchorOrigin: { horizontal: 'LEFT', vertical: 'CENTER' },
+          transformOrigin: { horizontal: 'LEFT', vertical: 'CENTER' },
+          disableClickAway: true,
+          hidePaper: true,
+        }).catch(e => console.error("Failed to open left toolbar popover:", e));
       });
     }
-  }, [ready, isOBR, isOverlay, isPopover]);
+  }, [ready, isOBR, isOverlay, isPopover, isToolbar]);
 
   // Save items when they change (only in main controller mode)
   useEffect(() => {
@@ -412,6 +426,15 @@ const App: React.FC = () => {
     return (
       <div className="w-full h-full overflow-hidden bg-transparent">
         <HistoryControl />
+      </div>
+    );
+  }
+
+  // If Left Toolbar Mode, render persistent LeftToolbarPopover
+  if (isToolbar) {
+    return (
+      <div className="w-full h-full overflow-hidden bg-transparent">
+        <LeftToolbarPopover />
       </div>
     );
   }

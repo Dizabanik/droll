@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OBRStorage, OBRBroadcast, FearUpdateMessage } from '../obr';
 import OBR from "@owlbear-rodeo/sdk";
+import { Icons } from './ui/Icons';
 import clsx from 'clsx';
 
 const MAX_FEAR = 12;
@@ -15,7 +16,6 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
     const [fear, setFear] = useState(0);
     const [isLoaded, setIsLoaded] = useState(false);
     const [showSkullEffect, setShowSkullEffect] = useState(false);
-    const fromBroadcastRef = useRef(false);
 
     // Metadata key for shared Fear state
     const METADATA_KEY = 'com.fateweaver.fear';
@@ -24,23 +24,19 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
     useEffect(() => {
         const load = async () => {
             try {
-                // Check OBR metadata first
                 if (OBR.isAvailable) {
                     const metadata = await OBR.room.getMetadata();
                     const roomFear = metadata[METADATA_KEY] as number;
                     if (typeof roomFear === 'number') {
                         setFear(roomFear);
                     } else {
-                        // Fallback to local storage if no room data (start of session)
                         const saved = await OBRStorage.getFear();
                         if (saved !== null) {
                             setFear(saved);
-                            // Sync local -> room
                             OBR.room.setMetadata({ [METADATA_KEY]: saved });
                         }
                     }
                 } else {
-                    // Fallback for standalone
                     const saved = await OBRStorage.getFear();
                     if (saved !== null) setFear(saved);
                 }
@@ -64,15 +60,14 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
         });
     }, []);
 
-    // Also listen for effect broadcasts (Visuals only)
+    // Listen for effect broadcasts (Visuals only)
     useEffect(() => {
         const unsubscribe = OBRBroadcast.onMessage((message) => {
             if (message.type === 'FEAR_UPDATE') {
                 const fearMsg = message as FearUpdateMessage;
-                // Note: We trust metadata for value, but broadcast triggers effect
                 if (fearMsg.showEffect) {
                     setShowSkullEffect(true);
-                    setTimeout(() => setShowSkullEffect(false), 1500);
+                    setTimeout(() => setShowSkullEffect(false), 1200);
                 }
             }
         });
@@ -81,30 +76,25 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
 
     // Save changes to Room Metadata
     const updateFear = useCallback(async (newFear: number, showEffect: boolean) => {
-        setFear(newFear);
+        const clamped = Math.max(0, Math.min(MAX_FEAR, newFear));
+        setFear(clamped);
 
-        // 1. Save to OBR Room (Source of Truth)
         if (OBR.isAvailable) {
-            OBR.room.setMetadata({ [METADATA_KEY]: newFear });
+            OBR.room.setMetadata({ [METADATA_KEY]: clamped });
         }
+        OBRStorage.setFear(clamped);
 
-        // 2. Save to local storage (Backup/Standalone)
-        OBRStorage.setFear(newFear);
-
-        // 3. Broadcast effect if needed
-        if (showEffect) {
-            // Local effect
+        if (showEffect && clamped > fear) {
             setShowSkullEffect(true);
-            setTimeout(() => setShowSkullEffect(false), 1500);
+            setTimeout(() => setShowSkullEffect(false), 1200);
 
-            // Network effect
             OBRBroadcast.send({
                 type: 'FEAR_UPDATE',
-                fear: newFear,
+                fear: clamped,
                 showEffect: true,
             });
         }
-    }, []);
+    }, [fear]);
 
     const addFear = () => {
         if (fear < MAX_FEAR) updateFear(fear + 1, true);
@@ -114,122 +104,109 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
         if (fear > 0) updateFear(fear - 1, false);
     };
 
+    const handlePipClick = (index: number) => {
+        const targetValue = index + 1;
+        // If clicking currently active max pip, decrement by 1
+        if (targetValue === fear) {
+            updateFear(fear - 1, false);
+        } else {
+            updateFear(targetValue, targetValue > fear);
+        }
+    };
+
     return (
         <>
-            {/* Fear Tracker Bar */}
-            <div className={clsx(
-                "flex items-center justify-center gap-3 px-4 py-2 bg-zinc-900/90 backdrop-blur-sm rounded-xl border border-zinc-700/50 shadow-lg",
-                className
-            )}>
-                {/* Minus Button */}
-                <button
-                    onClick={removeFear}
-                    disabled={fear <= 0}
-                    className={clsx(
-                        "w-10 h-10 rounded-lg font-bold text-2xl transition-all",
-                        "bg-zinc-800 border border-zinc-600 hover:bg-zinc-700",
-                        "disabled:opacity-30 disabled:cursor-not-allowed",
-                        "text-red-400 hover:text-red-300"
-                    )}
-                >
-                    −
-                </button>
-
-                {/* Skulls Row */}
-                <div className="flex items-center gap-1">
-                    {Array.from({ length: MAX_FEAR }).map((_, i) => (
-                        <motion.div
-                            key={i}
-                            initial={false}
-                            animate={{
-                                opacity: i < fear ? 1 : 0.15,
-                                scale: i < fear ? 1 : 0.8,
-                            }}
-                            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                            className="relative"
-                        >
-                            <img
-                                src="skull.png"
-                                alt="Fear"
-                                className={clsx(
-                                    "w-8 h-8 object-contain transition-all",
-                                    i < fear ? "drop-shadow-[0_0_8px_rgba(239,68,68,0.7)]" : "grayscale"
-                                )}
-                            />
-                        </motion.div>
-                    ))}
+            {/* Minimalist Glassmorphic Fear Tracker Capsule */}
+            <div
+                className={clsx(
+                    "flex items-center gap-1.5 px-2 py-1 bg-zinc-900/90 border border-purple-500/30 backdrop-blur-md rounded-xl shadow-md transition-all select-none",
+                    className
+                )}
+                title="Daggerheart Fear Resource Tracker (Click pips or +/- to adjust)"
+            >
+                {/* Skull Icon + Title */}
+                <div className="flex items-center gap-1 pr-1 border-r border-zinc-800">
+                    <Icons.Death size={13} className={clsx("transition-colors", fear > 0 ? "text-purple-400" : "text-zinc-500")} />
+                    <span className="text-[10px] font-bold tracking-wider uppercase text-purple-300 font-mono">
+                        Fear
+                    </span>
                 </div>
 
-                {/* Plus Button */}
+                {/* Decrement Micro-Button */}
                 <button
+                    type="button"
+                    onClick={removeFear}
+                    disabled={fear <= 0}
+                    className="w-4 h-4 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-20 disabled:cursor-not-allowed text-xs font-bold transition-all active:scale-90"
+                    title="Remove Fear (-1)"
+                >
+                    -
+                </button>
+
+                {/* 12 Minimalist Interactive Pips */}
+                <div className="flex items-center gap-0.5 px-0.5">
+                    {Array.from({ length: MAX_FEAR }).map((_, i) => {
+                        const isActive = i < fear;
+                        return (
+                            <button
+                                key={i}
+                                type="button"
+                                onClick={() => handlePipClick(i)}
+                                className={clsx(
+                                    "w-1.5 h-4 rounded-sm transition-all cursor-pointer group relative",
+                                    isActive
+                                        ? "bg-gradient-to-t from-purple-600 to-rose-500 shadow-[0_0_5px_rgba(168,85,247,0.7)] scale-y-105"
+                                        : "bg-zinc-800/80 hover:bg-zinc-700"
+                                )}
+                                title={`Set Fear to ${i + 1}`}
+                            />
+                        );
+                    })}
+                </div>
+
+                {/* Increment Micro-Button */}
+                <button
+                    type="button"
                     onClick={addFear}
                     disabled={fear >= MAX_FEAR}
-                    className={clsx(
-                        "w-10 h-10 rounded-lg font-bold text-2xl transition-all",
-                        "bg-zinc-800 border border-zinc-600 hover:bg-zinc-700",
-                        "disabled:opacity-30 disabled:cursor-not-allowed",
-                        "text-red-400 hover:text-red-300"
-                    )}
+                    className="w-4 h-4 rounded flex items-center justify-center text-purple-400 hover:text-purple-200 hover:bg-purple-950/50 disabled:opacity-20 disabled:cursor-not-allowed text-xs font-bold transition-all active:scale-90"
+                    title="Add Fear (+1)"
                 >
                     +
                 </button>
 
-                {/* Fear Count */}
-                <div className="ml-2 px-3 py-1 bg-red-900/40 border border-red-500/50 rounded-lg">
-                    <span className="text-red-400 font-bold text-lg">{fear}</span>
-                    <span className="text-red-500/70 text-sm ml-1">/ {MAX_FEAR}</span>
+                {/* Digital Counter Pill */}
+                <div className="pl-1 border-l border-zinc-800 font-mono text-[10px] font-bold">
+                    <span className={clsx(fear > 0 ? "text-purple-300" : "text-zinc-500")}>
+                        {fear}
+                    </span>
+                    <span className="text-zinc-600 text-[9px]">/12</span>
                 </div>
             </div>
 
-            {/* Fullscreen Skull Effect - Shows for ALL players when fear is added */}
+            {/* Subtle Screen Notification when Fear increases */}
             {typeof document !== 'undefined' && createPortal(
                 <AnimatePresence>
                     {showSkullEffect && (
                         <motion.div
-                            initial={{ opacity: 0 }}
-                            animate={{ opacity: 1 }}
-                            exit={{ opacity: 0 }}
-                            transition={{ duration: 0.3 }}
-                            className="fixed inset-0 z-[9999] pointer-events-none flex items-center justify-center bg-black/40"
+                            initial={{ opacity: 0, scale: 0.8, y: -20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
+                            transition={{ duration: 0.2 }}
+                            className="fixed top-8 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none flex items-center gap-3 px-4 py-2 bg-purple-950/90 border border-purple-500/50 rounded-2xl shadow-2xl backdrop-blur-md"
                         >
-                            <motion.div
-                                initial={{ scale: 0.3, opacity: 0, rotate: -10 }}
-                                animate={{
-                                    scale: [0.3, 1.2, 1],
-                                    opacity: [0, 1, 1, 0],
-                                    rotate: [-10, 5, 0]
-                                }}
-                                transition={{
-                                    duration: 1.2,
-                                    times: [0, 0.3, 0.6, 1],
-                                    ease: "easeOut"
-                                }}
-                                className="relative"
-                            >
-                                <img
-                                    src="skull.png"
-                                    alt="FEAR!"
-                                    className="w-80 h-80 object-contain drop-shadow-[0_0_60px_rgba(239,68,68,0.8)]"
-                                />
-                                {/* Glow pulse effect */}
-                                <motion.div
-                                    initial={{ opacity: 0.8, scale: 1 }}
-                                    animate={{ opacity: 0, scale: 1.5 }}
-                                    transition={{ duration: 0.8, ease: "easeOut" }}
-                                    className="absolute inset-0 bg-red-500/30 rounded-full blur-3xl"
-                                />
-                            </motion.div>
-
-                            {/* FEAR text */}
-                            <motion.div
-                                initial={{ opacity: 0, y: 50 }}
-                                animate={{ opacity: [0, 1, 1, 0], y: [50, 0, 0, -20] }}
-                                transition={{ duration: 1.2, times: [0, 0.2, 0.7, 1] }}
-                                className="absolute bottom-1/4 text-red-500 font-black text-6xl tracking-widest"
-                                style={{ textShadow: '0 0 40px rgba(239,68,68,0.8), 0 0 80px rgba(239,68,68,0.5)' }}
-                            >
-                                FEAR
-                            </motion.div>
+                            <div className="w-8 h-8 rounded-xl bg-purple-900/60 flex items-center justify-center border border-purple-400/40 text-purple-300">
+                                <Icons.Death size={20} />
+                            </div>
+                            <div>
+                                <div className="text-xs font-bold text-white tracking-wider uppercase font-mono flex items-center gap-1.5">
+                                    <span>Fear Gained</span>
+                                    <span className="px-1.5 py-0.2 rounded bg-purple-500/30 text-purple-200 text-[10px]">
+                                        {fear} / {MAX_FEAR}
+                                    </span>
+                                </div>
+                                <div className="text-[10px] text-purple-300/80">The GM gained a Fear token.</div>
+                            </div>
                         </motion.div>
                     )}
                 </AnimatePresence>,

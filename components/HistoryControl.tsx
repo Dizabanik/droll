@@ -326,22 +326,15 @@ export const HistoryControl: React.FC = () => {
                     onClick={closeHistory}
                 />
 
-                {/* Fear Tracker - Top Center */}
-                <div
-                    className="absolute top-4 left-1/2 z-30"
-                    style={{ transform: 'translateX(-50%)' }}
-                >
-                    <FearTracker />
-                </div>
-
                 {/* Left Panel - Daggerheart Stats (Hidden in Miro Mode to give Miro full left+center space) */}
                 {characterSheetMode === 'sheet' && (
                     <div className="relative z-10 flex-1 bg-zinc-950 border-r border-zinc-800 shadow-2xl flex flex-col overflow-y-auto">
-                        <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
-                            <h2 className="text-white font-bold flex items-center gap-2">
-                                <Icons.Dice size={20} className="text-accent" />
+                        <div className="flex items-center justify-between p-3 px-4 border-b border-zinc-800 bg-zinc-950">
+                            <h2 className="text-white font-bold flex items-center gap-2 text-sm">
+                                <Icons.Dice size={18} className="text-accent" />
                                 Daggerheart
                             </h2>
+                            <FearTracker />
                         </div>
                         <DaggerheartStats onVitalsChange={handleVitalsChange} onStatusesChange={handleStatusesChange} />
                     </div>
@@ -355,7 +348,7 @@ export const HistoryControl: React.FC = () => {
                     )}
                 >
                     <div className="flex items-center justify-between p-3 px-4 border-b border-zinc-800 bg-zinc-950 z-20">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-3">
                             {characterSheetMode === 'miro' ? (
                                 <h2 className="text-white font-bold flex items-center gap-2 text-sm sm:text-base">
                                     <svg className="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
@@ -372,6 +365,8 @@ export const HistoryControl: React.FC = () => {
                                     <span>Character</span>
                                 </h2>
                             )}
+
+                            {characterSheetMode === 'miro' && <FearTracker />}
                         </div>
 
                         {/* Mode Toggle Button: Sheet <-> Miro */}

@@ -111,14 +111,6 @@ export const HistoryControl: React.FC = () => {
         setActiveRollItemName(`${statLabel} Check`);
         setActiveRollVars({});
         setActiveRollPreset(statRollPreset);
-
-        // Also broadcast so any other open windows/overlays know about the roll
-        OBRBroadcast.send({
-            type: 'STAT_ROLL_REQUEST',
-            statKey,
-            statValue,
-            statLabel,
-        });
     }, []);
 
     // Load history on mount

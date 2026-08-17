@@ -186,10 +186,9 @@ export const HistoryControl: React.FC = () => {
                 };
                 setRollHistory(prev => [newEntry, ...prev].slice(0, 20));
 
-                // 2. Show Popup Logic (persistently)
-                if (!isHistoryOpen) {
+                // 2. Only show remote result popup if not open and from another player
+                if (!isHistoryOpen && msg.playerId !== playerId) {
                     setActiveResult(msg);
-                    // Removed auto-close timeout
                 }
             } else if (message.type === 'QUICK_ROLL_EXECUTE') {
                 setActiveRollPreset(message.preset);
@@ -426,11 +425,6 @@ export const HistoryControl: React.FC = () => {
                             )}
                         </div>
                     </motion.div>
-
-                    {/* Quick Dice Toolbar - Left Side */}
-                    <div className="fixed left-3 top-1/2 -translate-y-1/2 z-[70]">
-                        <QuickDiceToolbar onRollPreset={handleQuickRoll} />
-                    </div>
 
                     {/* Settings Button - Bottom Left Corner */}
                     <button

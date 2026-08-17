@@ -740,11 +740,6 @@ const App: React.FC = () => {
       {/* History Toggle Button - Available in Plugin Window */}
       {!isOverlay && (
         <>
-          <QuickDiceToolbar
-            onRollPreset={(preset, itemName) => initiateRoll(preset, itemName)}
-            className="fixed left-3 top-1/2 -translate-y-1/2 z-40 hidden md:flex"
-          />
-
           <button
             onClick={() => setIsHistoryOpen(true)}
             className="fixed bottom-4 right-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"

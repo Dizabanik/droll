@@ -23,6 +23,7 @@ const DIE_TYPES: Array<{ type: DiceType; label: string; sides: number }> = [
 ];
 
 export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset, className }) => {
+  const [hasDuality, setHasDuality] = useState<boolean>(false);
   const [selectedDice, setSelectedDice] = useState<Record<DiceType, number>>({
     D20: 0,
     D12: 0,
@@ -33,9 +34,15 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
     D100: 0,
   });
   const [modifier, setModifier] = useState<number>(0);
+  const [isCrit, setIsCrit] = useState<boolean>(false);
 
   const activeDiceEntries = Object.entries(selectedDice).filter(([_, count]) => count !== 0);
-  const hasStagedRoll = activeDiceEntries.length > 0 || modifier !== 0;
+  const hasStagedRoll = hasDuality || activeDiceEntries.length > 0 || modifier !== 0;
+
+  // Toggle Duality Dice (only 0 or 1)
+  const handleToggleDuality = () => {
+    setHasDuality((prev) => !prev);
+  };
 
   // Left click: increment count (+1)
   const handleLeftClick = (type: DiceType) => {
@@ -45,7 +52,7 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
     }));
   };
 
-  // Right click: decrement count. If 0, becomes -1 (subtracting die)
+  // Right click: decrement count. If <= 0, becomes negative (subtracted die)
   const handleRightClick = (type: DiceType, e: React.MouseEvent) => {
     e.preventDefault();
     setSelectedDice((prev) => ({
@@ -54,8 +61,9 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
     }));
   };
 
-  // Reset all staged dice and modifier
+  // Reset all staged dice, duality, crit, and modifier
   const handleClear = () => {
+    setHasDuality(false);
     setSelectedDice({
       D20: 0,
       D12: 0,
@@ -66,38 +74,21 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
       D100: 0,
     });
     setModifier(0);
+    setIsCrit(false);
   };
 
-  // Roll Duality Dice (Hope & Fear d12s) with current modifier
-  const handleRollDuality = () => {
-    const modString = modifier !== 0 ? (modifier > 0 ? `+${modifier}` : `${modifier}`) : '';
-    const formula = `2d12${modString}`;
-    const dualityPreset: DicePreset = {
-      id: `duality-roll-${generateId()}`,
-      name: `Duality Roll ${modString}`,
-      variables: [],
-      steps: [
-        {
-          id: 'dh_duality_step',
-          label: `Duality Roll ${modString}`,
-          type: 'daggerheart',
-          formula,
-          damageType: 'none',
-          addToSum: true,
-          isCrit: true,
-        },
-      ],
-    };
-    onRollPreset(dualityPreset, `Duality (Hope & Fear) ${modString}`);
-  };
-
-  // Execute the composite roll from staged dice + modifier
+  // Execute the composite roll from staged dice + duality + modifier + crit
   const handleExecutePoolRoll = () => {
     if (!hasStagedRoll) return;
 
     const formulaParts: string[] = [];
 
-    // 1. Positive Dice
+    // 1. Duality base (2d12) if selected
+    if (hasDuality) {
+      formulaParts.push('2d12');
+    }
+
+    // 2. Positive Extra Dice
     activeDiceEntries
       .filter(([_, count]) => count > 0)
       .forEach(([type, count]) => {
@@ -105,7 +96,7 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
         formulaParts.push(`${count}d${sides}`);
       });
 
-    // 2. Negative Dice (subtracted)
+    // 3. Negative Extra Dice (subtracted)
     activeDiceEntries
       .filter(([_, count]) => count < 0)
       .forEach(([type, count]) => {
@@ -114,12 +105,12 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
         formulaParts.push(`-${absCount}d${sides}`);
       });
 
-    // 3. Modifier
+    // 4. Modifier
     if (modifier !== 0) {
       formulaParts.push(modifier > 0 ? `+${modifier}` : `${modifier}`);
     }
 
-    // Build formula string (e.g. "1d20+1d4-1d6+2")
+    // Build formula string
     let combinedFormula = formulaParts.join('+').replace(/\+\-/g, '-');
     if (combinedFormula.startsWith('+')) {
       combinedFormula = combinedFormula.slice(1);
@@ -128,24 +119,32 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
       combinedFormula = '1d20';
     }
 
+    const presetName = hasDuality
+      ? `Duality Roll (${combinedFormula})`
+      : `Roll ${combinedFormula}`;
+
     const poolPreset: DicePreset = {
       id: `pool-roll-${generateId()}`,
-      name: `Roll ${combinedFormula}`,
+      name: isCrit ? `${presetName} [CRIT]` : presetName,
       variables: [],
       steps: [
         {
           id: 'pool_step',
           label: combinedFormula,
-          type: 'standard',
+          type: hasDuality ? 'daggerheart' : 'standard',
           formula: combinedFormula,
           damageType: 'none',
           addToSum: true,
-          isCrit: false,
+          isCrit: isCrit,
         },
       ],
     };
 
-    onRollPreset(poolPreset, `Quick Roll (${combinedFormula})`);
+    const labelName = hasDuality
+      ? `Duality (Hope & Fear)${isCrit ? ' [CRIT]' : ''}`
+      : `Quick Roll${isCrit ? ' [CRIT]' : ''}`;
+
+    onRollPreset(poolPreset, labelName);
     handleClear();
   };
 
@@ -156,25 +155,38 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
         className
       )}
     >
-      {/* 1. Duality Dice Button (Replaces set picker at the top) */}
+      {/* 1. Duality Dice Button (Icon only, no text) */}
       <button
-        onClick={handleRollDuality}
-        className="group relative flex flex-col items-center justify-center p-1.5 rounded-xl bg-gradient-to-b from-amber-500/25 via-purple-500/20 to-zinc-900/90 border border-amber-500/40 hover:border-amber-400 hover:scale-105 active:scale-95 transition-all shadow-lg hover:shadow-purple-500/30"
-        title="Roll Duality Dice (Hope & Fear)"
+        onClick={handleToggleDuality}
+        onContextMenu={(e) => {
+          e.preventDefault();
+          handleToggleDuality();
+        }}
+        className={clsx(
+          "group relative flex items-center justify-center p-1.5 rounded-xl border transition-all hover:scale-105 active:scale-95 shadow-lg",
+          hasDuality
+            ? "bg-gradient-to-b from-amber-500/30 via-purple-500/25 to-zinc-900 border-amber-400 shadow-amber-500/30 ring-1 ring-amber-400/50"
+            : "bg-zinc-900/80 border-zinc-800 hover:border-amber-500/50 opacity-70 hover:opacity-100"
+        )}
+        title="Duality Dice (1 Hope + 1 Fear d12) - Click to toggle in pool"
       >
-        <div className="flex items-center -space-x-2">
+        <div className="flex items-center -space-x-2 py-0.5">
           {/* Hope Mini Preview (Sunrise) */}
-          <div className="w-5 h-5 rounded-full overflow-hidden border border-amber-400/70 shadow-sm flex items-center justify-center bg-amber-950/50">
+          <div className="w-5 h-5 rounded-full overflow-hidden border border-amber-400/80 shadow-sm flex items-center justify-center bg-amber-950/60">
             <DicePreview diceStyle="SUNRISE" diceType="D12" size="small" />
           </div>
           {/* Fear Mini Preview (Galaxy) */}
-          <div className="w-5 h-5 rounded-full overflow-hidden border border-purple-400/70 shadow-sm flex items-center justify-center bg-purple-950/50">
+          <div className="w-5 h-5 rounded-full overflow-hidden border border-purple-400/80 shadow-sm flex items-center justify-center bg-purple-950/60">
             <DicePreview diceStyle="GALAXY" diceType="D12" size="small" />
           </div>
         </div>
-        <span className="text-[8px] font-black tracking-wider text-amber-300 group-hover:text-amber-200 mt-0.5 uppercase">
-          Duality
-        </span>
+
+        {/* Selected indicator badge */}
+        {hasDuality && (
+          <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-black font-black text-[9px] flex items-center justify-center shadow-md animate-in zoom-in-50">
+            1
+          </span>
+        )}
       </button>
 
       <div className="w-8 h-px bg-zinc-800 my-0.5" />
@@ -223,39 +235,57 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
 
       <div className="w-8 h-px bg-zinc-800 my-0.5" />
 
-      {/* 3. Manual Flat Modifier Stepper (+- buttons) */}
-      <div className="flex items-center gap-1 bg-zinc-900/80 border border-zinc-800 rounded-lg p-0.5" title="Manual Roll Modifier">
+      {/* 3. Manual Flat Modifier Stepper with Direct Input */}
+      <div className="flex items-center gap-0.5 bg-zinc-900/90 border border-zinc-800 rounded-lg p-0.5 w-full justify-between" title="Manual Roll Modifier (type number or click +/-)">
         <button
           onClick={() => setModifier((m) => m - 1)}
-          className="w-5 h-5 rounded flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition-colors font-bold text-xs active:scale-90"
+          className="w-4 h-5 rounded flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-zinc-800 transition-colors font-bold text-xs active:scale-90"
           title="Decrease Modifier (-1)"
         >
           -
         </button>
 
-        <span
-          onClick={() => setModifier(0)}
+        <input
+          type="number"
+          value={modifier === 0 ? '' : modifier}
+          placeholder="0"
+          onChange={(e) => {
+            const val = parseInt(e.target.value, 10);
+            setModifier(isNaN(val) ? 0 : val);
+          }}
           className={clsx(
-            "min-w-6 text-center text-[10px] font-mono font-bold cursor-pointer transition-colors px-0.5",
+            "w-9 bg-transparent text-center text-[10px] font-mono font-bold focus:outline-none border-b border-transparent focus:border-zinc-500",
             modifier > 0 && "text-amber-400",
             modifier < 0 && "text-rose-400",
-            modifier === 0 && "text-zinc-500 hover:text-zinc-300"
+            modifier === 0 && "text-zinc-500"
           )}
-          title="Click to Reset Modifier"
-        >
-          {modifier >= 0 ? `+${modifier}` : `${modifier}`}
-        </span>
+        />
 
         <button
           onClick={() => setModifier((m) => m + 1)}
-          className="w-5 h-5 rounded flex items-center justify-center text-zinc-400 hover:text-accent hover:bg-zinc-800 transition-colors font-bold text-xs active:scale-90"
+          className="w-4 h-5 rounded flex items-center justify-center text-zinc-400 hover:text-accent hover:bg-zinc-800 transition-colors font-bold text-xs active:scale-90"
           title="Increase Modifier (+1)"
         >
           +
         </button>
       </div>
 
-      {/* 4. Action Buttons when Dice / Modifiers are staged */}
+      {/* 4. CRIT Toggle Button */}
+      <button
+        onClick={() => setIsCrit((c) => !c)}
+        className={clsx(
+          "w-full py-1 px-1 rounded-lg border font-black text-[10px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95",
+          isCrit
+            ? "bg-yellow-500/25 border-yellow-400 text-yellow-300 shadow-md shadow-yellow-500/30 ring-1 ring-yellow-400/40"
+            : "bg-zinc-900/60 border-zinc-800 text-zinc-500 hover:text-zinc-300 hover:border-zinc-700"
+        )}
+        title="Toggle Critical Hit (Maximizes positive dice values + roll + mod)"
+      >
+        <Icons.Target size={11} className={isCrit ? "text-yellow-400" : "text-zinc-500"} />
+        <span>Crit</span>
+      </button>
+
+      {/* 5. Actions / Roll Trigger when Dice / Modifiers / Duality are staged */}
       <AnimatePresence>
         {hasStagedRoll && (
           <motion.div
@@ -267,7 +297,7 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({ onRollPreset
             <button
               onClick={handleExecutePoolRoll}
               className="w-full py-1.5 px-1 rounded-xl bg-accent text-zinc-950 font-bold text-[11px] hover:bg-accent/90 transition-all shadow-lg active:scale-95 flex items-center justify-center gap-1"
-              title="Roll selected dice"
+              title="Roll staged dice"
             >
               <Icons.Dice size={13} />
               <span>Roll</span>

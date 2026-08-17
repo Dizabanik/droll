@@ -227,17 +227,35 @@ export const resolveStepResult = (
     const hope = hopeDie ? diceValues[hopeDie.id] : 0;
     const fear = fearDie ? diceValues[fearDie.id] : 0;
 
+    const extraDice = diceConfig.filter(d => d.type === 'standard');
+    const extraSignedSum = extraDice.reduce((acc, d) => {
+      const val = diceValues[d.id] || 0;
+      const sign = d.sign ?? 1;
+      return acc + (sign * val);
+    }, 0);
+
+    const isCritical = (hope === fear && hope > 0) || forceCrit || !!step.isCrit;
     let outcome: 'hope' | 'fear' | 'crit' = 'hope';
-    if (hope === fear) outcome = 'crit';
+    if (isCritical) outcome = 'crit';
     else if (hope >= fear) outcome = 'hope';
     else outcome = 'fear';
+
+    let total = hope + fear + extraSignedSum + totalModifier;
+    if (isCritical) {
+      // Maximize positive dice values + actual rolls + modifier (modifier NOT duplicated)
+      const maxHopeFear = 24; // 12 + 12
+      const maxExtra = extraDice.filter(d => (d.sign ?? 1) > 0).reduce((acc, d) => acc + d.sides, 0);
+      total = maxHopeFear + maxExtra + hope + fear + extraSignedSum + totalModifier;
+    }
+
+    const rolls = [hope, fear, ...extraDice.map(d => diceValues[d.id] || 0)];
 
     return {
       stepId: step.id,
       uniqueId,
       label: step.label,
-      total: hope + fear + totalModifier,
-      rolls: [hope, fear],
+      total,
+      rolls,
       formula: displayFormula,
       type: 'daggerheart',
       damageType: step.damageType,
@@ -246,7 +264,7 @@ export const resolveStepResult = (
       dhFear: fear,
       dhOutcome: outcome,
       addToSum: step.addToSum,
-      wasCrit: outcome === 'crit'
+      wasCrit: isCritical
     };
   } else {
     // Standard
@@ -261,9 +279,9 @@ export const resolveStepResult = (
     let total = signedSum + totalModifier;
     let wasCrit = forceCrit || !!step.isCrit;
 
-    // Critical Hit Math: Max Dice + Rolls + Mod
+    // Critical Hit Math: Max Positive Dice + Rolls + Mod (modifier NOT duplicated)
     if (wasCrit && currentDice.length > 0) {
-      const maxDice = currentDice.reduce((acc, d) => acc + d.sides, 0);
+      const maxDice = currentDice.filter(d => (d.sign ?? 1) > 0).reduce((acc, d) => acc + d.sides, 0);
       total = maxDice + signedSum + totalModifier;
     }
 

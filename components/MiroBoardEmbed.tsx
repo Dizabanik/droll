@@ -88,8 +88,8 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
 
   if (isLoading) {
     return (
-      <div className="flex-1 flex items-center justify-center p-8 bg-zinc-950 text-zinc-400">
-        <Icons.Refresh size={28} className="animate-spin text-accent" />
+      <div className="flex-1 flex items-center justify-center p-8 bg-background text-muted select-none">
+        <Icons.Refresh size={24} className="animate-spin text-white" />
       </div>
     );
   }
@@ -97,9 +97,9 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
   // If no URL is configured yet or currently editing URL
   if (!rawUrl || isEditing) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center p-6 bg-zinc-950 text-white overflow-y-auto">
-        <div className="max-w-md w-full p-6 bg-zinc-900/90 rounded-2xl border border-zinc-800 shadow-2xl space-y-5 text-center">
-          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-400 flex items-center justify-center mx-auto border border-amber-500/30">
+      <div className="flex-1 flex flex-col items-center justify-center p-6 bg-background text-white overflow-y-auto select-none">
+        <div className="max-w-md w-full p-6 bg-surface rounded-2xl border border-neutral-800 shadow-fey-xl space-y-5 text-center">
+          <div className="w-12 h-12 rounded-2xl bg-elevated text-white flex items-center justify-center mx-auto border border-neutral-800">
             <svg className="w-6 h-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <rect width="18" height="18" x="3" y="3" rx="2" />
               <path d="M7 7v10" />
@@ -109,15 +109,15 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
           </div>
 
           <div>
-            <h3 className="text-lg font-bold text-white">Connect Miro Character Board</h3>
-            <p className="text-xs text-zinc-400 mt-1">
-              Paste your Miro board share link below. It will be embedded directly into this panel.
+            <h3 className="text-base font-bold text-white tracking-tight">Connect Miro Character Board</h3>
+            <p className="text-xs text-muted mt-1 font-mono">
+              Paste your Miro board share link to embed it into this panel.
             </p>
           </div>
 
           <div className="space-y-3 text-left">
             <div>
-              <label className="block text-xs font-semibold text-zinc-300 mb-1">
+              <label className="block text-[10px] font-bold text-muted uppercase font-mono tracking-widest mb-1.5">
                 Miro Board URL
               </label>
               <input
@@ -125,26 +125,26 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
                 value={inputUrl}
                 onChange={(e) => setInputUrl(e.target.value)}
                 placeholder="https://miro.com/app/board/uXjVO...=/"
-                className="w-full px-3 py-2 bg-zinc-950 border border-zinc-700 rounded-xl text-xs text-white focus:outline-none focus:border-accent"
+                className="w-full px-3 py-2 bg-elevated border border-neutral-800 rounded-xl text-xs font-mono text-white focus:outline-none focus:border-white/50"
               />
             </div>
 
-            <div className="p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800 text-[11px] text-zinc-400 space-y-1">
-              <div className="font-semibold text-zinc-300 flex items-center gap-1">
-                <span>💡 Tip for Miro permissions:</span>
+            <div className="p-3 rounded-xl bg-elevated/60 border border-neutral-800 text-[11px] text-muted space-y-1 font-mono">
+              <div className="font-semibold text-white flex items-center gap-1">
+                <span>💡 Permissions Tip:</span>
               </div>
               <p>
-                Ensure your Miro board share setting is set to <strong>"Anyone with the link can view/edit"</strong> so all players can access it.
+                Set board sharing to <strong>"Anyone with the link can view/edit"</strong> for seamless access.
               </p>
             </div>
           </div>
 
-          <div className="flex gap-2">
+          <div className="flex gap-2.5 pt-1">
             {rawUrl && (
               <button
                 type="button"
                 onClick={() => setIsEditing(false)}
-                className="flex-1 px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 rounded-xl text-xs font-medium transition-colors"
+                className="flex-1 px-4 py-2 bg-elevated hover:bg-neutral-800 text-muted hover:text-white rounded-full text-xs font-semibold transition-all border border-neutral-800"
               >
                 Cancel
               </button>
@@ -154,10 +154,10 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
               onClick={handleSaveUrl}
               disabled={!inputUrl.trim()}
               className={clsx(
-                "flex-1 px-4 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md",
+                "flex-1 px-4 py-2.5 rounded-full text-xs font-bold transition-all shadow-fey-subtle",
                 inputUrl.trim()
-                  ? "bg-accent hover:bg-accent/90 text-white shadow-accent/20 active:scale-95"
-                  : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+                  ? "bg-white hover:bg-neutral-200 text-black active:scale-95"
+                  : "bg-neutral-800 text-muted cursor-not-allowed"
               )}
             >
               Connect Board
@@ -168,7 +168,7 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
             <button
               type="button"
               onClick={handleClearUrl}
-              className="text-[11px] text-red-400 hover:text-red-300 underline pt-1"
+              className="text-[11px] text-rose-400 hover:text-rose-300 font-mono underline pt-1"
             >
               Disconnect Miro Board
             </button>
@@ -182,7 +182,7 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
   return (
     <div
       className={clsx(
-        "relative flex-1 w-full h-full flex flex-col bg-zinc-950 overflow-hidden",
+        "relative flex-1 w-full h-full flex flex-col bg-background overflow-hidden select-none",
         !isActive && "pointer-events-none invisible"
       )}
       style={{
@@ -191,20 +191,20 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
       }}
     >
       {/* Top Mini Control Toolbar */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-zinc-900 border-b border-zinc-800/80 z-20 text-xs">
+      <div className="flex items-center justify-between px-3 py-1.5 bg-surface border-b border-neutral-800 z-20 text-xs">
         <div className="flex items-center gap-2">
-          <span className={clsx("w-2 h-2 rounded-full", isActive ? "bg-emerald-400 animate-pulse" : "bg-zinc-500")} />
-          <span className="font-semibold text-zinc-300 text-[11px]">Miro Active</span>
+          <span className={clsx("w-2 h-2 rounded-full", isActive ? "bg-growth animate-pulse" : "bg-neutral-600")} />
+          <span className="font-bold text-white text-[11px] font-mono tracking-wide">Miro Board Active</span>
         </div>
 
-        <div className="flex items-center gap-1">
+        <div className="flex items-center gap-1.5">
           {/* Refresh Iframe */}
           <button
             onClick={handleRefresh}
-            className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors"
+            className="p-1 rounded-full text-muted hover:text-white hover:bg-elevated transition-colors"
             title="Reload Miro Board"
           >
-            <Icons.Refresh size={14} />
+            <Icons.Refresh size={13} />
           </button>
 
           {/* Open in New Window */}
@@ -212,10 +212,10 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
             href={rawUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="p-1 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors flex items-center gap-1"
+            className="p-1 rounded-full text-muted hover:text-white hover:bg-elevated transition-colors flex items-center gap-1"
             title="Open in new browser tab"
           >
-            <Icons.ArrowRight size={14} className="-rotate-45" />
+            <Icons.ArrowRight size={13} className="-rotate-45" />
           </a>
 
           {/* Edit Board URL */}
@@ -224,7 +224,7 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
               setInputUrl(rawUrl);
               setIsEditing(true);
             }}
-            className="px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition-colors text-[11px] font-medium ml-1"
+            className="px-2.5 py-0.5 rounded-full bg-elevated hover:bg-neutral-800 text-muted hover:text-white transition-colors text-[10px] font-mono font-semibold ml-1 border border-neutral-800"
             title="Change Miro Board Link"
           >
             Change Link
@@ -233,12 +233,12 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
       </div>
 
       {/* Miro Iframe */}
-      <div className="flex-1 w-full h-full relative bg-zinc-950">
+      <div className="flex-1 w-full h-full relative bg-background">
         <iframe
           key={iframeKey}
           src={embedUrl}
           title="Miro Character Sheet Board"
-          className="w-full h-full border-0 bg-zinc-950"
+          className="w-full h-full border-0 bg-background"
           loading="lazy"
           allow="fullscreen; clipboard-read; clipboard-write"
           allowFullScreen
@@ -247,3 +247,4 @@ export const MiroBoardEmbed: React.FC<MiroBoardEmbedProps> = ({ isActive = true 
     </div>
   );
 };
+

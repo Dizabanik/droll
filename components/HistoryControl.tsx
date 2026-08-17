@@ -310,7 +310,7 @@ export const HistoryControl: React.FC = () => {
     };
 
     return (
-        <div className="w-full h-full relative">
+        <div className="w-full h-full relative select-none">
             {/* Fullscreen Menu Mode - Persistent DOM so Miro iframe never restarts */}
             <div
                 className={clsx(
@@ -322,16 +322,16 @@ export const HistoryControl: React.FC = () => {
             >
                 {/* Backdrop */}
                 <div
-                    className="absolute inset-0 bg-black/60 backdrop-blur-sm cursor-pointer"
+                    className="absolute inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
                     onClick={closeHistory}
                 />
 
                 {/* Left Panel - Daggerheart Stats (Hidden in Miro Mode to give Miro full left+center space) */}
                 {characterSheetMode === 'sheet' && (
-                    <div className="relative z-10 flex-1 bg-zinc-950 border-r border-zinc-800 shadow-2xl flex flex-col overflow-y-auto">
-                        <div className="flex items-center justify-between p-3 px-4 border-b border-zinc-800 bg-zinc-950">
-                            <h2 className="text-white font-bold flex items-center gap-2 text-sm">
-                                <Icons.Dice size={18} className="text-accent" />
+                    <div className="relative z-10 flex-1 bg-surface/95 border-r border-neutral-800/80 shadow-fey-xl flex flex-col overflow-y-auto">
+                        <div className="flex items-center justify-between p-3.5 px-5 border-b border-neutral-800/80 bg-surface">
+                            <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
+                                <Icons.Dice size={16} className="text-white" />
                                 Daggerheart
                             </h2>
                             <FearTracker />
@@ -343,25 +343,25 @@ export const HistoryControl: React.FC = () => {
                 {/* Center / Miro Panel (Spans both Left & Center when in Miro Mode) */}
                 <div
                     className={clsx(
-                        "relative z-10 bg-zinc-950/90 border-x border-zinc-800 shadow-2xl flex flex-col overflow-hidden transition-all duration-300",
+                        "relative z-10 bg-surface/90 border-x border-neutral-800/80 shadow-fey-xl flex flex-col overflow-hidden transition-all duration-300",
                         characterSheetMode === 'miro' ? "flex-[3]" : "flex-1"
                     )}
                 >
-                    <div className="flex items-center justify-between p-3 px-4 border-b border-zinc-800 bg-zinc-950 z-20">
+                    <div className="flex items-center justify-between p-3 px-5 border-b border-neutral-800/80 bg-surface z-20">
                         <div className="flex items-center gap-3">
                             {characterSheetMode === 'miro' ? (
-                                <h2 className="text-white font-bold flex items-center gap-2 text-sm sm:text-base">
-                                    <svg className="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
+                                    <svg className="w-4 h-4 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                                         <rect width="18" height="18" x="3" y="3" rx="2" />
                                         <path d="M7 7v10" />
                                         <path d="M12 7v10" />
                                         <path d="M17 7v10" />
                                     </svg>
-                                    <span>Miro Character Board</span>
+                                    <span>Miro Board</span>
                                 </h2>
                             ) : (
-                                <h2 className="text-white font-bold flex items-center gap-2 text-sm sm:text-base">
-                                    <Icons.User size={20} className="text-accent" />
+                                <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
+                                    <Icons.User size={16} className="text-white" />
                                     <span>Character</span>
                                 </h2>
                             )}
@@ -370,32 +370,32 @@ export const HistoryControl: React.FC = () => {
                         </div>
 
                         {/* Mode Toggle Button: Sheet <-> Miro */}
-                        <div className="flex items-center bg-zinc-900 border border-zinc-700/80 rounded-xl p-0.5 shadow-inner">
+                        <div className="flex items-center bg-elevated border border-neutral-800 rounded-full p-0.5 shadow-inner">
                             <button
                                 onClick={() => handleSheetModeChange('sheet')}
                                 className={clsx(
-                                    "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all",
                                     characterSheetMode === 'sheet'
-                                        ? "bg-accent text-white shadow-sm"
-                                        : "text-zinc-400 hover:text-zinc-200"
+                                        ? "bg-white text-black font-bold shadow-fey-subtle"
+                                        : "text-muted hover:text-white"
                                 )}
                                 title="Switch to standard Character Sheet"
                             >
-                                <Icons.User size={13} />
+                                <Icons.User size={12} />
                                 <span>Sheet</span>
                             </button>
 
                             <button
                                 onClick={() => handleSheetModeChange('miro')}
                                 className={clsx(
-                                    "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all",
                                     characterSheetMode === 'miro'
-                                        ? "bg-amber-500 text-zinc-950 shadow-sm font-bold"
-                                        : "text-zinc-400 hover:text-zinc-200"
+                                        ? "bg-signal text-white font-bold shadow-fey-signal"
+                                        : "text-muted hover:text-white"
                                 )}
                                 title="Switch to Miro Board"
                             >
-                                <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                                     <rect width="18" height="18" x="3" y="3" rx="2" />
                                     <path d="M7 7v10" />
                                     <path d="M12 7v10" />
@@ -406,7 +406,7 @@ export const HistoryControl: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Miro Embed & Character Panel kept persistently mounted with zero background GPU overhead */}
+                    {/* Miro Embed & Character Panel kept persistently mounted */}
                     {hasEverLoadedMiro && (
                         <div
                             className={clsx("flex-1 w-full h-full flex flex-col overflow-hidden", characterSheetMode === 'miro' ? "flex" : "hidden")}
@@ -432,97 +432,98 @@ export const HistoryControl: React.FC = () => {
                 </div>
 
                 {/* Right Panel - Roll History */}
-                <div className="relative z-10 flex-1 bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col">
-                    <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
+                <div className="relative z-10 flex-1 bg-surface/95 border-l border-neutral-800/80 shadow-fey-xl flex flex-col">
+                    <div className="flex items-center justify-between p-3.5 px-5 border-b border-neutral-800/80 bg-surface">
                         <div className="flex items-center gap-2">
-                            <h2 className="text-white font-bold flex items-center gap-2">
-                                <Icons.Menu size={20} className="text-accent" />
-                                Roll History
+                            <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
+                                <Icons.Menu size={16} className="text-white" />
+                                Roll Feed
                             </h2>
-                            <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
+                            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-elevated text-muted border border-neutral-800">
                                 {APP_VERSION}
                             </span>
                         </div>
                         <button
                             onClick={closeHistory}
-                            className="p-2 hover:bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition-colors"
+                            className="p-1 rounded-full text-muted hover:text-white hover:bg-elevated transition-colors"
                         >
-                            <Icons.Close size={20} />
+                            <Icons.Close size={16} />
                         </button>
                     </div>
 
-                    <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
                         {rollHistory.length === 0 ? (
-                            <div className="text-center text-zinc-600 py-10">
-                                <Icons.Dice size={48} className="mx-auto mb-2 opacity-20" />
-                                <p>No rolls recorded yet.</p>
+                            <div className="text-center text-muted py-12 flex flex-col items-center gap-2">
+                                <Icons.Dice size={36} className="opacity-20 text-muted" />
+                                <p className="text-xs font-mono">No rolls recorded yet.</p>
                             </div>
                         ) : (
                             rollHistory.map((entry) => (
-                                <div key={entry.id} className="relative pl-4 border-l-2 border-zinc-800 hover:border-accent transition-colors">
-                                    <div className="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-zinc-800 border-2 border-zinc-950" />
+                                <div key={entry.id} className="relative pl-4 border-l border-neutral-800 hover:border-neutral-600 transition-colors">
+                                    <div className="absolute -left-[3.5px] top-1.5 w-1.5 h-1.5 rounded-full bg-neutral-600" />
 
-                                    <div className="flex justify-between items-start mb-2">
+                                    <div className="flex justify-between items-start mb-1.5">
                                         <div>
-                                            <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                                            <span className="text-[9px] font-mono text-muted tracking-wider">
                                                 {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                             </span>
-                                            <h3 className="text-white font-medium text-sm">
+                                            <h3 className="text-white font-bold text-xs tracking-tight">
                                                 {entry.playerName}
                                             </h3>
                                         </div>
-                                        <div className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded">
+                                        <div className="text-[9px] font-mono text-muted bg-surface px-2 py-0.5 rounded-full border border-neutral-800 shadow-fey-subtle">
                                             {entry.presetName}
                                         </div>
                                     </div>
 
-                                    <div className="bg-zinc-900/50 rounded-lg p-2 border border-zinc-800/50">
-                                        <div className="flex justify-between items-baseline mb-2 pb-2 border-b border-white/5">
-                                            <span className="text-xs text-zinc-400">{entry.itemName}</span>
-                                            <span className="text-lg font-mono font-bold text-white">{entry.grandTotal}</span>
+                                    <div className="bg-surface/60 rounded-2xl p-3 border border-neutral-800/80 shadow-fey-subtle">
+                                        <div className="flex justify-between items-baseline mb-2 pb-1.5 border-b border-neutral-800/60">
+                                            <span className="text-xs font-medium text-muted">{entry.itemName}</span>
+                                            <span className="text-base font-mono font-bold text-white tracking-tight">{entry.grandTotal}</span>
                                         </div>
 
                                         {entry.results && entry.results.length > 0 && (
                                             <div className="space-y-1.5">
                                                 {entry.results.map(res => (
-                                                    <div key={res.uniqueId} className={`flex justify-between items-center px-2 py-1.5 rounded text-xs ${res.wasCrit ? "bg-yellow-500/10 text-yellow-200" : "bg-zinc-950/50 text-zinc-300"
-                                                        }`}>
+                                                    <div key={res.uniqueId} className={clsx(
+                                                        "flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs font-mono",
+                                                        res.wasCrit ? "bg-ember/15 text-ember border border-ember/30" : "bg-elevated/70 text-white"
+                                                    )}>
                                                         <div className="flex items-center gap-2">
-                                                            <span>{res.total}</span>
-                                                            <span className="text-zinc-500 text-[10px]">{res.damageType.slice(0, 3).toUpperCase()}</span>
-                                                            {/* Hope/Fear display for Daggerheart rolls */}
+                                                            <span className="font-bold">{res.total}</span>
+                                                            <span className="text-muted text-[9px] uppercase font-mono">{res.damageType.slice(0, 3)}</span>
                                                             {res.type === 'daggerheart' && res.dhHope !== undefined && res.dhFear !== undefined && (
                                                                 <div className="flex items-center gap-1 ml-1">
                                                                     <span className={clsx(
-                                                                        "px-1 rounded text-[9px] font-bold",
+                                                                        "px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono",
                                                                         res.dhOutcome === 'hope' || res.dhOutcome === 'crit'
-                                                                            ? "bg-blue-500/30 text-blue-300"
-                                                                            : "bg-blue-500/10 text-blue-400/60"
+                                                                            ? "bg-signal/20 text-signal border border-signal/40"
+                                                                            : "bg-signal/10 text-signal/50"
                                                                     )}>
                                                                         H:{res.dhHope}
                                                                     </span>
                                                                     <span className={clsx(
-                                                                        "px-1 rounded text-[9px] font-bold",
+                                                                        "px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono",
                                                                         res.dhOutcome === 'fear'
-                                                                            ? "bg-purple-500/50 text-purple-300"
-                                                                            : "bg-purple-500/10 text-purple-400/60"
+                                                                            ? "bg-ember/20 text-ember border border-ember/40"
+                                                                            : "bg-ember/10 text-ember/50"
                                                                     )}>
                                                                         F:{res.dhFear}
                                                                     </span>
                                                                     {res.dhOutcome === 'crit' && (
-                                                                        <span className="px-1 rounded text-[9px] font-bold bg-yellow-500/30 text-yellow-300">CRIT</span>
+                                                                        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black font-mono bg-white text-black shadow-fey-glow">CRIT</span>
                                                                     )}
                                                                 </div>
                                                             )}
                                                         </div>
-                                                        <span className="text-zinc-600 text-[10px] font-mono">{res.formula}</span>
+                                                        <span className="text-muted text-[10px] font-mono">{res.formula}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         )}
 
                                         {entry.breakdown && (
-                                            <div className="mt-2 text-[10px] text-right text-zinc-500 font-mono">
+                                            <div className="mt-2 text-[10px] text-right text-muted font-mono">
                                                 {entry.breakdown}
                                             </div>
                                         )}
@@ -536,19 +537,19 @@ export const HistoryControl: React.FC = () => {
                 {/* Settings Button - Bottom Left Corner */}
                 <button
                     onClick={() => setShowSettings(true)}
-                    className="absolute bottom-4 left-4 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 z-[60]"
+                    className="absolute bottom-5 left-5 p-3.5 bg-surface text-muted hover:text-white hover:bg-elevated rounded-full shadow-fey-lg border border-neutral-800 transition-all active:scale-95 z-[60]"
                     title="Character Settings"
                 >
-                    <Icons.Settings size={24} />
+                    <Icons.Settings size={20} />
                 </button>
 
                 {/* Close Button - Bottom Right Corner */}
                 <button
                     onClick={closeHistory}
-                    className="absolute bottom-4 right-4 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 z-[60]"
+                    className="absolute bottom-5 right-5 p-3.5 bg-surface text-muted hover:text-white hover:bg-elevated rounded-full shadow-fey-lg border border-neutral-800 transition-all active:scale-95 z-[60]"
                     title="Close Menu"
                 >
-                    <Icons.Close size={24} />
+                    <Icons.Close size={20} />
                 </button>
             </div>
 
@@ -557,10 +558,10 @@ export const HistoryControl: React.FC = () => {
                 <div className="flex flex-col items-end justify-end h-full w-full pointer-events-auto">
                     <button
                         onClick={openHistory}
-                        className="p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
+                        className="p-3.5 bg-surface text-white hover:text-mist hover:bg-elevated rounded-full shadow-fey-xl border border-neutral-800 transition-all active:scale-95"
                         title="Open Menu"
                     >
-                        <Icons.Menu size={24} />
+                        <Icons.Menu size={22} />
                     </button>
                 </div>
             )}
@@ -587,13 +588,13 @@ export const HistoryControl: React.FC = () => {
             {/* Remote Player 3D Physics Tray & Results Overlay */}
             {remoteRoll && !activeRollPreset && (
                 <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center pointer-events-none">
-                    {/* 3D Dice Canvas Overlay (Tray on the left side) */}
+                    {/* 3D Dice Canvas Overlay */}
                     <Dice3DOverlay />
 
-                    {/* Rolling Banner while dice are rolling */}
+                    {/* Rolling Banner */}
                     {remoteRoll.isRolling && (
-                        <div className="text-white bg-zinc-950/90 border border-zinc-800 px-5 py-2 rounded-full fixed bottom-8 left-1/2 -translate-x-1/2 font-medium text-sm shadow-xl flex items-center gap-2 pointer-events-none backdrop-blur-md">
-                            <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                        <div className="text-white bg-surface/90 border border-neutral-800 px-5 py-2.5 rounded-full fixed bottom-8 left-1/2 -translate-x-1/2 font-semibold text-xs shadow-fey-lg flex items-center gap-2.5 pointer-events-none backdrop-blur-md">
+                            <span className="w-2 h-2 rounded-full bg-signal animate-pulse" />
                             <span>{remoteRoll.playerName} is rolling 3D physics dice...</span>
                         </div>
                     )}

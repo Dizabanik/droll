@@ -25,7 +25,6 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    // Load saved token and available tokens
     useEffect(() => {
         if (!ready || !isOBR) {
             setIsLoading(false);
@@ -47,17 +46,15 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
         };
         load();
 
-        // Listen for scene changes
         const unsubscribe = OBR.scene.items.onChange(async () => {
             await refreshTokenList();
         });
 
         return () => {
-            // unsubscribe?.();
+            // cleanup
         };
     }, [ready, isOBR]);
 
-    // Update token attachments when vitals change
     useEffect(() => {
         if (!selectedTokenId || !ready || !isOBR) return;
         TokenAttachments.update(selectedTokenId, vitals);
@@ -66,7 +63,6 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
     const refreshTokenList = async () => {
         setIsRefreshing(true);
         try {
-            // Get all tokens (Images) from the scene
             const items = await OBR.scene.items.getItems(
                 (item) => item.type === "IMAGE" && item.layer === "CHARACTER"
             );
@@ -89,7 +85,6 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
     };
 
     const selectToken = async (tokenId: string | null) => {
-        // Remove old attachments if changing token
         if (selectedTokenId && selectedTokenId !== tokenId) {
             await TokenAttachments.delete(selectedTokenId);
         }
@@ -97,7 +92,6 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
         setSelectedTokenId(tokenId);
         await OBRStorage.setSelectedTokenId(tokenId || undefined);
 
-        // Create new attachments
         if (tokenId) {
             await TokenAttachments.create(tokenId, vitals);
         }
@@ -113,69 +107,69 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
 
     if (!isOBR) {
         return (
-            <div className="flex flex-col items-center justify-center h-full text-zinc-500 p-8 text-center">
-                <Icons.Dice size={48} className="mb-4 opacity-20" />
-                <p>Token visualization is only available inside Owlbear Rodeo.</p>
+            <div className="flex flex-col items-center justify-center h-full text-muted p-8 text-center select-none">
+                <Icons.Dice size={36} className="mb-3 opacity-20 text-muted" />
+                <p className="text-xs font-mono">Token visualization is only available inside Owlbear Rodeo.</p>
             </div>
         );
     }
 
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-64 text-zinc-500">
-                <div className="animate-pulse">Loading tokens...</div>
+            <div className="flex items-center justify-center h-64 text-muted select-none">
+                <div className="text-xs font-mono animate-pulse">Loading tokens...</div>
             </div>
         );
     }
 
     return (
-        <div className="flex flex-col h-full">
+        <div className="flex flex-col h-full bg-background select-none">
             {/* Header */}
-            <div className="flex items-center justify-between p-4 border-b border-zinc-800">
-                <h2 className="text-lg font-bold text-white flex items-center gap-2">
-                    <Icons.Dice size={20} className="text-accent" />
+            <div className="flex items-center justify-between p-4 border-b border-neutral-800 bg-surface/30">
+                <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                    <Icons.Target size={16} className="text-white" />
                     Token Visualization
                 </h2>
                 <button
                     onClick={() => refreshTokenList()}
                     disabled={isRefreshing}
-                    className="p-2 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition-colors disabled:opacity-50"
+                    className="p-1.5 text-muted hover:text-white hover:bg-elevated rounded-full transition-colors disabled:opacity-50"
                     title="Refresh token list"
                 >
-                    <Icons.Refresh size={18} className={isRefreshing ? 'animate-spin' : ''} />
+                    <Icons.Refresh size={14} className={isRefreshing ? 'animate-spin' : ''} />
                 </button>
             </div>
 
             {/* Selected Token */}
             {selectedTokenId && (
-                <div className="p-4 bg-zinc-900/50 border-b border-zinc-800">
-                    <div className="text-xs uppercase font-bold text-zinc-500 tracking-wider mb-2">
-                        Active Token
+                <div className="p-4 bg-surface/50 border-b border-neutral-800">
+                    <div className="text-[10px] uppercase font-bold text-muted tracking-widest font-mono mb-2">
+                        Active Attached Token
                     </div>
                     <div className="flex items-center gap-3">
                         {(() => {
                             const token = availableTokens.find(t => t.id === selectedTokenId);
                             return token ? (
                                 <>
-                                    <div className="w-12 h-12 rounded-lg overflow-hidden bg-zinc-800 border-2 border-accent">
+                                    <div className="w-12 h-12 rounded-2xl overflow-hidden bg-elevated border border-white shadow-fey-glow">
                                         {token.imageUrl && (
                                             <img src={token.imageUrl} alt={token.name} className="w-full h-full object-cover" />
                                         )}
                                     </div>
                                     <div className="flex-1">
-                                        <div className="text-white font-medium">{token.name}</div>
-                                        <div className="text-xs text-zinc-500">Stats synced to token</div>
+                                        <div className="text-white text-xs font-bold">{token.name}</div>
+                                        <div className="text-[11px] text-muted font-mono">Live HUD pills attached</div>
                                     </div>
                                     <button
                                         onClick={clearSelection}
-                                        className="p-2 text-zinc-400 hover:text-red-400 hover:bg-red-900/20 rounded-lg transition-colors"
-                                        title="Remove visualization"
+                                        className="p-2 text-muted hover:text-rose-400 hover:bg-white/5 rounded-full transition-colors"
+                                        title="Detach from token"
                                     >
-                                        <Icons.Close size={18} />
+                                        <Icons.Close size={16} />
                                     </button>
                                 </>
                             ) : (
-                                <div className="text-zinc-500 text-sm">Token no longer exists</div>
+                                <div className="text-muted text-xs font-mono">Token no longer exists in scene</div>
                             );
                         })()}
                     </div>
@@ -184,15 +178,15 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
 
             {/* Token List */}
             <div className="flex-1 overflow-y-auto p-4">
-                <div className="text-xs uppercase font-bold text-zinc-500 tracking-wider mb-3">
-                    {selectedTokenId ? "Change Token" : "Select a Token"}
+                <div className="text-[10px] uppercase font-bold text-muted tracking-widest font-mono mb-3">
+                    {selectedTokenId ? "Switch Scene Token" : "Select Scene Token"}
                 </div>
 
                 {availableTokens.length === 0 ? (
-                    <div className="text-center text-zinc-600 py-10">
-                        <Icons.Dice size={48} className="mx-auto mb-2 opacity-20" />
-                        <p>No tokens found on the map.</p>
-                        <p className="text-xs mt-2">Add character tokens to the CHARACTER layer.</p>
+                    <div className="text-center text-muted py-12 flex flex-col items-center gap-2">
+                        <Icons.Dice size={36} className="opacity-20 text-muted" />
+                        <p className="text-xs font-mono">No character tokens found in scene.</p>
+                        <p className="text-[10px] text-muted font-mono">Add character tokens to the CHARACTER layer.</p>
                     </div>
                 ) : (
                     <div className="grid grid-cols-3 gap-3">
@@ -201,18 +195,18 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
                                 key={token.id}
                                 onClick={() => selectToken(token.id)}
                                 className={clsx(
-                                    "flex flex-col items-center gap-2 p-3 rounded-lg border transition-all",
+                                    "flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all shadow-fey-subtle active:scale-95",
                                     token.id === selectedTokenId
-                                        ? "bg-accent/10 border-accent"
-                                        : "bg-zinc-900/50 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/50"
+                                        ? "bg-surface border-white shadow-fey-glow"
+                                        : "bg-surface/50 border-neutral-800 hover:border-neutral-700 hover:bg-surface"
                                 )}
                             >
-                                <div className="w-16 h-16 rounded-lg overflow-hidden bg-zinc-800">
+                                <div className="w-14 h-14 rounded-xl overflow-hidden bg-elevated border border-neutral-800">
                                     {token.imageUrl && (
                                         <img src={token.imageUrl} alt={token.name} className="w-full h-full object-cover" />
                                     )}
                                 </div>
-                                <span className="text-xs text-center text-zinc-300 truncate w-full">
+                                <span className="text-xs font-medium text-center text-white truncate w-full">
                                     {token.name}
                                 </span>
                             </button>
@@ -222,10 +216,10 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
             </div>
 
             {/* Help Text */}
-            <div className="p-4 border-t border-zinc-800 text-xs text-zinc-500">
-                Select a token to display your Daggerheart vitals (Hope, Stress, HP, Armor) as pill bubbles below the token.
-                Stats will automatically sync when you make changes.
+            <div className="p-3.5 border-t border-neutral-800 text-[11px] text-muted font-mono bg-surface/20">
+                Attaching displays live Daggerheart HUD pills (Hope, Stress, HP, Armor) anchored beneath the token on the map canvas.
             </div>
         </div>
     );
 };
+

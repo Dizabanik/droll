@@ -9,27 +9,51 @@
   <meta http-equiv="Expires" content="0" />
   <title>Die</title>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link
-    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;700&family=Cinzel:wght@400;700&display=swap"
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap"
     rel="stylesheet">
   <script>
     tailwind.config = {
       theme: {
         extend: {
           fontFamily: {
-            sans: ['Inter', 'sans-serif'],
-            mono: ['JetBrains Mono', 'monospace'],
-            fantasy: ['Cinzel', 'serif'],
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', '-apple-system', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
           },
           colors: {
-            background: '#09090b', // zinc-950
-            surface: '#18181b',    // zinc-900
-            border: '#27272a',     // zinc-800
-            primary: '#e4e4e7',    // zinc-200
-            accent: '#3b82f6',     // blue-500
-            daggerheart: '#a855f7', // purple-500
-            fear: '#ef4444',       // red-500
-            hope: '#3b82f6',       // blue-500
+            background: '#0b0b0b', // Fey Ink
+            surface: '#191919',    // Fey Charcoal
+            elevated: '#131313',   // Fey Obsidian
+            border: '#27272a',     // Fey Smoke divider
+            primary: '#ffffff',    // Fey White
+            muted: '#868f97',      // Fey Graphite
+            mist: '#cccccc',       // Fey Mist
+            smoke: '#525252',      // Fey Smoke
+            pale: '#e6e6e6',       // Fey Pale
+            ash: '#999999',        // Fey Ash
+            accent: '#ffffff',     // Fey White for primary contrast
+            ember: '#ffa16c',      // Fey Ember
+            signal: '#479ffa',     // Fey Signal Blue
+            growth: '#4ebe96',     // Fey Growth Green
+            volt: '#d6fe51',       // Fey Volt
+            daggerheart: '#479ffa', // Hope/Signal
+            fear: '#ffa16c',       // Fey Ember
+            hope: '#479ffa',       // Fey Signal Blue
+          },
+          borderRadius: {
+            'card': '16px',
+            'pill': '99px',
+            'icon': '6px',
+            'sm-ui': '10px',
+          },
+          boxShadow: {
+            'fey-xl': 'rgba(0, 0, 0, 0.8) 0px 0px 44px 0px',
+            'fey-subtle': 'rgba(0, 0, 0, 0.85) 0px 1px 0px 0px',
+            'fey-glow': 'rgba(255, 255, 255, 0.15) 0px 0px 20px 0px',
+            'fey-signal': 'rgba(71, 159, 250, 0.25) 0px 0px 20px 0px',
+            'fey-ember': 'rgba(255, 161, 108, 0.25) 0px 0px 20px 0px',
           },
           animation: {
             'pulse-slow': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
@@ -39,20 +63,43 @@
     }
   </script>
   <style>
+    :root {
+      --color-fey-white: #ffffff;
+      --color-fey-ink: #0b0b0b;
+      --color-fey-charcoal: #191919;
+      --color-fey-obsidian: #131313;
+      --color-fey-graphite: #868f97;
+      --color-fey-mist: #cccccc;
+      --color-fey-smoke: #525252;
+      --color-fey-pale: #e6e6e6;
+      --color-fey-ash: #999999;
+      --color-fey-ember: #ffa16c;
+      --color-fey-signal: #479ffa;
+      --color-fey-growth: #4ebe96;
+      --color-fey-volt: #d6fe51;
+      --radius-cards: 16px;
+      --radius-buttons: 99px;
+      --radius-icons: 6px;
+      --radius-small: 10px;
+    }
+
     html,
     body {
       background-color: transparent !important;
       margin: 0;
       padding: 0;
       overflow: hidden;
-      /* Prevent scrollbars in overlay */
-      color: #e4e4e7;
+      color: #ffffff;
+      font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, sans-serif;
+      font-feature-settings: "ss01" on, "tnum" on;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    /* Custom scrollbar for sleek look */
+    /* Fey Custom Scrollbar */
     ::-webkit-scrollbar {
-      width: 6px;
-      height: 6px;
+      width: 5px;
+      height: 5px;
     }
 
     ::-webkit-scrollbar-track {
@@ -60,21 +107,18 @@
     }
 
     ::-webkit-scrollbar-thumb {
-      background: #27272a;
-      border-radius: 3px;
+      background: #191919;
+      border: 1px solid #27272a;
+      border-radius: 99px;
     }
 
     ::-webkit-scrollbar-thumb:hover {
-      background: #3f3f46;
-    }
-
-    .font-fantasy {
-      font-family: 'Cinzel', serif;
+      background: #333333;
     }
   </style>
 </head>
 
-<body>
+<body class="bg-transparent text-white antialiased selection:bg-white selection:text-black">
   <div id="root"></div>
   <script type="module" src="/index.tsx"></script>
 </body>

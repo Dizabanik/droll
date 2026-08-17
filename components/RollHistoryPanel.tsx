@@ -2,7 +2,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StepResult } from '../types';
-import { RollResults } from './ui/RollResults';
 import { Icons } from './ui/Icons';
 import clsx from 'clsx';
 
@@ -26,101 +25,99 @@ interface RollHistoryPanelProps {
 }
 
 export const RollHistoryPanel: React.FC<RollHistoryPanelProps> = ({ isOpen, onClose, history, embedded = false }) => {
-    // If embedded, we skip the AnimatePresence wrapper and fixed positioning
-    // because the container (Popover) handles the window.
     if (!isOpen && !embedded) return null;
 
     const content = (
-        <div className={clsx("flex flex-col h-full bg-zinc-950", embedded ? "" : "border-l border-zinc-800 shadow-2xl")}>
+        <div className={clsx("flex flex-col h-full bg-background select-none", embedded ? "" : "border-l border-neutral-800 shadow-fey-xl")}>
             {!embedded && (
-                <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
-                    <h2 className="text-white font-bold flex items-center gap-2">
-                        <Icons.Menu size={20} className="text-accent" />
-                        Roll History
+                <div className="flex items-center justify-between p-4 border-b border-neutral-800 bg-surface/30">
+                    <h2 className="text-sm font-bold text-white tracking-tight flex items-center gap-2">
+                        <Icons.Dice size={18} className="text-white" />
+                        Roll Feed
                     </h2>
                     <button
                         onClick={onClose}
-                        className="p-2 hover:bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition-colors"
+                        className="p-1.5 hover:bg-elevated rounded-full text-muted hover:text-white transition-colors"
                     >
-                        <Icons.Close size={20} />
+                        <Icons.Close size={16} />
                     </button>
                 </div>
             )}
 
-            <div className="flex-1 overflow-y-auto custom-scrollbar p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 space-y-4">
                 {history.length === 0 ? (
-                    <div className="text-center text-zinc-600 py-10">
-                        <Icons.Dice size={48} className="mx-auto mb-2 opacity-20" />
-                        <p>No rolls recorded yet.</p>
+                    <div className="text-center text-muted py-12 flex flex-col items-center gap-2">
+                        <Icons.Dice size={36} className="opacity-20 text-muted" />
+                        <p className="text-xs font-mono">No rolls recorded in this session.</p>
                     </div>
                 ) : (
                     history.map((entry) => (
-                        <div key={entry.id} className="relative pl-4 border-l-2 border-zinc-800 hover:border-accent transition-colors">
-                            <div className="absolute -left-[5px] top-0 w-2.5 h-2.5 rounded-full bg-zinc-800 border-2 border-zinc-950" />
+                        <div key={entry.id} className="relative pl-4 border-l border-neutral-800 hover:border-neutral-600 transition-colors">
+                            <div className="absolute -left-[3.5px] top-1.5 w-1.5 h-1.5 rounded-full bg-neutral-600" />
 
                             <div className="flex justify-between items-start mb-2">
                                 <div>
-                                    <span className="text-[10px] uppercase font-bold text-zinc-500 tracking-wider">
+                                    <span className="text-[10px] font-mono text-muted tracking-wider">
                                         {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </span>
-                                    <h3 className="text-white font-medium text-sm">
+                                    <h3 className="text-white font-bold text-xs tracking-tight">
                                         {entry.playerName}
                                     </h3>
                                 </div>
-                                <div className="text-[10px] font-mono text-zinc-500 bg-zinc-900 px-1.5 py-0.5 rounded">
+                                <div className="text-[10px] font-mono text-muted bg-surface px-2 py-0.5 rounded-full border border-neutral-800 shadow-fey-subtle">
                                     {entry.presetName}
                                 </div>
                             </div>
 
-                            <div className="bg-zinc-900/50 rounded-lg p-2 border border-zinc-800/50">
+                            <div className="bg-surface/50 rounded-2xl p-3 border border-neutral-800/80 shadow-fey-subtle">
                                 {/* Summary Header */}
-                                <div className="flex justify-between items-baseline mb-2 pb-2 border-b border-white/5">
-                                    <span className="text-xs text-zinc-400">{entry.itemName}</span>
-                                    <span className="text-lg font-mono font-bold text-white">{entry.grandTotal}</span>
+                                <div className="flex justify-between items-baseline mb-2 pb-1.5 border-b border-neutral-800/60">
+                                    <span className="text-xs font-medium text-muted">{entry.itemName}</span>
+                                    <span className="text-lg font-mono font-bold text-white tracking-tight">{entry.grandTotal}</span>
                                 </div>
 
                                 {/* Detailed steps */}
                                 <div className="space-y-1.5">
                                     {entry.results.map(res => (
                                         <div key={res.uniqueId} className={clsx(
-                                            "flex justify-between items-center px-2 py-1.5 rounded text-xs",
-                                            res.wasCrit ? "bg-yellow-500/10 text-yellow-200" : "bg-zinc-950/50 text-zinc-300"
+                                            "flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs font-mono",
+                                            res.wasCrit ? "bg-ember/15 text-ember border border-ember/30" : "bg-elevated/70 text-white"
                                         )}>
                                             <div className="flex items-center gap-2">
-                                                <span>{res.total}</span>
-                                                <span className="text-zinc-500 text-[10px]">{res.damageType.slice(0, 3).toUpperCase()}</span>
+                                                <span className="font-bold">{res.total}</span>
+                                                <span className="text-muted text-[9px] uppercase font-mono">{res.damageType.slice(0, 3)}</span>
                                                 {/* Hope/Fear display for Daggerheart rolls */}
                                                 {res.type === 'daggerheart' && res.dhHope !== undefined && res.dhFear !== undefined && (
                                                     <div className="flex items-center gap-1 ml-1">
                                                         <span className={clsx(
-                                                            "px-1 rounded text-[9px] font-bold",
+                                                            "px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono",
                                                             res.dhOutcome === 'hope' || res.dhOutcome === 'crit'
-                                                                ? "bg-blue-500/30 text-blue-300"
-                                                                : "bg-blue-500/10 text-blue-400/60"
+                                                                ? "bg-signal/20 text-signal border border-signal/40"
+                                                                : "bg-signal/10 text-signal/50"
                                                         )}>
                                                             H:{res.dhHope}
                                                         </span>
                                                         <span className={clsx(
-                                                            "px-1 rounded text-[9px] font-bold",
+                                                            "px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono",
                                                             res.dhOutcome === 'fear'
-                                                                ? "bg-purple-500/50 text-purple-300"
-                                                                : "bg-purple-500/10 text-purple-400/60"
+                                                                ? "bg-ember/20 text-ember border border-ember/40"
+                                                                : "bg-ember/10 text-ember/50"
                                                         )}>
                                                             F:{res.dhFear}
                                                         </span>
                                                         {res.dhOutcome === 'crit' && (
-                                                            <span className="px-1 rounded text-[9px] font-bold bg-yellow-500/30 text-yellow-300">CRIT</span>
+                                                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black font-mono bg-white text-black shadow-fey-glow">CRIT</span>
                                                         )}
                                                     </div>
                                                 )}
                                             </div>
-                                            <span className="text-zinc-600 text-[10px] font-mono">{res.formula}</span>
+                                            <span className="text-muted text-[10px] font-mono">{res.formula}</span>
                                         </div>
                                     ))}
                                 </div>
 
                                 {entry.breakdown && (
-                                    <div className="mt-2 text-[10px] text-right text-zinc-500 font-mono">
+                                    <div className="mt-2 text-[10px] text-right text-muted font-mono">
                                         {entry.breakdown}
                                     </div>
                                 )}
@@ -145,7 +142,7 @@ export const RollHistoryPanel: React.FC<RollHistoryPanelProps> = ({ isOpen, onCl
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
                         onClick={onClose}
-                        className="fixed inset-0 bg-black/50 z-[60] backdrop-blur-sm"
+                        className="fixed inset-0 bg-black/60 z-[60] backdrop-blur-sm"
                     />
                     <motion.div
                         initial={{ x: '100%' }}
@@ -160,3 +157,4 @@ export const RollHistoryPanel: React.FC<RollHistoryPanelProps> = ({ isOpen, onCl
         </AnimatePresence>
     );
 };
+

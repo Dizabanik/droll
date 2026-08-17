@@ -116,8 +116,8 @@ export const Roller: React.FC<RollerProps> = ({
       </AnimatePresence>
 
       {!isComplete && (
-        <div className="text-white bg-zinc-950/90 border border-zinc-800 px-5 py-2 rounded-full fixed bottom-8 left-1/2 -translate-x-1/2 font-medium text-sm shadow-xl flex items-center gap-2 pointer-events-none backdrop-blur-md">
-          <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+        <div className="text-white bg-surface/90 border border-neutral-800 px-5 py-2.5 rounded-full fixed bottom-8 left-1/2 -translate-x-1/2 font-semibold text-xs shadow-fey-lg flex items-center gap-2.5 pointer-events-none backdrop-blur-md select-none">
+          <span className="w-2 h-2 rounded-full bg-signal animate-pulse" />
           Rolling 3D Physics Dice...
         </div>
       )}

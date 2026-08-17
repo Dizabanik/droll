@@ -72,26 +72,26 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
   const customStats = characterStats.customStats;
 
   return (
-    <div className="bg-surface/50 border border-border rounded-xl p-4 mb-4">
+    <div className="bg-surface/50 border border-neutral-800/80 rounded-2xl p-5 mb-4 shadow-fey-subtle select-none">
       {/* Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-neutral-800/60">
         <input
           value={preset.name}
           onChange={(e: React.ChangeEvent<HTMLInputElement>) => onUpdate({ ...preset, name: e.target.value })}
-          className="bg-transparent text-lg font-bold text-white focus:outline-none focus:border-b border-accent/50 w-full mr-4"
-          placeholder="Preset Name (e.g., Fireball)"
+          className="bg-transparent text-base font-bold text-white tracking-tight focus:outline-none focus:border-b border-neutral-700 w-full mr-3"
+          placeholder="Preset Name (e.g. Eldritch Blast)"
         />
-        <button onClick={onDelete} className="text-zinc-500 hover:text-red-500 transition-colors">
-          <Icons.Delete size={18} />
+        <button onClick={onDelete} className="text-muted hover:text-rose-400 p-1.5 rounded-full hover:bg-white/5 transition-colors">
+          <Icons.Delete size={16} />
         </button>
       </div>
 
       {/* Variables Section */}
-      <div className="mb-6 bg-zinc-900/50 rounded-lg p-3 border border-zinc-800">
+      <div className="mb-5 bg-elevated/60 rounded-xl p-3.5 border border-neutral-800/70">
         <div className="flex items-center justify-between mb-2">
-          <label className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Variables</label>
-          <button onClick={addVariable} className="text-xs text-accent hover:text-accent/80 flex items-center gap-1">
-            <Icons.Add size={12} /> Add Variable
+          <label className="text-[10px] font-bold text-muted uppercase tracking-widest font-mono">Dynamic Variables</label>
+          <button onClick={addVariable} className="text-[11px] font-semibold text-white hover:text-mist flex items-center gap-1 bg-surface px-2.5 py-1 rounded-full border border-neutral-800 hover:border-neutral-700 transition-all active:scale-95 shadow-fey-subtle">
+            <Icons.Add size={11} /> Add Variable
           </button>
         </div>
         <div className="space-y-2">
@@ -100,24 +100,24 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
               <input
                 value={v.name}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateVariable(idx, { name: e.target.value })}
-                className="bg-zinc-800 text-xs text-zinc-300 rounded px-2 py-1 w-24 border-none focus:ring-1 focus:ring-accent"
+                className="bg-surface text-xs font-mono font-semibold text-white rounded-lg px-2.5 py-1 w-28 border border-neutral-800 focus:border-white/50 focus:outline-none"
                 placeholder="Name"
               />
-              <span className="text-zinc-600 text-xs">=</span>
+              <span className="text-muted text-xs font-mono">=</span>
               <input
                 type="number"
                 value={v.defaultValue}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateVariable(idx, { defaultValue: parseInt(e.target.value) || 0 })}
-                className="bg-zinc-800 text-xs text-zinc-300 rounded px-2 py-1 w-16 border-none focus:ring-1 focus:ring-accent"
+                className="w-16 bg-surface text-xs font-mono font-bold text-white rounded-lg px-2 py-1 text-center border border-neutral-800 focus:border-white/50 focus:outline-none"
                 placeholder="Val"
               />
-              <button onClick={() => removeVariable(idx)} className="text-zinc-600 hover:text-red-400 ml-auto">
+              <button onClick={() => removeVariable(idx)} className="text-muted hover:text-rose-400 p-1 rounded-full hover:bg-white/5 transition-colors ml-auto">
                 <Icons.Close size={12} />
               </button>
             </div>
           ))}
           {(preset.variables || []).length === 0 && (
-            <p className="text-[10px] text-zinc-600 italic">No variables defined (e.g. DC, AC).</p>
+            <p className="text-[10px] text-muted font-mono italic">No prompt variables defined (e.g. Target AC, Save DC).</p>
           )}
         </div>
       </div>
@@ -126,77 +126,77 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
       <div className="space-y-3">
         {preset.steps.map((step, idx) => (
           <div key={step.id} className="relative group">
-            {idx > 0 && <div className="absolute -top-3 left-6 w-0.5 h-3 bg-border"></div>}
+            {idx > 0 && <div className="absolute -top-3 left-6 w-px h-3 bg-neutral-800"></div>}
 
-            <div className="bg-background border border-border rounded-lg p-3 hover:border-accent/30 transition-colors">
+            <div className="bg-elevated/40 border border-neutral-800 rounded-xl p-3.5 hover:border-neutral-700/80 transition-all shadow-fey-subtle">
               <div className="flex flex-col gap-3">
                 {/* Header Line */}
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded bg-zinc-800 flex items-center justify-center text-xs text-zinc-500 font-mono">
+                  <div className="w-5 h-5 rounded-full bg-surface border border-neutral-700 flex items-center justify-center text-[10px] font-mono font-bold text-muted">
                     {idx + 1}
                   </div>
                   <input
                     value={step.label}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStep(idx, { label: e.target.value })}
-                    className="bg-transparent text-sm font-medium text-white focus:outline-none w-32"
-                    placeholder="Label"
+                    className="bg-transparent text-xs font-semibold text-white focus:outline-none w-32 border-b border-transparent focus:border-neutral-700"
+                    placeholder="Step Label"
                   />
                   <div className="flex-1" />
 
-                  <label className="flex items-center gap-1 cursor-pointer mr-2">
+                  <label className="flex items-center gap-1.5 cursor-pointer mr-2">
                     <input
                       type="checkbox"
                       checked={step.addToSum || false}
                       onChange={(e) => updateStep(idx, { addToSum: e.target.checked })}
-                      className="rounded border-zinc-700 bg-zinc-800 text-accent focus:ring-0 w-3.5 h-3.5"
+                      className="rounded border-neutral-700 bg-surface text-white focus:ring-0 w-3.5 h-3.5"
                     />
-                    <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Sum</span>
+                    <span className="text-[10px] text-muted uppercase font-mono font-bold tracking-wider">Sum</span>
                   </label>
 
-                  <label className="flex items-center gap-1 cursor-pointer mr-2">
+                  <label className="flex items-center gap-1.5 cursor-pointer mr-2">
                     <input
                       type="checkbox"
                       checked={step.isCrit || false}
                       onChange={(e) => updateStep(idx, { isCrit: e.target.checked })}
-                      className="rounded border-zinc-700 bg-zinc-800 text-red-500 focus:ring-0 w-3.5 h-3.5"
+                      className="rounded border-neutral-700 bg-surface text-ember focus:ring-0 w-3.5 h-3.5"
                     />
-                    <span className="text-[10px] text-zinc-500 uppercase tracking-wide">Crit</span>
+                    <span className="text-[10px] text-muted uppercase font-mono font-bold tracking-wider">Crit</span>
                   </label>
 
                   <select
                     value={step.type}
                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { type: e.target.value as any })}
-                    className="bg-zinc-800 text-xs text-zinc-300 rounded px-2 py-1 border-none focus:ring-1 focus:ring-accent"
+                    className="bg-surface text-xs text-white rounded-lg px-2.5 py-1 border border-neutral-800 focus:outline-none focus:border-neutral-600 font-mono"
                   >
                     <option value="standard">Standard</option>
                     <option value="daggerheart">Daggerheart</option>
                   </select>
 
-                  <button onClick={() => removeStep(idx)} className="text-zinc-600 hover:text-red-400">
-                    <Icons.Close size={14} />
+                  <button onClick={() => removeStep(idx)} className="text-muted hover:text-rose-400 p-1 rounded-full hover:bg-white/5 transition-colors">
+                    <Icons.Close size={13} />
                   </button>
                 </div>
 
                 {/* Configuration Line */}
-                <div className="grid grid-cols-12 gap-2">
+                <div className="grid grid-cols-12 gap-2.5">
                   <div className="col-span-4">
-                    <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Formula</label>
+                    <label className="text-[9px] text-muted uppercase tracking-widest font-mono block mb-1">Formula</label>
                     <input
                       value={step.formula}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStep(idx, { formula: e.target.value })}
-                      className="w-full bg-zinc-900/50 border border-zinc-800 rounded px-2 py-1.5 text-sm font-mono text-primary placeholder-zinc-700 focus:border-accent focus:outline-none"
+                      className="w-full bg-surface border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs font-mono font-semibold text-white placeholder-neutral-700 focus:border-white/50 focus:outline-none"
                       placeholder={step.type === 'daggerheart' ? 'Mod (e.g. +2)' : 'e.g. 2d6+4'}
                     />
                   </div>
 
                   <div className="col-span-4">
-                    <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Add Stat</label>
+                    <label className="text-[9px] text-muted uppercase tracking-widest font-mono block mb-1">Add Stat</label>
                     <select
                       value={step.statModifier || ''}
                       onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { statModifier: e.target.value || undefined })}
                       className={clsx(
-                        "w-full bg-black border border-zinc-800 rounded px-2 py-1.5 text-sm focus:border-accent focus:outline-none",
-                        step.statModifier ? "text-accent" : "text-zinc-500"
+                        "w-full bg-surface border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs focus:border-white/50 focus:outline-none font-mono",
+                        step.statModifier ? "text-white font-semibold" : "text-muted"
                       )}
                     >
                       <option value="">(None)</option>
@@ -236,24 +236,23 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                   </div>
 
                   <div className="col-span-4">
-                    <label className="text-[10px] text-zinc-500 uppercase tracking-wider block mb-1">Damage</label>
+                    <label className="text-[9px] text-muted uppercase tracking-widest font-mono block mb-1">Damage</label>
                     <select
                       value={step.damageType}
                       onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { damageType: e.target.value as DamageType })}
-                      className="w-full bg-zinc-900/50 border border-zinc-800 rounded px-2 py-1.5 text-sm text-zinc-300 focus:border-accent focus:outline-none"
+                      className="w-full bg-surface border border-neutral-800 rounded-lg px-2.5 py-1.5 text-xs text-white focus:border-white/50 focus:outline-none font-mono"
                     >
                       {DAMAGE_TYPES.map(t => <option key={t} value={t}>{t}</option>)}
                     </select>
                   </div>
 
-                  {/* Conditionals - Only if not first step */}
+                  {/* Conditionals */}
                   {idx > 0 && (
-                    <div className="col-span-12 mt-2 bg-zinc-900/30 rounded p-2 border border-zinc-800/50">
-                      <label className="text-[10px] text-zinc-500 uppercase tracking-wider flex items-center gap-2 mb-1">
-                        <Icons.ArrowRight size={10} /> Condition (Optional)
+                    <div className="col-span-12 mt-1 bg-surface/50 rounded-xl p-2.5 border border-neutral-800/80">
+                      <label className="text-[9px] text-muted uppercase tracking-widest font-mono flex items-center gap-1.5 mb-1.5">
+                        <Icons.ArrowRight size={10} /> Condition (Branching)
                       </label>
                       <div className="flex flex-col gap-2">
-                        {/* Dependency Select */}
                         <select
                           value={step.condition?.dependsOnStepId || ''}
                           onChange={(e: React.ChangeEvent<HTMLSelectElement>) => {
@@ -267,7 +266,7 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                               }
                             });
                           }}
-                          className="bg-zinc-800 text-xs text-zinc-400 rounded px-2 py-1 border-none w-full"
+                          className="bg-elevated text-xs font-mono text-white rounded-lg px-2.5 py-1 border border-neutral-800 w-full focus:outline-none"
                         >
                           <option value="">Always Run</option>
                           {preset.steps.slice(0, idx).map((s, sIdx) => (
@@ -275,13 +274,12 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                           ))}
                         </select>
 
-                        {/* Operator and Value */}
                         {step.condition && (
                           <div className="flex gap-2">
                             <select
                               value={step.condition.operator}
                               onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { condition: { ...step.condition!, operator: e.target.value as ConditionOperator } })}
-                              className="bg-zinc-800 text-xs text-zinc-400 rounded px-1 py-1 border-none w-20"
+                              className="bg-elevated text-xs font-mono text-white rounded-lg px-2 py-1 border border-neutral-800 w-24 focus:outline-none"
                             >
                               <option value=">=">≥</option>
                               <option value="<=">≤</option>
@@ -296,7 +294,7 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                                 <select
                                   value={step.condition.compareTarget}
                                   onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { condition: { ...step.condition!, compareTarget: e.target.value as any } })}
-                                  className="bg-zinc-800 text-xs text-zinc-400 rounded px-1 py-1 border-none w-20"
+                                  className="bg-elevated text-xs font-mono text-white rounded-lg px-2 py-1 border border-neutral-800 w-20 focus:outline-none"
                                 >
                                   <option value="value">Value</option>
                                   <option value="variable">Var</option>
@@ -306,7 +304,7 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                                   <input
                                     value={step.condition.value}
                                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateStep(idx, { condition: { ...step.condition!, value: parseInt(e.target.value) || 0 } })}
-                                    className="bg-zinc-800 text-xs text-zinc-400 rounded px-2 py-1 border-none flex-1 text-center"
+                                    className="bg-elevated text-xs font-mono font-bold text-white rounded-lg px-2 py-1 border border-neutral-800 flex-1 text-center focus:outline-none"
                                     type="number"
                                     placeholder="10"
                                   />
@@ -315,9 +313,9 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
                                     value={step.condition.variableId || ''}
                                     onChange={(e: React.ChangeEvent<HTMLSelectElement>) => updateStep(idx, { condition: { ...step.condition!, variableId: e.target.value } })}
                                     className={clsx(
-                                      "bg-zinc-800 text-xs rounded px-2 py-1 border-none flex-1",
-                                      !step.condition.variableId && "text-red-400",
-                                      step.condition.variableId && "text-zinc-400"
+                                      "bg-elevated text-xs font-mono rounded-lg px-2 py-1 border border-neutral-800 flex-1 focus:outline-none",
+                                      !step.condition.variableId && "text-rose-400",
+                                      step.condition.variableId && "text-white"
                                     )}
                                   >
                                     <option value="">Select Var...</option>
@@ -341,9 +339,9 @@ export const DiceChainEditor: React.FC<DiceChainEditorProps> = ({ preset, onUpda
 
         <button
           onClick={addStep}
-          className="w-full py-2 border border-dashed border-zinc-700 rounded-lg text-zinc-500 text-sm hover:border-zinc-500 hover:text-zinc-400 transition-all flex items-center justify-center gap-2"
+          className="w-full py-2.5 border border-dashed border-neutral-800 rounded-xl text-muted text-xs font-semibold hover:border-neutral-600 hover:text-white transition-all flex items-center justify-center gap-2 active:scale-[0.99]"
         >
-          <Icons.Add size={16} /> Add Step
+          <Icons.Add size={14} /> Add Step
         </button>
       </div>
     </div>

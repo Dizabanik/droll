@@ -477,20 +477,17 @@ const App: React.FC = () => {
   // Show loading while OBR is initializing
   if (!ready) {
     return (
-      <div className="flex h-screen bg-background text-primary items-center justify-center">
+      <div className="flex h-screen bg-background text-white items-center justify-center">
         <div className="text-center">
-          <Icons.Dice size={48} className="mx-auto mb-4 animate-pulse text-accent" />
-          <p className="text-zinc-500">Loading...</p>
+          <Icons.Dice size={40} className="mx-auto mb-3 animate-pulse text-white opacity-80" />
+          <p className="text-xs font-mono text-muted tracking-wider uppercase">Initializing Virtual Table...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex h-screen bg-background text-primary font-sans overflow-hidden">
-      {/* SharedDiceOverlay removed from Controller view to prevent double-popups */}
-      {/* <SharedDiceOverlay /> */}
-
+    <div className="flex h-screen bg-background text-white font-sans overflow-hidden select-none">
       {/* Hidden file input for import */}
       <input
         ref={fileInputRef}
@@ -501,111 +498,129 @@ const App: React.FC = () => {
       />
 
       {/* Sidebar */}
-      <div className="w-64 border-r border-border flex flex-col bg-zinc-950/50">
-        <div className="p-4 border-b border-border">
+      <div className="w-64 border-r border-neutral-800/80 flex flex-col bg-elevated/80 backdrop-blur-md">
+        {/* Header Branding */}
+        <div className="p-4 border-b border-neutral-800/80">
           <div className="flex items-center justify-between">
-            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-              <Icons.Dice className="text-accent" />
-              Die
+            <h1 className="text-lg font-bold tracking-tight text-white flex items-center gap-2.5">
+              <span className="w-7 h-7 rounded-lg bg-surface border border-neutral-700/60 flex items-center justify-center text-white shadow-fey-subtle">
+                <Icons.Dice size={16} />
+              </span>
+              <span>Die</span>
             </h1>
-            <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/50">
+            <span className="text-[10px] font-mono font-medium px-2 py-0.5 rounded-full bg-surface text-muted border border-neutral-800">
               {APP_VERSION}
             </span>
           </div>
           {isOBR && playerName && (
-            <p className="text-xs text-zinc-500 mt-1">{playerName}</p>
+            <div className="flex items-center gap-1.5 mt-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-growth animate-pulse" />
+              <p className="text-xs text-muted truncate font-medium">{playerName}</p>
+            </div>
           )}
         </div>
 
         {/* Navigation Tabs */}
-        <div className="p-2 space-y-1 border-b border-border">
+        <div className="p-3 space-y-1 border-b border-neutral-800/80">
           <button
             onClick={() => setActiveView('items')}
             className={clsx(
-              "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all font-medium",
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold tracking-wide transition-all",
               activeView === 'items'
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
+                ? "bg-surface text-white border border-neutral-700/80 shadow-fey-subtle"
+                : "text-muted hover:text-white hover:bg-surface/40"
             )}
           >
-            <Icons.Attack size={16} /> Inventory
+            <Icons.Attack size={14} />
+            <span>Inventory</span>
           </button>
           <button
             onClick={() => setActiveView('character')}
             className={clsx(
-              "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all font-medium",
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold tracking-wide transition-all",
               activeView === 'character'
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
+                ? "bg-surface text-white border border-neutral-700/80 shadow-fey-subtle"
+                : "text-muted hover:text-white hover:bg-surface/40"
             )}
           >
-            <Icons.User size={16} /> Character
+            <Icons.User size={14} />
+            <span>Character</span>
           </button>
           <button
             onClick={() => setActiveView('token')}
             className={clsx(
-              "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all font-medium",
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold tracking-wide transition-all",
               activeView === 'token'
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
+                ? "bg-surface text-white border border-neutral-700/80 shadow-fey-subtle"
+                : "text-muted hover:text-white hover:bg-surface/40"
             )}
           >
-            <Icons.Target size={16} /> Token
+            <Icons.Target size={14} />
+            <span>Token</span>
           </button>
           <button
             onClick={() => setActiveView('settings')}
             className={clsx(
-              "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all font-medium",
+              "w-full flex items-center gap-2.5 px-3 py-2 rounded-full text-xs font-semibold tracking-wide transition-all",
               activeView === 'settings'
-                ? "bg-zinc-800 text-white"
-                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
+                ? "bg-surface text-white border border-neutral-700/80 shadow-fey-subtle"
+                : "text-muted hover:text-white hover:bg-surface/40"
             )}
           >
-            <Icons.Settings size={16} /> Settings
+            <Icons.Settings size={14} />
+            <span>Settings</span>
           </button>
         </div>
 
         {activeView === 'items' && (
           <>
-            <div className="flex-1 overflow-y-auto p-2 space-y-1">
-              <div className="px-2 pb-1 text-[10px] font-bold text-zinc-600 uppercase tracking-widest">Items</div>
+            <div className="flex-1 overflow-y-auto p-3 space-y-1.5">
+              <div className="px-2 pb-1 text-[10px] font-bold text-neutral-500 uppercase tracking-widest font-mono">
+                Items ({items.length})
+              </div>
               {items.map(item => (
                 <button
                   key={item.id}
                   onClick={() => { setActiveItemId(item.id); setEditingItem(false); }}
                   className={clsx(
-                    "w-full text-left px-3 py-2 rounded-lg text-sm transition-all",
+                    "w-full text-left px-3 py-2.5 rounded-xl text-xs font-medium transition-all flex items-center justify-between group",
                     activeItemId === item.id
-                      ? "bg-surface text-white border border-border shadow-sm"
-                      : "text-zinc-500 hover:text-zinc-300 hover:bg-surface/50"
+                      ? "bg-surface text-white border border-neutral-700/90 shadow-fey-subtle"
+                      : "text-muted hover:text-white hover:bg-surface/40 border border-transparent"
                   )}
                 >
-                  {item.name}
+                  <span className="truncate">{item.name}</span>
+                  <span className="text-[10px] font-mono opacity-50 group-hover:opacity-100">
+                    {item.presets.length}
+                  </span>
                 </button>
               ))}
             </div>
 
-            <div className="p-4 border-t border-border space-y-2">
+            <div className="p-3 border-t border-neutral-800/80 space-y-2 bg-background/50">
               <button
                 onClick={createItem}
-                className="w-full flex items-center justify-center gap-2 bg-white text-black py-2 rounded-md font-medium text-sm hover:bg-zinc-200 transition-colors"
+                className="w-full flex items-center justify-center gap-2 bg-white text-black py-2 rounded-full font-bold text-xs hover:bg-pale active:scale-98 transition-all shadow-fey-subtle"
               >
-                <Icons.Add size={16} /> New Item
+                <Icons.Add size={14} />
+                <span>New Item</span>
               </button>
 
               {/* Export/Import Buttons */}
               <div className="flex gap-2">
                 <button
                   onClick={handleExport}
-                  className="flex-1 flex items-center justify-center gap-1 bg-zinc-800 text-zinc-300 py-1.5 rounded-md text-xs hover:bg-zinc-700 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-surface text-muted hover:text-white py-1.5 rounded-full text-[11px] font-medium border border-neutral-800 hover:border-neutral-700 transition-all active:scale-98"
                 >
-                  <Icons.ArrowRight size={12} className="rotate-90" /> Export
+                  <Icons.ArrowRight size={11} className="rotate-90 text-mist" />
+                  <span>Export</span>
                 </button>
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex-1 flex items-center justify-center gap-1 bg-zinc-800 text-zinc-300 py-1.5 rounded-md text-xs hover:bg-zinc-700 transition-colors"
+                  className="flex-1 flex items-center justify-center gap-1.5 bg-surface text-muted hover:text-white py-1.5 rounded-full text-[11px] font-medium border border-neutral-800 hover:border-neutral-700 transition-all active:scale-98"
                 >
-                  <Icons.ArrowRight size={12} className="-rotate-90" /> Import
+                  <Icons.ArrowRight size={11} className="-rotate-90 text-mist" />
+                  <span>Import</span>
                 </button>
               </div>
             </div>
@@ -614,42 +629,42 @@ const App: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 flex flex-col h-full overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full overflow-hidden relative bg-background">
 
         {activeView === 'character' ? (
           <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
-            <div className="flex items-center justify-between px-8 py-3 border-b border-border bg-surface/40">
-              <div className="flex items-center gap-2">
-                <Icons.User size={18} className="text-accent" />
-                <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+            <div className="flex items-center justify-between px-8 py-3.5 border-b border-neutral-800/80 bg-surface/30">
+              <div className="flex items-center gap-2.5">
+                <Icons.User size={16} className="text-white" />
+                <h2 className="text-xs font-bold text-white uppercase tracking-wider font-mono">
                   {characterSheetMode === 'miro' ? 'Miro Character Board' : 'Character Sheet'}
                 </h2>
               </div>
 
               {/* Mode Toggle Button */}
-              <div className="flex items-center bg-zinc-900 border border-zinc-700/80 rounded-xl p-0.5 shadow-inner">
+              <div className="flex items-center bg-elevated border border-neutral-800 rounded-full p-0.5 shadow-inner">
                 <button
                   onClick={() => handleSheetModeChange('sheet')}
                   className={clsx(
-                    "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all",
                     characterSheetMode === 'sheet'
-                      ? "bg-accent text-white shadow-sm"
-                      : "text-zinc-400 hover:text-zinc-200"
+                      ? "bg-white text-black shadow-sm font-bold"
+                      : "text-muted hover:text-white"
                   )}
                 >
-                  <Icons.User size={13} />
+                  <Icons.User size={12} />
                   <span>Sheet</span>
                 </button>
                 <button
                   onClick={() => handleSheetModeChange('miro')}
                   className={clsx(
-                    "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                    "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold transition-all",
                     characterSheetMode === 'miro'
-                      ? "bg-amber-500 text-zinc-950 shadow-sm"
-                      : "text-zinc-400 hover:text-zinc-200"
+                      ? "bg-signal text-white shadow-sm font-bold"
+                      : "text-muted hover:text-white"
                   )}
                 >
-                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                  <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
                     <rect width="18" height="18" x="3" y="3" rx="2" />
                     <path d="M7 7v10" />
                     <path d="M12 7v10" />
@@ -671,23 +686,23 @@ const App: React.FC = () => {
         ) : activeView === 'token' ? (
           <TokenSettings vitals={daggerheartVitals} />
         ) : activeView === 'settings' ? (
-          <div className="flex-1 p-8 overflow-y-auto bg-gradient-to-b from-surface to-background">
+          <div className="flex-1 p-8 overflow-y-auto bg-background">
             <div className="max-w-3xl mx-auto space-y-6">
-              <div className="flex items-center justify-between pb-4 border-b border-border">
+              <div className="flex items-center justify-between pb-4 border-b border-neutral-800/80">
                 <div>
-                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
-                    <Icons.Settings className="text-accent" />
+                  <h2 className="text-xl font-bold text-white tracking-tight flex items-center gap-2.5">
+                    <Icons.Settings size={20} className="text-white" />
                     Settings & Appearance
                   </h2>
-                  <p className="text-sm text-zinc-400 mt-1">Configure your personal preferences, 3D dice appearance, and campaign data.</p>
+                  <p className="text-xs text-muted mt-1">Configure your personal preferences, 3D dice appearance, and campaign data.</p>
                 </div>
-                <span className="text-xs font-mono font-medium px-2 py-1 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                <span className="text-xs font-mono font-medium px-2.5 py-1 rounded-full bg-elevated text-muted border border-neutral-800">
                   {APP_VERSION}
                 </span>
               </div>
 
               {/* 3D Dice Skin Selector */}
-              <div className="p-6 bg-zinc-900/80 rounded-2xl border border-border shadow-lg">
+              <div className="p-6 bg-surface/60 rounded-2xl border border-neutral-800/80 shadow-fey-xl">
                 <DiceStylePicker
                   currentStyle={diceStyle}
                   onSelect={handleDiceStyleChange}
@@ -695,23 +710,25 @@ const App: React.FC = () => {
               </div>
 
               {/* Data Backup & Restore */}
-              <div className="p-6 bg-zinc-900/80 rounded-2xl border border-border space-y-4">
+              <div className="p-6 bg-surface/60 rounded-2xl border border-neutral-800/80 space-y-4 shadow-fey-subtle">
                 <div>
-                  <h3 className="text-base font-semibold text-white">Campaign Data & Backup</h3>
-                  <p className="text-xs text-zinc-400 mt-0.5">Export or import your custom items, dice chains, and character profiles.</p>
+                  <h3 className="text-sm font-semibold text-white">Campaign Data & Backup</h3>
+                  <p className="text-xs text-muted mt-0.5">Export or import your custom items, dice chains, and character profiles.</p>
                 </div>
                 <div className="flex gap-3 pt-2">
                   <button
                     onClick={handleExport}
-                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-zinc-700 shadow-sm"
+                    className="flex items-center gap-2 bg-elevated hover:bg-neutral-800 text-white px-4 py-2 rounded-full text-xs font-medium transition-all border border-neutral-800 hover:border-neutral-700 shadow-fey-subtle active:scale-98"
                   >
-                    <Icons.ArrowRight size={14} className="rotate-90" /> Export JSON Backup
+                    <Icons.ArrowRight size={13} className="rotate-90 text-mist" />
+                    <span>Export JSON Backup</span>
                   </button>
                   <button
                     onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-zinc-700 shadow-sm"
+                    className="flex items-center gap-2 bg-elevated hover:bg-neutral-800 text-white px-4 py-2 rounded-full text-xs font-medium transition-all border border-neutral-800 hover:border-neutral-700 shadow-fey-subtle active:scale-98"
                   >
-                    <Icons.ArrowRight size={14} className="-rotate-90" /> Import JSON Backup
+                    <Icons.ArrowRight size={13} className="-rotate-90 text-mist" />
+                    <span>Import JSON Backup</span>
                   </button>
                 </div>
               </div>
@@ -721,20 +738,20 @@ const App: React.FC = () => {
           activeItem ? (
             <>
               {/* Header */}
-              <div className="p-8 pb-4 border-b border-border bg-gradient-to-b from-surface to-background">
+              <div className="p-8 pb-4 border-b border-neutral-800/80 bg-surface/20">
                 <div className="max-w-4xl mx-auto w-full">
                   <div className="flex justify-between items-start mb-4">
-                    <div>
+                    <div className="flex-1 pr-6">
                       {editingItem ? (
                         <input
                           value={activeItem.name}
                           onChange={(e: React.ChangeEvent<HTMLInputElement>) => updateActiveItem({ name: e.target.value })}
-                          className="bg-transparent text-3xl font-bold text-white focus:outline-none border-b border-accent/50 w-full"
+                          className="bg-transparent text-2xl font-bold text-white focus:outline-none border-b border-white/50 w-full tracking-tight"
                           autoFocus
                         />
                       ) : (
                         <h2
-                          className="text-3xl font-bold text-white cursor-pointer hover:text-zinc-200"
+                          className="text-2xl font-bold text-white cursor-pointer hover:text-mist tracking-tight transition-colors"
                           onClick={() => setEditingItem(true)}
                         >
                           {activeItem.name}
@@ -745,42 +762,52 @@ const App: React.FC = () => {
                         <textarea
                           value={activeItem.description}
                           onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => updateActiveItem({ description: e.target.value })}
-                          className="bg-transparent text-zinc-400 mt-2 w-full h-20 focus:outline-none resize-none text-sm"
+                          className="bg-elevated text-muted p-3 rounded-xl border border-neutral-800 mt-3 w-full h-20 focus:outline-none resize-none text-xs leading-relaxed"
                           placeholder="Item description..."
                         />
                       ) : (
                         <p
-                          className="text-zinc-400 mt-2 text-sm leading-relaxed max-w-2xl cursor-pointer hover:text-zinc-300"
+                          className="text-muted mt-2 text-xs leading-relaxed max-w-2xl cursor-pointer hover:text-mist transition-colors"
                           onClick={() => setEditingItem(true)}
                         >
-                          {activeItem.description || "No description provided."}
+                          {activeItem.description || "No description provided. Click to edit."}
                         </p>
                       )}
                     </div>
 
-                    {editingItem && (
-                      <div className="flex gap-2">
+                    <div className="flex items-center gap-2">
+                      {editingItem ? (
+                        <>
+                          <button
+                            onClick={() => setEditingItem(false)}
+                            className="px-4 py-1.5 bg-white text-black font-bold text-xs rounded-full hover:bg-pale active:scale-95 transition-all"
+                          >
+                            Done
+                          </button>
+                          <button
+                            onClick={deleteActiveItem}
+                            className="px-3 py-1.5 bg-elevated text-rose-400 text-xs rounded-full hover:bg-rose-950/30 border border-rose-900/40 transition-all active:scale-95"
+                          >
+                            Delete
+                          </button>
+                        </>
+                      ) : (
                         <button
-                          onClick={() => setEditingItem(false)}
-                          className="px-4 py-2 bg-zinc-800 text-white text-xs rounded hover:bg-zinc-700"
+                          onClick={() => setEditingItem(true)}
+                          className="px-3.5 py-1.5 bg-surface text-muted hover:text-white text-xs rounded-full border border-neutral-800 hover:border-neutral-700 transition-all active:scale-95 flex items-center gap-1.5"
                         >
-                          Done
+                          <Icons.Settings size={12} />
+                          <span>Edit</span>
                         </button>
-                        <button
-                          onClick={deleteActiveItem}
-                          className="px-4 py-2 bg-red-500/10 text-red-500 text-xs rounded hover:bg-red-500/20 border border-red-500/20"
-                        >
-                          Delete Item
-                        </button>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 </div>
               </div>
 
               {/* Presets List */}
-              <div className="flex-1 overflow-y-auto p-8 bg-zinc-950">
-                <div className="max-w-4xl mx-auto space-y-8">
+              <div className="flex-1 overflow-y-auto p-8 bg-background">
+                <div className="max-w-4xl mx-auto space-y-6">
                   {activeItem.presets.map((preset, idx) => (
                     <div key={preset.id} className="group">
                       {editingItem ? (
@@ -791,40 +818,48 @@ const App: React.FC = () => {
                           characterStats={stats}
                         />
                       ) : (
-                        <div className="bg-zinc-900/40 border border-zinc-800 rounded-xl p-5 hover:border-zinc-700 transition-all">
+                        <div className="bg-surface/50 border border-neutral-800/90 rounded-2xl p-5 hover:border-neutral-700/80 transition-all shadow-fey-subtle">
                           <div className="flex justify-between items-center mb-4">
-                            <h3 className="text-lg font-semibold text-zinc-200 flex items-center gap-3">
-                              {preset.name}
+                            <div className="flex items-center gap-3">
+                              <h3 className="text-base font-semibold text-white tracking-tight">
+                                {preset.name}
+                              </h3>
                               {(preset.variables?.length || 0) > 0 && (
-                                <span className="text-[10px] bg-zinc-800 text-zinc-400 px-2 py-0.5 rounded-full font-normal">
+                                <span className="text-[10px] font-mono bg-elevated text-muted px-2.5 py-0.5 rounded-full border border-neutral-800">
                                   {preset.variables?.length} Vars
                                 </span>
                               )}
-                            </h3>
+                            </div>
                             <button
                               onClick={() => initiateRoll(preset)}
-                              className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-full font-bold text-sm hover:bg-accent hover:text-white transition-all shadow-lg shadow-white/5"
+                              className="flex items-center gap-2 bg-white text-black px-4 py-1.5 rounded-full font-bold text-xs hover:bg-pale active:scale-95 transition-all shadow-fey-subtle"
                             >
-                              <Icons.Dice size={16} /> Roll
+                              <Icons.Dice size={14} />
+                              <span>Roll Chain</span>
                             </button>
                           </div>
 
                           <div className="flex flex-wrap gap-2">
                             {preset.steps.map((step, sIdx) => (
-                              <div key={step.id} className="flex items-center text-xs bg-zinc-950 border border-zinc-800 rounded px-2 py-1 text-zinc-400">
-                                <span className="font-mono text-zinc-300 mr-2">
+                              <div key={step.id} className="flex items-center text-xs bg-elevated/90 border border-neutral-800/80 rounded-xl px-3 py-1.5 text-muted shadow-sm">
+                                <span className="font-mono text-white font-semibold mr-2">
                                   {step.formula || 'DH'}
-                                  {step.statModifier && <span className="text-accent ml-1">+{getStatLabel(stats, step.statModifier)}</span>}
+                                  {step.statModifier && <span className="text-signal ml-1">+{getStatLabel(stats, step.statModifier)}</span>}
                                 </span>
-                                <span>{step.label}</span>
+                                <span className="text-mist font-medium">{step.label}</span>
+                                {step.damageType && step.damageType !== 'none' && (
+                                  <span className="ml-1.5 text-[10px] font-mono uppercase px-1.5 py-0.5 rounded bg-surface border border-neutral-800 text-muted">
+                                    {step.damageType}
+                                  </span>
+                                )}
                                 {step.condition && (
-                                  <span className="ml-2 pl-2 border-l border-zinc-800 text-yellow-600/80">
+                                  <span className="ml-2 pl-2 border-l border-neutral-800 text-ember font-mono text-[11px]">
                                     if {step.condition.operator} {step.condition.compareTarget === 'variable'
                                       ? (preset.variables?.find(v => v.id === step.condition?.variableId)?.name || 'Var')
                                       : step.condition.value}
                                   </span>
                                 )}
-                                {sIdx < preset.steps.length - 1 && <Icons.ArrowRight size={10} className="ml-2 text-zinc-700" />}
+                                {sIdx < preset.steps.length - 1 && <Icons.ArrowRight size={10} className="ml-2 text-smoke" />}
                               </div>
                             ))}
                           </div>
@@ -836,20 +871,20 @@ const App: React.FC = () => {
                   {editingItem && (
                     <button
                       onClick={addPreset}
-                      className="w-full py-8 border-2 border-dashed border-zinc-800 rounded-xl text-zinc-600 font-medium hover:border-zinc-700 hover:text-zinc-400 transition-all flex flex-col items-center gap-2"
+                      className="w-full py-6 border border-dashed border-neutral-800 rounded-2xl text-muted font-medium hover:border-neutral-700 hover:text-white transition-all flex flex-col items-center justify-center gap-2 bg-surface/20"
                     >
-                      <Icons.Add size={24} />
-                      Add New Dice Chain
+                      <Icons.Add size={20} />
+                      <span className="text-xs font-semibold">Add New Dice Chain</span>
                     </button>
                   )}
                 </div>
               </div>
             </>
           ) : (
-            <div className="flex-1 flex items-center justify-center text-zinc-600">
+            <div className="flex-1 flex items-center justify-center text-muted">
               <div className="text-center">
-                <Icons.Dice size={48} className="mx-auto mb-4 opacity-20" />
-                <p>Select or create an item to begin weaving fate.</p>
+                <Icons.Dice size={40} className="mx-auto mb-3 opacity-20" />
+                <p className="text-xs font-mono uppercase tracking-wider">Select or create an item to begin</p>
               </div>
             </div>
           )
@@ -883,10 +918,10 @@ const App: React.FC = () => {
         <>
           <button
             onClick={() => setIsHistoryOpen(true)}
-            className="fixed bottom-4 right-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
+            className="fixed bottom-4 right-4 z-40 p-3 bg-surface text-mist hover:text-white rounded-full shadow-fey-xl border border-neutral-800 hover:border-neutral-700 transition-all active:scale-95"
             title="Open Roll History"
           >
-            <Icons.Menu size={24} />
+            <Icons.Menu size={20} />
           </button>
 
           <RollHistoryPanel

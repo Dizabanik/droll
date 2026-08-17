@@ -175,23 +175,23 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 select-none">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-base font-bold text-white flex items-center gap-2">
-            <Icons.Dice className="text-accent" size={18} />
-            3D Dice Customizer
+          <h3 className="text-sm font-bold text-white flex items-center gap-2 tracking-tight">
+            <Icons.Dice className="text-white" size={16} />
+            3D Dice Appearance
           </h3>
-          <p className="text-xs text-zinc-400 mt-0.5">
-            Personalize the 3D skins for your Hope die, Fear die, and Standard polyhedrals.
+          <p className="text-[11px] text-muted font-mono mt-0.5">
+            Configure skins for Hope, Fear, and Polyhedral dice.
           </p>
         </div>
       </div>
 
       {/* Preset Theme Quick Bar */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Preset Themes</label>
+        <label className="text-[10px] font-bold text-muted uppercase tracking-widest font-mono">Curated Palettes</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           {PRESET_THEMES.map((theme) => {
             const IconComp = theme.IconComponent;
@@ -200,14 +200,14 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
                 key={theme.id}
                 type="button"
                 onClick={() => updateConfig(theme.config)}
-                className="flex items-center gap-2 p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:border-accent hover:bg-zinc-800/80 transition-all text-left group shadow-sm active:scale-95"
+                className="flex items-center gap-2 p-2.5 rounded-xl bg-surface/50 border border-neutral-800 hover:border-neutral-600 hover:bg-surface transition-all text-left group shadow-fey-subtle active:scale-95"
               >
-                <div className="w-7 h-7 rounded-lg bg-zinc-950 flex items-center justify-center border border-zinc-800/80 shrink-0">
-                  <IconComp size={15} className={theme.iconColor} />
+                <div className="w-7 h-7 rounded-lg bg-elevated flex items-center justify-center border border-neutral-800 shrink-0">
+                  <IconComp size={14} className="text-white" />
                 </div>
                 <div className="overflow-hidden">
-                  <div className="text-xs font-bold text-zinc-200 group-hover:text-white truncate">{theme.name}</div>
-                  <div className="text-[10px] text-zinc-500 truncate">{theme.desc}</div>
+                  <div className="text-xs font-semibold text-white truncate">{theme.name}</div>
+                  <div className="text-[9px] text-muted truncate font-mono">{theme.desc}</div>
                 </div>
               </button>
             );
@@ -217,21 +217,21 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
 
       {/* Interactive Active Dice Preview Deck */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Active Dice (Click to Customize)</label>
+        <label className="text-[10px] font-bold text-muted uppercase tracking-widest font-mono">Dice Slots (Select to Customize)</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Hope Slot */}
           <button
             type="button"
             onClick={() => setActiveSlot('hope')}
             className={clsx(
-              "relative p-3 rounded-2xl border transition-all flex flex-col items-center text-center shadow-lg",
+              "relative p-3.5 rounded-2xl border transition-all flex flex-col items-center text-center shadow-fey-subtle",
               activeSlot === 'hope'
-                ? "bg-amber-500/10 border-amber-400 ring-2 ring-amber-400/50 shadow-amber-500/10"
-                : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
+                ? "bg-surface border-signal shadow-fey-signal"
+                : "bg-surface/40 border-neutral-800 hover:border-neutral-700"
             )}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 font-mono bg-amber-500/20 text-amber-300">
-              Hope Die (D12)
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 font-mono bg-signal/15 text-signal border border-signal/30">
+              Hope (D12)
             </span>
             <div className="w-12 h-12 flex items-center justify-center my-1">
               <img
@@ -240,8 +240,8 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
                 className="w-10 h-10 object-contain drop-shadow"
               />
             </div>
-            <span className="text-xs font-bold text-white mt-1">{config.hopeStyle}</span>
-            <span className="text-[10px] text-zinc-400">Positive Check Die</span>
+            <span className="text-xs font-bold text-white mt-1 font-mono">{config.hopeStyle}</span>
+            <span className="text-[10px] text-muted">Player Die</span>
           </button>
 
           {/* Fear Slot */}
@@ -249,14 +249,14 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
             type="button"
             onClick={() => setActiveSlot('fear')}
             className={clsx(
-              "relative p-3 rounded-2xl border transition-all flex flex-col items-center text-center shadow-lg",
+              "relative p-3.5 rounded-2xl border transition-all flex flex-col items-center text-center shadow-fey-subtle",
               activeSlot === 'fear'
-                ? "bg-purple-500/10 border-purple-400 ring-2 ring-purple-400/50 shadow-purple-500/10"
-                : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
+                ? "bg-surface border-ember shadow-fey-ember"
+                : "bg-surface/40 border-neutral-800 hover:border-neutral-700"
             )}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 font-mono bg-purple-500/20 text-purple-300">
-              Fear Die (D12)
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 font-mono bg-ember/15 text-ember border border-ember/30">
+              Fear (D12)
             </span>
             <div className="w-12 h-12 flex items-center justify-center my-1">
               <img
@@ -265,8 +265,8 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
                 className="w-10 h-10 object-contain drop-shadow"
               />
             </div>
-            <span className="text-xs font-bold text-white mt-1">{config.fearStyle}</span>
-            <span className="text-[10px] text-zinc-400">GM Resource Die</span>
+            <span className="text-xs font-bold text-white mt-1 font-mono">{config.fearStyle}</span>
+            <span className="text-[10px] text-muted">GM Die</span>
           </button>
 
           {/* Standard Slot */}
@@ -274,14 +274,14 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
             type="button"
             onClick={() => setActiveSlot('standard')}
             className={clsx(
-              "relative p-3 rounded-2xl border transition-all flex flex-col items-center text-center shadow-lg",
+              "relative p-3.5 rounded-2xl border transition-all flex flex-col items-center text-center shadow-fey-subtle",
               activeSlot === 'standard'
-                ? "bg-accent/10 border-accent ring-2 ring-accent/50 shadow-accent/10"
-                : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
+                ? "bg-surface border-white shadow-fey-glow"
+                : "bg-surface/40 border-neutral-800 hover:border-neutral-700"
             )}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 font-mono bg-accent/20 text-accent">
-              Standard Dice
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 font-mono bg-white/10 text-white border border-white/20">
+              Standard
             </span>
             <div className="w-12 h-12 flex items-center justify-center my-1">
               <img
@@ -290,8 +290,8 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
                 className="w-10 h-10 object-contain drop-shadow"
               />
             </div>
-            <span className="text-xs font-bold text-white mt-1">{config.standardStyle}</span>
-            <span className="text-[10px] text-zinc-400">D4, D6, D8, D10, D20</span>
+            <span className="text-xs font-bold text-white mt-1 font-mono">{config.standardStyle}</span>
+            <span className="text-[10px] text-muted">d4, d6, d8, d10, d20</span>
           </button>
 
           {/* Negative Slot */}
@@ -299,14 +299,14 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
             type="button"
             onClick={() => setActiveSlot('negative')}
             className={clsx(
-              "relative p-3 rounded-2xl border transition-all flex flex-col items-center text-center shadow-lg",
+              "relative p-3.5 rounded-2xl border transition-all flex flex-col items-center text-center shadow-fey-subtle",
               activeSlot === 'negative'
-                ? "bg-zinc-800 border-zinc-400 ring-2 ring-zinc-400/50"
-                : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
+                ? "bg-surface border-neutral-400 shadow-fey-subtle"
+                : "bg-surface/40 border-neutral-800 hover:border-neutral-700"
             )}
           >
-            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 font-mono bg-zinc-800 text-zinc-300">
-              Subtracted (-)
+            <span className="text-[9px] font-bold uppercase tracking-widest px-2.5 py-0.5 rounded-full mb-2 font-mono bg-elevated text-muted border border-neutral-700">
+              Penalty (-)
             </span>
             <div className="w-12 h-12 flex items-center justify-center my-1">
               <img
@@ -315,25 +315,25 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
                 className="w-10 h-10 object-contain drop-shadow"
               />
             </div>
-            <span className="text-xs font-bold text-white mt-1">{config.negativeStyle}</span>
-            <span className="text-[10px] text-zinc-400">Negative Penalty Dice</span>
+            <span className="text-xs font-bold text-white mt-1 font-mono">{config.negativeStyle}</span>
+            <span className="text-[10px] text-muted">Subtracted dice</span>
           </button>
         </div>
       </div>
 
       {/* Style Selector Grid for Active Slot */}
-      <div className="p-4 bg-zinc-900/90 rounded-2xl border border-zinc-800 space-y-4">
-        <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+      <div className="p-4 bg-surface rounded-2xl border border-neutral-800 space-y-3.5 shadow-fey-subtle">
+        <div className="flex items-center justify-between pb-2 border-b border-neutral-800">
           <div>
-            <h4 className="text-xs font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <span>Choose Skin for:</span>
-              <span className="text-accent px-2 py-0.5 rounded bg-accent/20 font-mono">
-                {activeSlot.toUpperCase()} DIE
+            <h4 className="text-[10px] font-bold text-muted uppercase tracking-widest font-mono flex items-center gap-2">
+              <span>Apply Texture to:</span>
+              <span className="text-white px-2 py-0.5 rounded-full bg-elevated border border-neutral-700 font-mono">
+                {activeSlot.toUpperCase()}
               </span>
             </h4>
           </div>
-          <span className="text-xs font-mono text-zinc-400">
-            Selected: <strong className="text-white">{currentSelectedStyleForSlot()}</strong>
+          <span className="text-[11px] font-mono text-muted">
+            Current: <strong className="text-white">{currentSelectedStyleForSlot()}</strong>
           </span>
         </div>
 
@@ -350,17 +350,17 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
                 className={clsx(
                   "relative group flex flex-col items-center p-3 rounded-xl border transition-all text-center",
                   isSelected
-                    ? "bg-accent/20 border-accent shadow-lg shadow-accent/15 ring-1 ring-accent"
-                    : "bg-zinc-950/80 border-zinc-800 hover:border-zinc-600 hover:bg-zinc-800/60"
+                    ? "bg-elevated border-white shadow-fey-glow"
+                    : "bg-surface/50 border-neutral-800/80 hover:border-neutral-700 hover:bg-elevated/50"
                 )}
               >
                 {isSelected && (
-                  <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-accent text-white flex items-center justify-center text-[10px] shadow">
+                  <div className="absolute top-2 right-2 w-4 h-4 rounded-full bg-white text-black flex items-center justify-center text-[9px] shadow-fey-subtle font-bold">
                     <Icons.Check size={10} />
                   </div>
                 )}
 
-                <div className="w-12 h-12 flex items-center justify-center mb-1.5 rounded-lg overflow-hidden transition-transform group-hover:scale-110">
+                <div className="w-12 h-12 flex items-center justify-center mb-1.5 rounded-lg overflow-hidden transition-transform group-hover:scale-105">
                   <img
                     src={previewImg}
                     alt={style.name}
@@ -370,11 +370,11 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
 
                 <span className={clsx(
                   "text-xs font-semibold tracking-wide",
-                  isSelected ? "text-accent font-bold" : "text-zinc-200 group-hover:text-white"
+                  isSelected ? "text-white font-bold" : "text-mist group-hover:text-white"
                 )}>
                   {style.name}
                 </span>
-                <span className="text-[10px] text-zinc-500 line-clamp-1 mt-0.5">
+                <span className="text-[9px] text-muted line-clamp-1 mt-0.5 font-mono">
                   {style.desc}
                 </span>
               </button>
@@ -385,3 +385,4 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
     </div>
   );
 };
+

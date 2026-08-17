@@ -116,18 +116,18 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
 
     return (
         <>
-            {/* Minimalist Glassmorphic Fear Tracker Capsule */}
+            {/* Minimalist Fear Tracker Capsule */}
             <div
                 className={clsx(
-                    "flex items-center gap-1.5 px-2 py-1 bg-zinc-900/90 border border-purple-500/30 backdrop-blur-md rounded-xl shadow-md transition-all select-none",
+                    "flex items-center gap-1.5 px-3 py-1 bg-surface border border-neutral-800 rounded-full shadow-fey-subtle transition-all select-none",
                     className
                 )}
-                title="Daggerheart Fear Resource Tracker (Click pips or +/- to adjust)"
+                title="Daggerheart Fear Resource Tracker"
             >
                 {/* Skull Icon + Title */}
-                <div className="flex items-center gap-1 pr-1 border-r border-zinc-800">
-                    <Icons.Death size={13} className={clsx("transition-colors", fear > 0 ? "text-purple-400" : "text-zinc-500")} />
-                    <span className="text-[10px] font-bold tracking-wider uppercase text-purple-300 font-mono">
+                <div className="flex items-center gap-1.5 pr-2 border-r border-neutral-800">
+                    <Icons.Death size={13} className={clsx("transition-colors", fear > 0 ? "text-ember" : "text-muted")} />
+                    <span className="text-[10px] font-bold tracking-widest uppercase text-ember font-mono">
                         Fear
                     </span>
                 </div>
@@ -137,7 +137,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                     type="button"
                     onClick={removeFear}
                     disabled={fear <= 0}
-                    className="w-4 h-4 rounded flex items-center justify-center text-zinc-400 hover:text-white hover:bg-zinc-800 disabled:opacity-20 disabled:cursor-not-allowed text-xs font-bold transition-all active:scale-90"
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-muted hover:text-white hover:bg-elevated disabled:opacity-20 disabled:cursor-not-allowed text-xs font-bold transition-all active:scale-90"
                     title="Remove Fear (-1)"
                 >
                     -
@@ -153,10 +153,10 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                                 type="button"
                                 onClick={() => handlePipClick(i)}
                                 className={clsx(
-                                    "w-1.5 h-4 rounded-sm transition-all cursor-pointer group relative",
+                                    "w-1.5 h-3.5 rounded-full transition-all cursor-pointer",
                                     isActive
-                                        ? "bg-gradient-to-t from-purple-600 to-rose-500 shadow-[0_0_5px_rgba(168,85,247,0.7)] scale-y-105"
-                                        : "bg-zinc-800/80 hover:bg-zinc-700"
+                                        ? "bg-ember shadow-fey-ember scale-y-105"
+                                        : "bg-neutral-800 hover:bg-neutral-700"
                                 )}
                                 title={`Set Fear to ${i + 1}`}
                             />
@@ -169,18 +169,18 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                     type="button"
                     onClick={addFear}
                     disabled={fear >= MAX_FEAR}
-                    className="w-4 h-4 rounded flex items-center justify-center text-purple-400 hover:text-purple-200 hover:bg-purple-950/50 disabled:opacity-20 disabled:cursor-not-allowed text-xs font-bold transition-all active:scale-90"
+                    className="w-4 h-4 rounded-full flex items-center justify-center text-ember hover:text-white hover:bg-elevated disabled:opacity-20 disabled:cursor-not-allowed text-xs font-bold transition-all active:scale-90"
                     title="Add Fear (+1)"
                 >
                     +
                 </button>
 
                 {/* Digital Counter Pill */}
-                <div className="pl-1 border-l border-zinc-800 font-mono text-[10px] font-bold">
-                    <span className={clsx(fear > 0 ? "text-purple-300" : "text-zinc-500")}>
+                <div className="pl-2 border-l border-neutral-800 font-mono text-[10px] font-bold">
+                    <span className={clsx(fear > 0 ? "text-white" : "text-muted")}>
                         {fear}
                     </span>
-                    <span className="text-zinc-600 text-[9px]">/12</span>
+                    <span className="text-muted text-[9px]">/12</span>
                 </div>
             </div>
 
@@ -193,7 +193,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                             animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             transition={{ duration: 0.25 }}
-                            className="fixed inset-0 z-[9999] pointer-events-none flex flex-col items-center justify-center bg-black/50 backdrop-blur-xs"
+                            className="fixed inset-0 z-[9999] pointer-events-none flex flex-col items-center justify-center bg-black/60 backdrop-blur-xs"
                         >
                             <motion.div
                                 initial={{ scale: 0.2, opacity: 0, rotate: -12 }}
@@ -212,24 +212,22 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                                 <img
                                     src="skull.png"
                                     alt="FEAR!"
-                                    className="w-72 h-72 sm:w-80 sm:h-80 object-contain drop-shadow-[0_0_70px_rgba(239,68,68,0.9)]"
+                                    className="w-72 h-72 sm:w-80 sm:h-80 object-contain drop-shadow-[0_0_70px_rgba(255,161,108,0.9)]"
                                 />
 
-                                {/* Atmospheric crimson/purple radial aura */}
                                 <motion.div
                                     initial={{ opacity: 0.9, scale: 0.9 }}
                                     animate={{ opacity: 0, scale: 1.7 }}
                                     transition={{ duration: 0.9, ease: "easeOut" }}
-                                    className="absolute inset-0 bg-red-600/40 rounded-full blur-3xl"
+                                    className="absolute inset-0 bg-ember/30 rounded-full blur-3xl"
                                 />
 
-                                {/* Giant Glowing FEAR Text */}
                                 <motion.div
                                     initial={{ opacity: 0, y: 30 }}
                                     animate={{ opacity: [0, 1, 1, 0], y: [30, 0, 0, -20] }}
                                     transition={{ duration: 1.4, times: [0, 0.2, 0.75, 1] }}
-                                    className="text-red-500 font-black text-5xl sm:text-6xl tracking-widest mt-4 font-mono select-none"
-                                    style={{ textShadow: '0 0 40px rgba(239,68,68,0.9), 0 0 80px rgba(239,68,68,0.6)' }}
+                                    className="text-ember font-black text-5xl sm:text-6xl tracking-widest mt-4 font-mono select-none"
+                                    style={{ textShadow: '0 0 40px rgba(255,161,108,0.9), 0 0 80px rgba(255,161,108,0.6)' }}
                                 >
                                     FEAR
                                 </motion.div>
@@ -242,3 +240,4 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
         </>
     );
 };
+

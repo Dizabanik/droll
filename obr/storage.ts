@@ -353,9 +353,6 @@ export const OBRStorage = {
       hopeStyle: DEFAULT_DICE_CUSTOMIZATION.hopeStyle,
       fearStyle: DEFAULT_DICE_CUSTOMIZATION.fearStyle,
       negativeStyle: DEFAULT_DICE_CUSTOMIZATION.negativeStyle,
-      hopeGlowColor: DEFAULT_DICE_CUSTOMIZATION.hopeGlowColor,
-      fearGlowColor: DEFAULT_DICE_CUSTOMIZATION.fearGlowColor,
-      diceSpeedMultiplier: DEFAULT_DICE_CUSTOMIZATION.diceSpeedMultiplier,
     };
   },
   setDiceCustomization: async (customization: Partial<DiceCustomization>): Promise<void> => {

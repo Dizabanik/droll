@@ -5,7 +5,6 @@ import { DiceCustomization, DEFAULT_DICE_CUSTOMIZATION } from '../types';
 import { OBRStorage } from '../obr';
 import clsx from 'clsx';
 import { Icons } from './ui/Icons';
-import { motion, AnimatePresence } from 'framer-motion';
 
 export const AVAILABLE_STYLES: { id: DiceStyle; name: string; desc: string }[] = [
   { id: 'GEMSTONE', name: 'Gemstone', desc: 'Lustrous crystalline finish' },
@@ -35,8 +34,6 @@ export const PRESET_THEMES: {
       hopeStyle: 'SUNRISE',
       fearStyle: 'GALAXY',
       negativeStyle: 'IRON',
-      hopeGlowColor: '#eab308',
-      fearGlowColor: '#a855f7',
     },
   },
   {
@@ -49,8 +46,6 @@ export const PRESET_THEMES: {
       hopeStyle: 'SUNRISE',
       fearStyle: 'IRON',
       negativeStyle: 'IRON',
-      hopeGlowColor: '#f59e0b',
-      fearGlowColor: '#ef4444',
     },
   },
   {
@@ -63,8 +58,6 @@ export const PRESET_THEMES: {
       hopeStyle: 'GEMSTONE',
       fearStyle: 'WALNUT',
       negativeStyle: 'IRON',
-      hopeGlowColor: '#10b981',
-      fearGlowColor: '#78350f',
     },
   },
   {
@@ -77,8 +70,6 @@ export const PRESET_THEMES: {
       hopeStyle: 'NEBULA',
       fearStyle: 'GALAXY',
       negativeStyle: 'IRON',
-      hopeGlowColor: '#06b6d4',
-      fearGlowColor: '#6366f1',
     },
   },
   {
@@ -91,26 +82,8 @@ export const PRESET_THEMES: {
       hopeStyle: 'SUNRISE',
       fearStyle: 'SUNSET',
       negativeStyle: 'IRON',
-      hopeGlowColor: '#fbbf24',
-      fearGlowColor: '#f97316',
     },
   },
-];
-
-export const HOPE_COLOR_SWATCHES = [
-  { label: 'Gold', color: '#eab308' },
-  { label: 'Emerald', color: '#10b981' },
-  { label: 'Azure', color: '#06b6d4' },
-  { label: 'Radiant White', color: '#f8fafc' },
-  { label: 'Rose Gold', color: '#f43f5e' },
-];
-
-export const FEAR_COLOR_SWATCHES = [
-  { label: 'Purple', color: '#a855f7' },
-  { label: 'Crimson', color: '#ef4444' },
-  { label: 'Void Indigo', color: '#6366f1' },
-  { label: 'Shadow Slate', color: '#475569' },
-  { label: 'Abyssal Black', color: '#1e1b4b' },
 ];
 
 type ActiveSlot = 'hope' | 'fear' | 'standard' | 'negative';
@@ -201,17 +174,17 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
         <div>
           <h3 className="text-base font-bold text-white flex items-center gap-2">
             <Icons.Dice className="text-accent" size={18} />
-            3D Dice Customizer & Theme Studio
+            3D Dice Customizer
           </h3>
           <p className="text-xs text-zinc-400 mt-0.5">
-            Personalize your Hope die, Fear die, Standard dice, and glowing roll HUD accents.
+            Personalize the 3D skins for your Hope die, Fear die, and Standard polyhedrals.
           </p>
         </div>
       </div>
 
       {/* Preset Theme Quick Bar */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Quick Preset Themes</label>
+        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Preset Themes</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
           {PRESET_THEMES.map((theme) => (
             <button
@@ -232,7 +205,7 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
 
       {/* Interactive Active Dice Preview Deck */}
       <div className="space-y-2">
-        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Active Dice Loadout (Click to Customize)</label>
+        <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Active Dice (Click to Customize)</label>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {/* Hope Slot */}
           <button
@@ -245,17 +218,14 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
                 : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
             )}
           >
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 font-mono shadow-sm"
-              style={{ backgroundColor: `${config.hopeGlowColor || '#eab308'}25`, color: config.hopeGlowColor || '#eab308' }}
-            >
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 font-mono bg-amber-500/20 text-amber-300">
               Hope Die (D12)
             </span>
             <div className="w-12 h-12 flex items-center justify-center my-1">
               <img
                 src={standardPreviews[config.hopeStyle]}
                 alt="Hope Die"
-                className="w-10 h-10 object-contain drop-shadow-[0_0_8px_rgba(234,179,8,0.4)]"
+                className="w-10 h-10 object-contain drop-shadow"
               />
             </div>
             <span className="text-xs font-bold text-white mt-1">{config.hopeStyle}</span>
@@ -273,17 +243,14 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
                 : "bg-zinc-900/60 border-zinc-800 hover:border-zinc-700"
             )}
           >
-            <span
-              className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 font-mono shadow-sm"
-              style={{ backgroundColor: `${config.fearGlowColor || '#a855f7'}25`, color: config.fearGlowColor || '#a855f7' }}
-            >
+            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full mb-2 font-mono bg-purple-500/20 text-purple-300">
               Fear Die (D12)
             </span>
             <div className="w-12 h-12 flex items-center justify-center my-1">
               <img
                 src={standardPreviews[config.fearStyle]}
                 alt="Fear Die"
-                className="w-10 h-10 object-contain drop-shadow-[0_0_8px_rgba(168,85,247,0.4)]"
+                className="w-10 h-10 object-contain drop-shadow"
               />
             </div>
             <span className="text-xs font-bold text-white mt-1">{config.fearStyle}</span>
@@ -401,79 +368,6 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
               </button>
             );
           })}
-        </div>
-
-        {/* Glow Tint Options for Hope & Fear Slots */}
-        {activeSlot === 'hope' && (
-          <div className="pt-3 border-t border-zinc-800 flex items-center justify-between flex-wrap gap-2">
-            <span className="text-xs font-semibold text-zinc-300">Hope Glow Accent Color:</span>
-            <div className="flex items-center gap-2">
-              {HOPE_COLOR_SWATCHES.map((swatch) => (
-                <button
-                  key={swatch.color}
-                  type="button"
-                  onClick={() => updateConfig({ hopeGlowColor: swatch.color })}
-                  className={clsx(
-                    "w-6 h-6 rounded-full border-2 transition-transform",
-                    config.hopeGlowColor === swatch.color ? "scale-125 border-white shadow-md" : "border-transparent hover:scale-110"
-                  )}
-                  style={{ backgroundColor: swatch.color }}
-                  title={swatch.label}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {activeSlot === 'fear' && (
-          <div className="pt-3 border-t border-zinc-800 flex items-center justify-between flex-wrap gap-2">
-            <span className="text-xs font-semibold text-zinc-300">Fear Glow Accent Color:</span>
-            <div className="flex items-center gap-2">
-              {FEAR_COLOR_SWATCHES.map((swatch) => (
-                <button
-                  key={swatch.color}
-                  type="button"
-                  onClick={() => updateConfig({ fearGlowColor: swatch.color })}
-                  className={clsx(
-                    "w-6 h-6 rounded-full border-2 transition-transform",
-                    config.fearGlowColor === swatch.color ? "scale-125 border-white shadow-md" : "border-transparent hover:scale-110"
-                  )}
-                  style={{ backgroundColor: swatch.color }}
-                  title={swatch.label}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Physics Throw Speed Multiplier */}
-      <div className="p-4 bg-zinc-900/90 rounded-2xl border border-zinc-800 flex items-center justify-between">
-        <div>
-          <h4 className="text-xs font-bold text-white uppercase tracking-wider">3D Physics Throw Speed</h4>
-          <p className="text-[11px] text-zinc-400 mt-0.5">Control how fast dice tumble and settle into the tray.</p>
-        </div>
-
-        <div className="flex items-center bg-zinc-950 border border-zinc-800 rounded-xl p-0.5">
-          {[
-            { label: 'Normal (1.0x)', speed: 1.0 },
-            { label: 'Fast (1.5x)', speed: 1.5 },
-            { label: 'Turbo (2.0x)', speed: 2.0 },
-          ].map((item) => (
-            <button
-              key={item.speed}
-              type="button"
-              onClick={() => updateConfig({ diceSpeedMultiplier: item.speed })}
-              className={clsx(
-                "px-3 py-1.5 rounded-lg text-xs font-semibold transition-all",
-                (config.diceSpeedMultiplier || 1.0) === item.speed
-                  ? "bg-accent text-white shadow-sm"
-                  : "text-zinc-400 hover:text-white"
-              )}
-            >
-              {item.label}
-            </button>
-          ))}
         </div>
       </div>
     </div>

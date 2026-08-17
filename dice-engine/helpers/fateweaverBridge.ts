@@ -149,10 +149,9 @@ export const execute3DFateRoll = async (
   customization?: Partial<DiceCustomization> | DiceStyle
 ): Promise<RollExecutionResult> => {
   const prepared = prepare3DRoll(preset, characterStats, customization);
-  const speed = typeof customization === 'object' ? customization.diceSpeedMultiplier : undefined;
 
   // 1. Start 3D Rapier Physics Roll in store first to generate physics throws
-  useDiceRollStore.getState().startRoll(prepared.diceRoll, speed);
+  useDiceRollStore.getState().startRoll(prepared.diceRoll);
   const initialThrows = useDiceRollStore.getState().rollThrows;
 
   // 2. Broadcast roll start with exact physical throws for identical simulation

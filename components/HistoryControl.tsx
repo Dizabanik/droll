@@ -10,6 +10,7 @@ import { FearTracker } from './FearTracker';
 import { APP_VERSION, DicePreset, CharacterStats, StepResult } from '../types';
 import { Roller } from './Roller';
 import { Dice3DOverlay } from './Dice3DOverlay';
+import { MiroBoardEmbed } from './MiroBoardEmbed';
 import { useDiceRollStore } from '../dice-engine/dice/store';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, DiceRollStartMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
@@ -72,6 +73,7 @@ export const HistoryControl: React.FC = () => {
     const [activeRollVars, setActiveRollVars] = useState<Record<string, number>>({});
     const [activeRollItemName, setActiveRollItemName] = useState<string>('');
     const [rollKey, setRollKey] = useState<number>(0);
+    const [characterSheetMode, setCharacterSheetMode] = useState<'sheet' | 'miro'>('sheet');
 
     // Character Stats for Stat Modifiers
     const [stats, setStats] = useState<CharacterStats>({
@@ -135,6 +137,11 @@ export const HistoryControl: React.FC = () => {
                 if (savedStats) {
                     setStats(savedStats);
                 }
+
+                const savedMode = await OBRStorage.getCharacterSheetMode();
+                if (savedMode) {
+                    setCharacterSheetMode(savedMode);
+                }
             } catch (e) {
                 console.error("Failed to load history or stats", e);
             } finally {
@@ -144,6 +151,11 @@ export const HistoryControl: React.FC = () => {
 
         loadInitialData();
     }, []);
+
+    const handleSheetModeChange = async (mode: 'sheet' | 'miro') => {
+        setCharacterSheetMode(mode);
+        await OBRStorage.setCharacterSheetMode(mode);
+    };
 
     // Save History when updated (limit to 20)
     useEffect(() => {
@@ -335,25 +347,83 @@ export const HistoryControl: React.FC = () => {
                         <DaggerheartStats onVitalsChange={handleVitalsChange} onStatusesChange={handleStatusesChange} />
                     </motion.div>
 
-                    {/* Middle Panel - Character Stats */}
+                    {/* Middle Panel - Character Stats / Miro Board */}
                     <motion.div
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: 20 }}
                         transition={{ type: 'spring', damping: 25, stiffness: 300, delay: 0.1 }}
-                        className="relative z-10 flex-1 bg-zinc-950/90 border-x border-zinc-800 shadow-2xl flex flex-col overflow-hidden"
+                        className={clsx(
+                            "relative z-10 bg-zinc-950/90 border-x border-zinc-800 shadow-2xl flex flex-col overflow-hidden transition-all duration-300",
+                            characterSheetMode === 'miro' ? "flex-[2.5]" : "flex-1"
+                        )}
                     >
-                        <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
-                            <h2 className="text-white font-bold flex items-center gap-2">
-                                <Icons.User size={20} className="text-accent" />
-                                Character
-                            </h2>
+                        <div className="flex items-center justify-between p-3 px-4 border-b border-zinc-800 bg-zinc-950 z-20">
+                            <div className="flex items-center gap-2">
+                                {characterSheetMode === 'miro' ? (
+                                    <h2 className="text-white font-bold flex items-center gap-2 text-sm sm:text-base">
+                                        <svg className="w-5 h-5 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                                            <rect width="18" height="18" x="3" y="3" rx="2" />
+                                            <path d="M7 7v10" />
+                                            <path d="M12 7v10" />
+                                            <path d="M17 7v10" />
+                                        </svg>
+                                        Miro Board
+                                    </h2>
+                                ) : (
+                                    <h2 className="text-white font-bold flex items-center gap-2 text-sm sm:text-base">
+                                        <Icons.User size={20} className="text-accent" />
+                                        Character
+                                    </h2>
+                                )}
+                            </div>
+
+                            {/* Mode Toggle Button: Sheet <-> Miro */}
+                            <div className="flex items-center bg-zinc-900 border border-zinc-700/80 rounded-xl p-0.5 shadow-inner">
+                                <button
+                                    onClick={() => handleSheetModeChange('sheet')}
+                                    className={clsx(
+                                        "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                                        characterSheetMode === 'sheet'
+                                            ? "bg-accent text-white shadow-sm"
+                                            : "text-zinc-400 hover:text-zinc-200"
+                                    )}
+                                    title="Switch to standard Character Sheet"
+                                >
+                                    <Icons.User size={13} />
+                                    <span>Sheet</span>
+                                </button>
+
+                                <button
+                                    onClick={() => handleSheetModeChange('miro')}
+                                    className={clsx(
+                                        "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                                        characterSheetMode === 'miro'
+                                            ? "bg-amber-500 text-zinc-950 shadow-sm"
+                                            : "text-zinc-400 hover:text-zinc-200"
+                                    )}
+                                    title="Switch to Miro Board"
+                                >
+                                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                                        <rect width="18" height="18" x="3" y="3" rx="2" />
+                                        <path d="M7 7v10" />
+                                        <path d="M12 7v10" />
+                                        <path d="M17 7v10" />
+                                    </svg>
+                                    <span>Miro</span>
+                                </button>
+                            </div>
                         </div>
-                        <CharacterPanel
-                            onRoll={handleStatRoll}
-                            showSettings={showSettings}
-                            onCloseSettings={() => setShowSettings(false)}
-                        />
+
+                        {characterSheetMode === 'miro' ? (
+                            <MiroBoardEmbed onRollStat={handleStatRoll} />
+                        ) : (
+                            <CharacterPanel
+                                onRoll={handleStatRoll}
+                                showSettings={showSettings}
+                                onCloseSettings={() => setShowSettings(false)}
+                            />
+                        )}
                     </motion.div>
 
                     {/* Right Panel - Roll History */}

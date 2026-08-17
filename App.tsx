@@ -14,6 +14,7 @@ import { LeftToolbarPopover } from './components/LeftToolbarPopover';
 import { Icons } from './components/ui/Icons';
 import { DiceStyle } from './dice-engine/types/DiceStyle';
 import { DiceStylePicker } from './components/DiceStylePicker';
+import { MiroBoardEmbed } from './components/MiroBoardEmbed';
 import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage, DaggerheartVitals } from './obr';
 import clsx from 'clsx';
 
@@ -93,6 +94,7 @@ const App: React.FC = () => {
   const [activeView, setActiveView] = useState<'items' | 'character' | 'token' | 'settings'>('items');
   const [editingItem, setEditingItem] = useState<boolean>(false);
   const [diceStyle, setDiceStyle] = useState<DiceStyle>('GEMSTONE');
+  const [characterSheetMode, setCharacterSheetMode] = useState<'sheet' | 'miro'>('sheet');
   const [daggerheartVitals, setDaggerheartVitals] = useState<DaggerheartVitals>({
     hope: 0, hopeMax: 6, stress: 0, stressMax: 6, hp: 10, hpMax: 10, armor: 0, armorMax: 5
   });
@@ -199,6 +201,11 @@ const App: React.FC = () => {
         if (savedStyle) {
           setDiceStyle(savedStyle);
         }
+
+        const savedMode = await OBRStorage.getCharacterSheetMode();
+        if (savedMode) {
+          setCharacterSheetMode(savedMode);
+        }
       } catch (e) {
         console.error("Error loading data:", e);
       } finally {
@@ -277,6 +284,10 @@ const App: React.FC = () => {
       if (newStyle) {
         setDiceStyle(newStyle);
       }
+      const newMode = await OBRStorage.getCharacterSheetMode();
+      if (newMode) {
+        setCharacterSheetMode(newMode);
+      }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
@@ -285,6 +296,11 @@ const App: React.FC = () => {
   const handleDiceStyleChange = async (style: DiceStyle) => {
     setDiceStyle(style);
     await OBRStorage.setDiceStyle(style);
+  };
+
+  const handleSheetModeChange = async (mode: 'sheet' | 'miro') => {
+    setCharacterSheetMode(mode);
+    await OBRStorage.setCharacterSheetMode(mode);
   };
 
   // Listen for stat roll events from CharacterPanel to trigger rolls
@@ -601,7 +617,57 @@ const App: React.FC = () => {
       <div className="flex-1 flex flex-col h-full overflow-hidden relative">
 
         {activeView === 'character' ? (
-          <CharacterSheet stats={stats} onChange={setStats} />
+          <div className="flex-1 flex flex-col h-full overflow-hidden bg-background">
+            <div className="flex items-center justify-between px-8 py-3 border-b border-border bg-surface/40">
+              <div className="flex items-center gap-2">
+                <Icons.User size={18} className="text-accent" />
+                <h2 className="text-sm font-bold text-white uppercase tracking-wider">
+                  {characterSheetMode === 'miro' ? 'Miro Character Board' : 'Character Sheet'}
+                </h2>
+              </div>
+
+              {/* Mode Toggle Button */}
+              <div className="flex items-center bg-zinc-900 border border-zinc-700/80 rounded-xl p-0.5 shadow-inner">
+                <button
+                  onClick={() => handleSheetModeChange('sheet')}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                    characterSheetMode === 'sheet'
+                      ? "bg-accent text-white shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  )}
+                >
+                  <Icons.User size={13} />
+                  <span>Sheet</span>
+                </button>
+                <button
+                  onClick={() => handleSheetModeChange('miro')}
+                  className={clsx(
+                    "flex items-center gap-1.5 px-3 py-1 rounded-lg text-xs font-semibold transition-all",
+                    characterSheetMode === 'miro'
+                      ? "bg-amber-500 text-zinc-950 shadow-sm"
+                      : "text-zinc-400 hover:text-zinc-200"
+                  )}
+                >
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                    <rect width="18" height="18" x="3" y="3" rx="2" />
+                    <path d="M7 7v10" />
+                    <path d="M12 7v10" />
+                    <path d="M17 7v10" />
+                  </svg>
+                  <span>Miro</span>
+                </button>
+              </div>
+            </div>
+
+            <div className="flex-1 overflow-hidden">
+              {characterSheetMode === 'miro' ? (
+                <MiroBoardEmbed />
+              ) : (
+                <CharacterSheet stats={stats} onChange={setStats} />
+              )}
+            </div>
+          </div>
         ) : activeView === 'token' ? (
           <TokenSettings vitals={daggerheartVitals} />
         ) : activeView === 'settings' ? (

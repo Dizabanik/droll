@@ -121,6 +121,8 @@ interface FateWeaverData {
   selectedTokenId?: string;
   fear?: number;
   diceStyle?: DiceStyle;
+  miroUrl?: string;
+  characterSheetMode?: 'sheet' | 'miro';
 }
 
 /**
@@ -342,5 +344,21 @@ export const OBRStorage = {
   },
   setDiceStyle: async (diceStyle: DiceStyle): Promise<void> => {
     await setData({ diceStyle });
+  },
+
+  // Miro Board Integration
+  getMiroUrl: async (): Promise<string> => {
+    const data = await getData();
+    return data.miroUrl || '';
+  },
+  setMiroUrl: async (miroUrl: string): Promise<void> => {
+    await setData({ miroUrl });
+  },
+  getCharacterSheetMode: async (): Promise<'sheet' | 'miro'> => {
+    const data = await getData();
+    return data.characterSheetMode || 'sheet';
+  },
+  setCharacterSheetMode: async (mode: 'sheet' | 'miro'): Promise<void> => {
+    await setData({ characterSheetMode: mode });
   },
 };

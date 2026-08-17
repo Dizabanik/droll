@@ -96,7 +96,7 @@ export const HistoryControl: React.FC = () => {
                 formula: `2d12+${statValue}`,
                 damageType: 'none',
                 addToSum: true,
-                isCrit: true,
+                isCrit: false,
             }]
         };
 

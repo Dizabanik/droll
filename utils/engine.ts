@@ -234,15 +234,20 @@ export const resolveStepResult = (
       return acc + (sign * val);
     }, 0);
 
-    const isCritical = (hope === fear && hope > 0) || forceCrit || !!step.isCrit;
+    const isNaturalCrit = (hope === fear && hope > 0);
+    const isManualCrit = forceCrit || !!step.isCrit;
+    const isCritical = isNaturalCrit || isManualCrit;
+
     let outcome: 'hope' | 'fear' | 'crit' = 'hope';
     if (isCritical) outcome = 'crit';
     else if (hope >= fear) outcome = 'hope';
     else outcome = 'fear';
 
     let total = hope + fear + extraSignedSum + totalModifier;
-    if (isCritical) {
-      // Maximize positive dice values + actual rolls + modifier (modifier NOT duplicated)
+
+    // In Daggerheart, natural duality crit does not add max dice to the check roll itself.
+    // Max dice bonus only applies if manual Crit toggle was explicitly enabled.
+    if (isManualCrit) {
       const maxHopeFear = 24; // 12 + 12
       const maxExtra = extraDice.filter(d => (d.sign ?? 1) > 0).reduce((acc, d) => acc + d.sides, 0);
       total = maxHopeFear + maxExtra + hope + fear + extraSignedSum + totalModifier;

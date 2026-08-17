@@ -1,5 +1,5 @@
 
-export const APP_VERSION = "v1.6.1-3d";
+export const APP_VERSION = "v1.6.2-3d";
 
 export type DamageType =
   | 'slashing' | 'piercing' | 'bludgeoning'

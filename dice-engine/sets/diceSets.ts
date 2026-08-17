@@ -13,7 +13,7 @@ import * as walnutPreviews from "../previews/walnut";
 
 import allPreview from "../previews/all.png";
 
-const standardPreviews: Record<DiceStyle, string> = {
+export const standardPreviews: Record<DiceStyle, string> = {
   GALAXY: galaxyPreviews.D20,
   GEMSTONE: gemstonePreviews.D20,
   GLASS: glassPreviews.D20,

@@ -12,6 +12,8 @@ import { TokenSettings } from './components/TokenSettings';
 import { QuickDiceToolbar } from './components/QuickDiceToolbar';
 import { LeftToolbarPopover } from './components/LeftToolbarPopover';
 import { Icons } from './components/ui/Icons';
+import { DiceStyle } from './dice-engine/types/DiceStyle';
+import { DiceStylePicker } from './components/DiceStylePicker';
 import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage, DaggerheartVitals } from './obr';
 import clsx from 'clsx';
 
@@ -88,8 +90,9 @@ const App: React.FC = () => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
-  const [activeView, setActiveView] = useState<'items' | 'character' | 'token'>('items');
+  const [activeView, setActiveView] = useState<'items' | 'character' | 'token' | 'settings'>('items');
   const [editingItem, setEditingItem] = useState<boolean>(false);
+  const [diceStyle, setDiceStyle] = useState<DiceStyle>('GEMSTONE');
   const [daggerheartVitals, setDaggerheartVitals] = useState<DaggerheartVitals>({
     hope: 0, hopeMax: 6, stress: 0, stressMax: 6, hp: 10, hpMax: 10, armor: 0, armorMax: 5
   });
@@ -191,6 +194,11 @@ const App: React.FC = () => {
           console.log("Loaded stats.");
           setStats(savedStats);
         }
+
+        const savedStyle = await OBRStorage.getDiceStyle();
+        if (savedStyle) {
+          setDiceStyle(savedStyle);
+        }
       } catch (e) {
         console.error("Error loading data:", e);
       } finally {
@@ -257,7 +265,7 @@ const App: React.FC = () => {
     OBRStorage.setStats(stats);
   }, [stats, isLoaded, isOverlay, isPopover]);
 
-  // Listen for storage changes to sync stats from fullscreen to main window
+  // Listen for storage changes to sync stats and settings
   useEffect(() => {
     const handleStorageChange = async () => {
       const newStats = await OBRStorage.getStats();
@@ -265,10 +273,19 @@ const App: React.FC = () => {
         statsFromStorageRef.current = true;
         setStats(newStats);
       }
+      const newStyle = await OBRStorage.getDiceStyle();
+      if (newStyle) {
+        setDiceStyle(newStyle);
+      }
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
   }, []);
+
+  const handleDiceStyleChange = async (style: DiceStyle) => {
+    setDiceStyle(style);
+    await OBRStorage.setDiceStyle(style);
+  };
 
   // Listen for stat roll events from CharacterPanel to trigger rolls
   useEffect(() => {
@@ -519,6 +536,17 @@ const App: React.FC = () => {
           >
             <Icons.Target size={16} /> Token
           </button>
+          <button
+            onClick={() => setActiveView('settings')}
+            className={clsx(
+              "w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-all font-medium",
+              activeView === 'settings'
+                ? "bg-zinc-800 text-white"
+                : "text-zinc-500 hover:text-zinc-300 hover:bg-zinc-900"
+            )}
+          >
+            <Icons.Settings size={16} /> Settings
+          </button>
         </div>
 
         {activeView === 'items' && (
@@ -576,6 +604,53 @@ const App: React.FC = () => {
           <CharacterSheet stats={stats} onChange={setStats} />
         ) : activeView === 'token' ? (
           <TokenSettings vitals={daggerheartVitals} />
+        ) : activeView === 'settings' ? (
+          <div className="flex-1 p-8 overflow-y-auto bg-gradient-to-b from-surface to-background">
+            <div className="max-w-3xl mx-auto space-y-6">
+              <div className="flex items-center justify-between pb-4 border-b border-border">
+                <div>
+                  <h2 className="text-2xl font-bold text-white flex items-center gap-2">
+                    <Icons.Settings className="text-accent" />
+                    Settings & Appearance
+                  </h2>
+                  <p className="text-sm text-zinc-400 mt-1">Configure your personal preferences, 3D dice appearance, and campaign data.</p>
+                </div>
+                <span className="text-xs font-mono font-medium px-2 py-1 rounded bg-zinc-800 text-zinc-400 border border-zinc-700">
+                  {APP_VERSION}
+                </span>
+              </div>
+
+              {/* 3D Dice Skin Selector */}
+              <div className="p-6 bg-zinc-900/80 rounded-2xl border border-border shadow-lg">
+                <DiceStylePicker
+                  currentStyle={diceStyle}
+                  onSelect={handleDiceStyleChange}
+                />
+              </div>
+
+              {/* Data Backup & Restore */}
+              <div className="p-6 bg-zinc-900/80 rounded-2xl border border-border space-y-4">
+                <div>
+                  <h3 className="text-base font-semibold text-white">Campaign Data & Backup</h3>
+                  <p className="text-xs text-zinc-400 mt-0.5">Export or import your custom items, dice chains, and character profiles.</p>
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <button
+                    onClick={handleExport}
+                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-zinc-700 shadow-sm"
+                  >
+                    <Icons.ArrowRight size={14} className="rotate-90" /> Export JSON Backup
+                  </button>
+                  <button
+                    onClick={() => fileInputRef.current?.click()}
+                    className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-4 py-2 rounded-xl text-sm font-medium transition-colors border border-zinc-700 shadow-sm"
+                  >
+                    <Icons.ArrowRight size={14} className="-rotate-90" /> Import JSON Backup
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
         ) : (
           activeItem ? (
             <>

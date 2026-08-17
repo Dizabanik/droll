@@ -5,6 +5,7 @@
  */
 
 import { Item, CharacterStats } from "../types";
+import { DiceStyle } from "../dice-engine/types/DiceStyle";
 import OBR from "@owlbear-rodeo/sdk";
 
 const GLOBAL_STORAGE_KEY = "fateweaver_data";
@@ -65,7 +66,6 @@ export interface RollHistoryEntry {
 }
 
 export interface DaggerheartCharacter {
-  // 6 core stats (can bexport interface DaggerheartCharacter {
   agility: number;
   strength: number;
   finesse: number;
@@ -120,6 +120,7 @@ interface FateWeaverData {
   daggerheartMoney?: DaggerheartMoney;
   selectedTokenId?: string;
   fear?: number;
+  diceStyle?: DiceStyle;
 }
 
 /**
@@ -332,5 +333,14 @@ export const OBRStorage = {
   },
   setFear: async (fear: number): Promise<void> => {
     await setData({ fear });
+  },
+
+  // 3D Dice style preference
+  getDiceStyle: async (): Promise<DiceStyle> => {
+    const data = await getData();
+    return data.diceStyle || 'GEMSTONE';
+  },
+  setDiceStyle: async (diceStyle: DiceStyle): Promise<void> => {
+    await setData({ diceStyle });
   },
 };

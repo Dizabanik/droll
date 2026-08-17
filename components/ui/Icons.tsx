@@ -4,7 +4,7 @@ import {
   ChevronRight, ChevronUp, ChevronDown, Sparkles, Skull, Flame,
   Snowflake, Zap, Droplets, Biohazard,
   Ghost, Sun, Brain, Activity, X, User, Menu,
-  RefreshCw, Target, Settings
+  RefreshCw, Target, Settings, Check
 } from 'lucide-react';
 
 export const Icons = {
@@ -32,5 +32,6 @@ export const Icons = {
   Menu: Menu,
   Refresh: RefreshCw,
   Target: Target,
-  Settings: Settings
+  Settings: Settings,
+  Check: Check
 };

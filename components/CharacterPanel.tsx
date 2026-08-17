@@ -183,15 +183,27 @@ const TokenPicker: React.FC<TokenPickerProps> = ({ isOpen, onClose, onSelect }) 
     );
 };
 
+import { DiceStyle } from '../dice-engine/types/DiceStyle';
+import { DiceStylePicker } from './DiceStylePicker';
+
 // === Settings Modal ===
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
     settings: DaggerheartCharacter['settings'];
     onToggle: (key: keyof DaggerheartCharacter['settings']) => void;
+    diceStyle: DiceStyle;
+    onSelectDiceStyle: (style: DiceStyle) => void;
 }
 
-const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings, onToggle }) => {
+const SettingsModal: React.FC<SettingsModalProps> = ({
+    isOpen,
+    onClose,
+    settings,
+    onToggle,
+    diceStyle,
+    onSelectDiceStyle,
+}) => {
     if (!isOpen) return null;
 
     return (
@@ -199,67 +211,83 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm"
+            className="fixed inset-0 z-[110] flex items-center justify-center bg-black/60 backdrop-blur-sm p-4"
             onClick={onClose}
         >
             <motion.div
                 initial={{ scale: 0.9, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 exit={{ scale: 0.9, opacity: 0 }}
-                className="bg-zinc-950 rounded-xl border border-zinc-700 p-6 max-w-sm w-full shadow-2xl"
+                className="bg-zinc-950 rounded-2xl border border-zinc-700/80 p-6 max-w-lg w-full shadow-2xl max-h-[85vh] overflow-y-auto"
                 onClick={(e) => e.stopPropagation()}
             >
-                <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-white font-bold text-lg">Character Settings</h3>
-                    <button onClick={onClose} className="text-zinc-400 hover:text-white">
+                <div className="flex justify-between items-center mb-6 pb-3 border-b border-zinc-800">
+                    <h3 className="text-white font-bold text-lg flex items-center gap-2">
+                        <Icons.Settings size={20} className="text-accent" />
+                        Settings & Preferences
+                    </h3>
+                    <button onClick={onClose} className="p-1 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition-colors">
                         <Icons.Close size={20} />
                     </button>
                 </div>
 
-                <div className="space-y-4">
-                    {/* Strain Tracker Toggle */}
-                    <div className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-800">
-                        <div className="flex flex-col">
-                            <span className="text-sm font-bold text-zinc-200">Strain Tracker</span>
-                            <span className="text-xs text-zinc-500">Show the 11-skull damage tracker</span>
-                        </div>
-                        <button
-                            onClick={() => onToggle('showStrain')}
-                            className={clsx(
-                                "w-12 h-6 rounded-full relative transition-colors",
-                                settings.showStrain ? "bg-accent" : "bg-zinc-700"
-                            )}
-                        >
-                            <div className={clsx(
-                                "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
-                                settings.showStrain ? "left-7" : "left-1"
-                            )} />
-                        </button>
+                <div className="space-y-6">
+                    {/* 3D Dice Skin Picker */}
+                    <div className="p-4 bg-zinc-900/90 rounded-xl border border-zinc-800 shadow-inner">
+                        <DiceStylePicker
+                            currentStyle={diceStyle}
+                            onSelect={onSelectDiceStyle}
+                        />
                     </div>
 
-                    {/* Reverend Insanity Mode Toggle */}
-                    <div className="flex items-center justify-between p-3 bg-zinc-900 rounded-lg border border-zinc-800">
-                        <div className="flex flex-col">
-                            <span className="text-sm font-bold text-zinc-200">Reverend Insanity</span>
-                            <span className="text-xs text-zinc-500">Enable Primeval Essence & Wealth</span>
+                    {/* Sheet Toggles */}
+                    <div className="space-y-3">
+                        <h4 className="text-xs font-bold uppercase tracking-wider text-zinc-500 px-1">Sheet Features</h4>
+
+                        {/* Strain Tracker Toggle */}
+                        <div className="flex items-center justify-between p-3.5 bg-zinc-900/90 rounded-xl border border-zinc-800">
+                            <div className="flex flex-col">
+                                <span className="text-sm font-bold text-zinc-200">Strain Tracker</span>
+                                <span className="text-xs text-zinc-500">Show the 11-skull damage tracker</span>
+                            </div>
+                            <button
+                                onClick={() => onToggle('showStrain')}
+                                className={clsx(
+                                    "w-12 h-6 rounded-full relative transition-colors",
+                                    settings.showStrain ? "bg-accent" : "bg-zinc-700"
+                                )}
+                            >
+                                <div className={clsx(
+                                    "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
+                                    settings.showStrain ? "left-7" : "left-1"
+                                )} />
+                            </button>
                         </div>
-                        <button
-                            onClick={() => onToggle('showReverendInsanity')}
-                            className={clsx(
-                                "w-12 h-6 rounded-full relative transition-colors",
-                                settings.showReverendInsanity ? "bg-accent" : "bg-zinc-700"
-                            )}
-                        >
-                            <div className={clsx(
-                                "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
-                                settings.showReverendInsanity ? "left-7" : "left-1"
-                            )} />
-                        </button>
+
+                        {/* Reverend Insanity Mode Toggle */}
+                        <div className="flex items-center justify-between p-3.5 bg-zinc-900/90 rounded-xl border border-zinc-800">
+                            <div className="flex flex-col">
+                                <span className="text-sm font-bold text-zinc-200">Reverend Insanity Mode</span>
+                                <span className="text-xs text-zinc-500">Enable Primeval Essence sphere & cultivation resources</span>
+                            </div>
+                            <button
+                                onClick={() => onToggle('showReverendInsanity')}
+                                className={clsx(
+                                    "w-12 h-6 rounded-full relative transition-colors",
+                                    settings.showReverendInsanity ? "bg-accent" : "bg-zinc-700"
+                                )}
+                            >
+                                <div className={clsx(
+                                    "absolute top-1 w-4 h-4 rounded-full bg-white transition-transform",
+                                    settings.showReverendInsanity ? "left-7" : "left-1"
+                                )} />
+                            </button>
+                        </div>
                     </div>
                 </div>
 
-                <div className="mt-6 text-center text-[10px] text-zinc-600">
-                    Changes are saved automatically to your character.
+                <div className="mt-6 pt-3 border-t border-zinc-800/80 text-center text-[11px] text-zinc-500">
+                    Preferences are saved automatically to your profile.
                 </div>
             </motion.div>
         </motion.div>
@@ -285,11 +313,17 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const [tokenImage, setTokenImage] = useState<string | null>(null);
     const [showTokenPicker, setShowTokenPicker] = useState(false);
     const [localShowSettings, setLocalShowSettings] = useState(false);
+    const [diceStyle, setDiceStyle] = useState<DiceStyle>('GEMSTONE');
 
     const isSettingsOpen = propShowSettings !== undefined ? propShowSettings : localShowSettings;
     const handleCloseSettings = () => {
         setLocalShowSettings(false);
         onCloseSettings?.();
+    };
+
+    const handleDiceStyleChange = async (style: DiceStyle) => {
+        setDiceStyle(style);
+        await OBRStorage.setDiceStyle(style);
     };
 
     // Load character data and sync with CharacterStats
@@ -307,6 +341,10 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
                     setDaggerheartStats(stats.daggerheartStats || {});
                     setCustomStats(stats.customStats || []);
                 }
+
+                // Load Dice Style
+                const savedStyle = await OBRStorage.getDiceStyle();
+                if (savedStyle) setDiceStyle(savedStyle);
 
                 // Load token image
                 const tokenId = await OBRStorage.getSelectedTokenId();
@@ -331,6 +369,8 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 setDaggerheartStats(stats.daggerheartStats || {});
                 setCustomStats(stats.customStats || []);
             }
+            const savedStyle = await OBRStorage.getDiceStyle();
+            if (savedStyle) setDiceStyle(savedStyle);
         };
         window.addEventListener('storage', handleStorageChange);
         return () => window.removeEventListener('storage', handleStorageChange);
@@ -614,6 +654,8 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 onClose={handleCloseSettings}
                 settings={character.settings}
                 onToggle={toggleSetting}
+                diceStyle={diceStyle}
+                onSelectDiceStyle={handleDiceStyleChange}
             />
         </div>
     );

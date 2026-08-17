@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { StepResult, DicePreset, CharacterStats } from '../types';
 import { RollResults } from './ui/RollResults';
-import { useOBR } from '../obr';
+import { useOBR, OBRStorage } from '../obr';
 import { execute3DFateRoll } from '../dice-engine/helpers/fateweaverBridge';
 import { Dice3DOverlay } from './Dice3DOverlay';
 import { useDiceRollStore } from '../dice-engine/dice/store';
@@ -61,6 +61,7 @@ export const Roller: React.FC<RollerProps> = ({
     useDiceRollStore.getState().clearRoll();
 
     try {
+      const userDiceStyle = await OBRStorage.getDiceStyle();
       const outcome = await execute3DFateRoll(
         preset,
         variables,
@@ -70,7 +71,8 @@ export const Roller: React.FC<RollerProps> = ({
           id: playerId || 'unknown',
           name: playerName || 'Unknown Player',
           color: playerColor || '#3b82f6',
-        }
+        },
+        userDiceStyle
       );
 
       setResults(outcome.results);

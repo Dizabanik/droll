@@ -71,6 +71,7 @@ export const HistoryControl: React.FC = () => {
     const [activeRollPreset, setActiveRollPreset] = useState<DicePreset | null>(null);
     const [activeRollVars, setActiveRollVars] = useState<Record<string, number>>({});
     const [activeRollItemName, setActiveRollItemName] = useState<string>('');
+    const [rollKey, setRollKey] = useState<number>(0);
 
     // Character Stats for Stat Modifiers
     const [stats, setStats] = useState<CharacterStats>({
@@ -86,7 +87,7 @@ export const HistoryControl: React.FC = () => {
         const statLabel = statKey.charAt(0).toUpperCase() + statKey.slice(1);
 
         const statRollPreset: DicePreset = {
-            id: `stat-roll-${statKey}`,
+            id: `stat-roll-${statKey}-${Date.now()}`,
             name: `${statLabel} Check`,
             variables: [],
             steps: [{
@@ -100,9 +101,11 @@ export const HistoryControl: React.FC = () => {
             }]
         };
 
+        setRemoteRoll(null);
         setActiveRollItemName(`${statLabel} Check`);
         setActiveRollVars({});
         setActiveRollPreset(statRollPreset);
+        setRollKey(k => k + 1);
     }, []);
 
     // Load Initial History and Stats
@@ -168,9 +171,11 @@ export const HistoryControl: React.FC = () => {
     // Listen for local quick rolls from this client's left toolbar iframe
     useEffect(() => {
         const cleanup = onLocalQuickRoll((preset, itemName) => {
+            setRemoteRoll(null);
             setActiveRollPreset(preset);
             setActiveRollItemName(itemName);
             setActiveRollVars({});
+            setRollKey(k => k + 1);
         });
         return cleanup;
     }, []);
@@ -496,11 +501,15 @@ export const HistoryControl: React.FC = () => {
             {activeRollPreset && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto">
                     <Roller
+                        key={rollKey}
                         preset={activeRollPreset}
                         variables={activeRollVars}
                         characterStats={stats}
                         itemName={activeRollItemName}
-                        onClose={() => setActiveRollPreset(null)}
+                        onClose={() => {
+                            setActiveRollPreset(null);
+                            useDiceRollStore.getState().clearRoll();
+                        }}
                         hideCanvas={false}
                         showResultsUI={true}
                     />

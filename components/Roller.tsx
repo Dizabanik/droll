@@ -5,6 +5,7 @@ import { RollResults } from './ui/RollResults';
 import { useOBR } from '../obr';
 import { execute3DFateRoll } from '../dice-engine/helpers/fateweaverBridge';
 import { Dice3DOverlay } from './Dice3DOverlay';
+import { useDiceRollStore } from '../dice-engine/dice/store';
 
 interface RollerProps {
   preset: DicePreset | null;
@@ -31,7 +32,6 @@ export const Roller: React.FC<RollerProps> = ({
   const [grandTotal, setGrandTotal] = useState<number>(0);
   const [breakdown, setBreakdown] = useState<string>('');
   const [isComplete, setIsComplete] = useState(false);
-  const hasRolledRef = useRef(false);
 
   // Auto-close if UI is hidden (e.g. headless controller mode)
   useEffect(() => {
@@ -43,15 +43,22 @@ export const Roller: React.FC<RollerProps> = ({
     }
   }, [isComplete, showResultsUI, onClose]);
 
+  // Clean and run roll whenever preset or key updates
   useEffect(() => {
-    if (preset && !hasRolledRef.current) {
-      hasRolledRef.current = true;
+    if (preset) {
       runRoll();
     }
   }, [preset]);
 
   const runRoll = async () => {
     if (!preset) return;
+
+    // Reset results & clear any existing 3D dice from tray before starting new roll
+    setIsComplete(false);
+    setResults([]);
+    setGrandTotal(0);
+    setBreakdown('');
+    useDiceRollStore.getState().clearRoll();
 
     try {
       const outcome = await execute3DFateRoll(

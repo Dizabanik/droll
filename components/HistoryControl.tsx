@@ -190,7 +190,8 @@ export const HistoryControl: React.FC = () => {
                         isRolling: true,
                     });
                     if (msg.diceRoll) {
-                        useDiceRollStore.getState().startRoll(msg.diceRoll);
+                        // Start IDENTICAL deterministic Rapier simulation with the rolling player's exact rollThrows
+                        useDiceRollStore.getState().startRoll(msg.diceRoll, undefined, msg.rollThrows);
                     }
                 }
             } else if (message.type === 'ROLL_COMPLETE') {
@@ -210,8 +211,17 @@ export const HistoryControl: React.FC = () => {
                 };
                 setRollHistory(prev => [newEntry, ...prev].slice(0, 20));
 
-                // 2. If it's a remote roll from another player, show results card
+                // 2. If it's a remote roll from another player, show results card and settle dice transforms
                 if (msg.playerId !== playerId) {
+                    if (msg.rollTransforms && msg.rollValues) {
+                        for (const [id, val] of Object.entries(msg.rollValues)) {
+                            const transform = msg.rollTransforms[id];
+                            if (transform) {
+                                useDiceRollStore.getState().finishDieRoll(id, val, transform);
+                            }
+                        }
+                    }
+
                     setRemoteRoll(prev => ({
                         playerId: msg.playerId,
                         playerName: msg.playerName,

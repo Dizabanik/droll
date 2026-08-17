@@ -6,6 +6,8 @@
 import OBR from "@owlbear-rodeo/sdk";
 import { StepResult, DamageType, DicePreset } from "../types";
 import { DiceRoll } from "../dice-engine/types/DiceRoll";
+import { DiceThrow } from "../dice-engine/types/DiceThrow";
+import { DiceTransform } from "../dice-engine/types/DiceTransform";
 import { PendingDie } from "../utils/engine";
 import { isOBREnvironment } from "./storage";
 
@@ -19,6 +21,7 @@ export interface DiceRollStartMessage {
     presetName: string;
     itemName: string;
     diceRoll?: DiceRoll;
+    rollThrows?: Record<string, DiceThrow>;
     instant?: boolean;
     forceCrit?: boolean;
     diceConfig: PendingDie[];
@@ -50,6 +53,8 @@ export interface RollCompleteMessage {
     results: StepResult[];
     grandTotal: number;
     breakdown: string;
+    rollValues?: Record<string, number>;
+    rollTransforms?: Record<string, DiceTransform>;
 }
 
 export interface StatRollRequestMessage {

@@ -141,7 +141,11 @@ export const execute3DFateRoll = async (
 ): Promise<RollExecutionResult> => {
   const prepared = prepare3DRoll(preset, characterStats, defaultStyle);
 
-  // Broadcast roll start
+  // 1. Start 3D Rapier Physics Roll in store first to generate physics throws
+  useDiceRollStore.getState().startRoll(prepared.diceRoll);
+  const initialThrows = useDiceRollStore.getState().rollThrows;
+
+  // 2. Broadcast roll start with exact physical throws for identical simulation
   OBRBroadcast.send({
     type: 'ROLL_START',
     playerId: playerInfo.id,
@@ -150,6 +154,7 @@ export const execute3DFateRoll = async (
     presetName: preset.name,
     itemName,
     diceRoll: prepared.diceRoll,
+    rollThrows: initialThrows,
     diceConfig: prepared.associations.map(a => ({
       id: a.dieId,
       sides: a.sides,
@@ -165,9 +170,6 @@ export const execute3DFateRoll = async (
     })),
     variables
   });
-
-  // Start 3D Rapier Physics Roll in store
-  useDiceRollStore.getState().startRoll(prepared.diceRoll);
 
   // Wait for all dice to settle
   const rollValues = await new Promise<Record<string, number>>((resolve) => {
@@ -332,6 +334,15 @@ export const execute3DFateRoll = async (
     }
   }
 
+  // Extract final settled transforms
+  const finalTransforms = useDiceRollStore.getState().rollTransforms;
+  const validTransforms: Record<string, any> = {};
+  if (finalTransforms) {
+    for (const [id, val] of Object.entries(finalTransforms)) {
+      if (val) validTransforms[id] = val;
+    }
+  }
+
   // Broadcast completion to all players
   OBRBroadcast.send({
     type: 'ROLL_COMPLETE',
@@ -341,7 +352,9 @@ export const execute3DFateRoll = async (
     itemName,
     results: calculatedResults,
     grandTotal,
-    breakdown
+    breakdown,
+    rollValues,
+    rollTransforms: validTransforms
   });
 
   return {

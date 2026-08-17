@@ -27,7 +27,7 @@ interface DiceRollState {
    * A mapping from the die ID to its initial roll throw state.
    */
   rollThrows: Record<string, DiceThrow>;
-  startRoll: (roll: DiceRoll, speedMultiplier?: number) => void;
+  startRoll: (roll: DiceRoll, speedMultiplier?: number, initialThrows?: Record<string, DiceThrow>) => void;
   clearRoll: (ids?: string) => void;
   /** Reroll select ids of dice or reroll all dice by passing `undefined` */
   reroll: (ids?: string[], manualThrows?: Record<string, DiceThrow>) => void;
@@ -40,7 +40,7 @@ export const useDiceRollStore = create<DiceRollState>()(
     rollValues: {},
     rollTransforms: {},
     rollThrows: {},
-    startRoll: (roll, speedMultiplier?: number) =>
+    startRoll: (roll, speedMultiplier?: number, initialThrows?: Record<string, DiceThrow>) =>
       set((state) => {
         state.roll = roll;
         state.rollValues = {};
@@ -51,7 +51,9 @@ export const useDiceRollStore = create<DiceRollState>()(
         for (const die of dice) {
           state.rollValues[die.id] = null;
           state.rollTransforms[die.id] = null;
-          state.rollThrows[die.id] = getRandomDiceThrow(speedMultiplier);
+          state.rollThrows[die.id] = (initialThrows && initialThrows[die.id])
+            ? initialThrows[die.id]
+            : getRandomDiceThrow(speedMultiplier);
         }
       }),
     clearRoll: () =>

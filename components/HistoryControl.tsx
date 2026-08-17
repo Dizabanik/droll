@@ -7,19 +7,29 @@ import { RollResults } from './ui/RollResults';
 import { DaggerheartStats } from './DaggerheartStats';
 import { CharacterPanel } from './CharacterPanel';
 import { FearTracker } from './FearTracker';
-// import { CountdownTracker } from './CountdownTracker';
-import { APP_VERSION, DicePreset, CharacterStats } from '../types';
+import { APP_VERSION, DicePreset, CharacterStats, StepResult } from '../types';
 import { Roller } from './Roller';
-import { QuickDiceToolbar } from './QuickDiceToolbar';
+import { Dice3DOverlay } from './Dice3DOverlay';
+import { useDiceRollStore } from '../dice-engine/dice/store';
 import OBR from "@owlbear-rodeo/sdk";
-import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
+import { OBRBroadcast, DiceRollMessage, DiceRollStartMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
 import { onLocalQuickRoll } from '../obr/localEvents';
 
 // Popover Dimensions
 const BTN_SIZE = 60;
-const POPUP_WIDTH = 560;  // Increased to prevent right-side cutoff
-const POPUP_HEIGHT = 460;
+
+interface RemoteRollState {
+    playerId: string;
+    playerName: string;
+    playerColor: string;
+    presetName: string;
+    itemName: string;
+    isRolling: boolean;
+    results?: StepResult[];
+    grandTotal?: number;
+    breakdown?: string;
+}
 
 export const HistoryControl: React.FC = () => {
     const { playerId, playerName } = useOBR();
@@ -27,10 +37,9 @@ export const HistoryControl: React.FC = () => {
     const [rollHistory, setRollHistory] = useState<HistoryEntry[]>([]);
     const [isLoaded, setIsLoaded] = useState(false);
 
-    // Active Result Popup State
-    const [activeResult, setActiveResult] = useState<RollCompleteMessage | null>(null);
+    // Remote Roll State (for rendering other players' 3D dice tray and results)
+    const [remoteRoll, setRemoteRoll] = useState<RemoteRollState | null>(null);
     const [showSettings, setShowSettings] = useState(false);
-    const resultTimerRef = useRef<number | null>(null);
 
     // Handle vitals change - sync to token attachments
     const handleVitalsChange = useCallback(async (vitals: DaggerheartVitals) => {
@@ -51,43 +60,24 @@ export const HistoryControl: React.FC = () => {
             const tokenId = await OBRStorage.getSelectedTokenId();
             if (tokenId) {
                 const vitals = await OBRStorage.getDaggerheartVitals();
-                if (vitals) {
-                    await TokenAttachments.update(tokenId, vitals, statuses);
-                }
+                await TokenAttachments.update(tokenId, vitals, statuses);
             }
         } catch (e) {
             console.error("Failed to sync statuses to token:", e);
         }
     }, []);
 
-    // Sync token attachments on mount (scene load) - ensures token shows correct stats immediately
-    useEffect(() => {
-        const syncTokenOnLoad = async () => {
-            try {
-                const tokenId = await OBRStorage.getSelectedTokenId();
-                if (tokenId) {
-                    const vitals = await OBRStorage.getDaggerheartVitals();
-                    const statuses = await OBRStorage.getDaggerheartStatuses();
-                    if (vitals) {
-                        await TokenAttachments.update(tokenId, vitals, statuses);
-                        console.log("Token stats synced on scene load");
-                    }
-                }
-            } catch (e) {
-                console.error("Failed to sync token on load:", e);
-            }
-        };
-        syncTokenOnLoad();
-    }, []);
-
+    // Active Roll State (Local player rolling in 3D)
     const [activeRollPreset, setActiveRollPreset] = useState<DicePreset | null>(null);
     const [activeRollVars, setActiveRollVars] = useState<Record<string, number>>({});
     const [activeRollItemName, setActiveRollItemName] = useState<string>('');
+
+    // Character Stats for Stat Modifiers
     const [stats, setStats] = useState<CharacterStats>({
-        activeSystem: 'daggerheart',
-        dndAttributes: {},
+        activeSystem: 'dnd5e',
+        dndAttributes: { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 },
         dndSkills: {},
-        daggerheartStats: {},
+        daggerheartStats: { agility: 0, strength: 0, finesse: 0, instinct: 0, presence: 0, knowledge: 0 },
         customStats: []
     });
 
@@ -115,55 +105,64 @@ export const HistoryControl: React.FC = () => {
         setActiveRollPreset(statRollPreset);
     }, []);
 
-    const handleQuickRoll = useCallback((preset: DicePreset, itemName: string) => {
-        setActiveRollPreset(preset);
-        setActiveRollItemName(itemName);
-        setActiveRollVars({});
-    }, []);
-
-    // Load history on mount
+    // Load Initial History and Stats
     useEffect(() => {
-        const loadHistory = async () => {
+        const loadInitialData = async () => {
             try {
-                const saved = await OBRStorage.getRollHistory();
-                if (saved && saved.length > 0) {
-                    // Convert RollHistoryEntry to HistoryEntry (use saved results or empty array)
-                    const entries: HistoryEntry[] = saved.map(e => ({
-                        ...e,
-                        results: (e.results || []) as HistoryEntry['results'],
+                const [savedHistory, savedStats] = await Promise.all([
+                    OBRStorage.getRollHistory(),
+                    OBRStorage.getStats()
+                ]);
+
+                if (savedHistory) {
+                    const uiHistory: HistoryEntry[] = savedHistory.map(entry => ({
+                        id: entry.id,
+                        timestamp: entry.timestamp,
+                        playerId: entry.playerId,
+                        playerName: entry.playerName,
+                        presetName: entry.presetName,
+                        itemName: entry.itemName,
+                        results: (entry.results || []) as StepResult[],
+                        grandTotal: entry.grandTotal,
+                        breakdown: entry.breakdown
                     }));
-                    setRollHistory(entries);
+                    setRollHistory(uiHistory);
+                }
+
+                if (savedStats) {
+                    setStats(savedStats);
                 }
             } catch (e) {
-                console.error("Failed to load history:", e);
+                console.error("Failed to load history or stats", e);
             } finally {
                 setIsLoaded(true);
             }
         };
-        loadHistory();
+
+        loadInitialData();
     }, []);
 
-    // Save history when it changes
+    // Save History when updated (limit to 20)
     useEffect(() => {
         if (!isLoaded) return;
-        // Convert to storage format (now includes full results)
-        const storageEntries: RollHistoryEntry[] = rollHistory.slice(0, 20).map(e => ({
-            id: e.id,
-            timestamp: e.timestamp,
-            playerId: e.playerId,
-            playerName: e.playerName,
-            presetName: e.presetName,
-            itemName: e.itemName,
-            grandTotal: e.grandTotal,
-            breakdown: e.breakdown,
-            results: e.results,
+
+        const storageEntries: RollHistoryEntry[] = rollHistory.slice(0, 20).map(entry => ({
+            id: entry.id,
+            timestamp: entry.timestamp,
+            playerId: entry.playerId,
+            playerName: entry.playerName,
+            presetName: entry.presetName,
+            itemName: entry.itemName,
+            results: entry.results,
+            grandTotal: entry.grandTotal,
+            breakdown: entry.breakdown
         }));
         OBRStorage.setRollHistory(storageEntries);
     }, [rollHistory, isLoaded]);
 
     // Initial Resize to Button Only
     useEffect(() => {
-        resizePopover(false, false);
+        resizePopover(false);
     }, []);
 
     // Listen for local quick rolls from this client's left toolbar iframe
@@ -179,7 +178,22 @@ export const HistoryControl: React.FC = () => {
     // Listen for remote rolls across the room
     useEffect(() => {
         const unsubscribe = OBRBroadcast.onMessage((message: DiceRollMessage, senderId: string) => {
-            if (message.type === 'ROLL_COMPLETE') {
+            if (message.type === 'ROLL_START') {
+                const msg = message as DiceRollStartMessage;
+                if (msg.playerId !== playerId) {
+                    setRemoteRoll({
+                        playerId: msg.playerId,
+                        playerName: msg.playerName,
+                        playerColor: msg.playerColor,
+                        presetName: msg.presetName,
+                        itemName: msg.itemName,
+                        isRolling: true,
+                    });
+                    if (msg.diceRoll) {
+                        useDiceRollStore.getState().startRoll(msg.diceRoll);
+                    }
+                }
+            } else if (message.type === 'ROLL_COMPLETE') {
                 const msg = message as RollCompleteMessage;
 
                 // 1. Update History for all room rolls
@@ -196,9 +210,19 @@ export const HistoryControl: React.FC = () => {
                 };
                 setRollHistory(prev => [newEntry, ...prev].slice(0, 20));
 
-                // 2. Only show remote result popup if not open and from another player
-                if (!isHistoryOpen && msg.playerId !== playerId) {
-                    setActiveResult(msg);
+                // 2. If it's a remote roll from another player, show results card
+                if (msg.playerId !== playerId) {
+                    setRemoteRoll(prev => ({
+                        playerId: msg.playerId,
+                        playerName: msg.playerName,
+                        playerColor: prev?.playerColor || '#3b82f6',
+                        presetName: msg.presetName,
+                        itemName: msg.itemName,
+                        isRolling: false,
+                        results: msg.results,
+                        grandTotal: msg.grandTotal,
+                        breakdown: msg.breakdown,
+                    }));
                 }
             }
         });
@@ -208,28 +232,24 @@ export const HistoryControl: React.FC = () => {
     }, [playerId, playerName, isHistoryOpen]);
 
     // Resize Window Effect
+    const isRollingOrOpen = isHistoryOpen || !!activeRollPreset || !!remoteRoll;
     useEffect(() => {
-        resizePopover(isHistoryOpen, !!activeResult, !!activeRollPreset);
-    }, [isHistoryOpen, activeResult, activeRollPreset]);
+        resizePopover(isRollingOrOpen);
+    }, [isRollingOrOpen]);
 
-    const resizePopover = async (historyOpen: boolean, hasPopup: boolean, isRolling: boolean = false) => {
+    const resizePopover = async (isExpanded: boolean) => {
         let width = BTN_SIZE;
         let height = BTN_SIZE;
 
-        if (historyOpen || isRolling) {
+        if (isExpanded) {
             // FULLSCREEN mode - use OBR viewport dimensions so 3D dice and menu can render seamlessly
             try {
                 width = await OBR.viewport.getWidth();
                 height = await OBR.viewport.getHeight();
             } catch {
-                // Fallback to large fixed values
                 width = 1920;
                 height = 1080;
             }
-        } else if (hasPopup) {
-            // Small popup mode
-            width = POPUP_WIDTH + 16;
-            height = BTN_SIZE + 16 + POPUP_HEIGHT;
         }
 
         try {
@@ -249,9 +269,6 @@ export const HistoryControl: React.FC = () => {
 
     const openHistory = () => {
         setIsHistoryOpen(true);
-        // Clear any active popup when opening history
-        if (resultTimerRef.current) clearTimeout(resultTimerRef.current);
-        setActiveResult(null);
     };
 
     const closeHistory = () => {
@@ -452,33 +469,9 @@ export const HistoryControl: React.FC = () => {
                 </div>
             )}
 
-            {/* Normal Mode - Button + Popup */}
+            {/* Normal Mode - History Toggle Button */}
             {!isHistoryOpen && (
                 <div className="flex flex-col items-end justify-end h-full w-full pointer-events-auto">
-                    {/* Result Popup (Above Button) */}
-                    <AnimatePresence>
-                        {activeResult && (
-                            <motion.div
-                                initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                                animate={{ opacity: 1, y: 0, scale: 1 }}
-                                exit={{ opacity: 0, y: 20, scale: 0.9 }}
-                                className="mb-4"
-                            >
-                                <RollResults
-                                    results={activeResult.results}
-                                    isComplete={true}
-                                    onClose={() => setActiveResult(null)}
-                                    grandTotal={activeResult.grandTotal}
-                                    breakdown={activeResult.breakdown}
-                                    itemName={''}
-                                    presetName={'Roll Result'}
-                                    hideCloseButton={false}
-                                />
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
-
-                    {/* History Toggle Button */}
                     <button
                         onClick={openHistory}
                         className="p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"
@@ -489,7 +482,7 @@ export const HistoryControl: React.FC = () => {
                 </div>
             )}
 
-            {/* 3D Physics Roller Overlay */}
+            {/* Local Player 3D Physics Roller Overlay */}
             {activeRollPreset && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto">
                     <Roller
@@ -501,6 +494,43 @@ export const HistoryControl: React.FC = () => {
                         hideCanvas={false}
                         showResultsUI={true}
                     />
+                </div>
+            )}
+
+            {/* Remote Player 3D Physics Tray & Results Overlay */}
+            {remoteRoll && !activeRollPreset && (
+                <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center pointer-events-none">
+                    {/* 3D Dice Canvas Overlay (Tray on the left side) */}
+                    <Dice3DOverlay />
+
+                    {/* Rolling Banner while dice are rolling */}
+                    {remoteRoll.isRolling && (
+                        <div className="text-white bg-zinc-950/90 border border-zinc-800 px-5 py-2 rounded-full fixed bottom-8 left-1/2 -translate-x-1/2 font-medium text-sm shadow-xl flex items-center gap-2 pointer-events-none backdrop-blur-md">
+                            <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
+                            <span>{remoteRoll.playerName} is rolling 3D physics dice...</span>
+                        </div>
+                    )}
+
+                    {/* Results Modal on Bottom-Right */}
+                    <AnimatePresence>
+                        {!remoteRoll.isRolling && remoteRoll.results && remoteRoll.results.length > 0 && (
+                            <div className="fixed bottom-6 right-6 z-50 pointer-events-auto max-w-md w-full sm:w-[420px]">
+                                <RollResults
+                                    results={remoteRoll.results}
+                                    isComplete={true}
+                                    onClose={() => {
+                                        setRemoteRoll(null);
+                                        useDiceRollStore.getState().clearRoll();
+                                    }}
+                                    grandTotal={remoteRoll.grandTotal || 0}
+                                    breakdown={remoteRoll.breakdown || ''}
+                                    itemName={remoteRoll.itemName || `${remoteRoll.playerName}'s Roll`}
+                                    presetName={remoteRoll.presetName || 'Roll Result'}
+                                    hideCloseButton={false}
+                                />
+                            </div>
+                        )}
+                    </AnimatePresence>
                 </div>
             )}
         </div>

@@ -5,6 +5,7 @@
 
 import OBR from "@owlbear-rodeo/sdk";
 import { StepResult, DamageType, DicePreset } from "../types";
+import { DiceRoll } from "../dice-engine/types/DiceRoll";
 import { PendingDie } from "../utils/engine";
 import { isOBREnvironment } from "./storage";
 
@@ -17,6 +18,7 @@ export interface DiceRollStartMessage {
     playerColor: string;
     presetName: string;
     itemName: string;
+    diceRoll?: DiceRoll;
     instant?: boolean;
     forceCrit?: boolean;
     diceConfig: PendingDie[];

@@ -149,6 +149,7 @@ export const execute3DFateRoll = async (
     playerColor: playerInfo.color,
     presetName: preset.name,
     itemName,
+    diceRoll: prepared.diceRoll,
     diceConfig: prepared.associations.map(a => ({
       id: a.dieId,
       sides: a.sides,

@@ -51,7 +51,7 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
         });
 
         return () => {
-            // cleanup
+            unsubscribe();
         };
     }, [ready, isOBR]);
 

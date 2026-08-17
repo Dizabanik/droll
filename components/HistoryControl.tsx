@@ -182,11 +182,6 @@ export const HistoryControl: React.FC = () => {
         OBRStorage.setRollHistory(storageEntries);
     }, [rollHistory, isLoaded]);
 
-    // Initial Resize to Button Only
-    useEffect(() => {
-        resizePopover(false);
-    }, []);
-
     // Listen for local quick rolls from this client's left toolbar iframe
     useEffect(() => {
         const cleanup = onLocalQuickRoll((preset, itemName) => {
@@ -265,13 +260,18 @@ export const HistoryControl: React.FC = () => {
         };
     }, [playerId, playerName, isHistoryOpen]);
 
-    // Resize Window Effect
+    // Resize Window Effect: Only resize when expanded state actually changes
     const isRollingOrOpen = isHistoryOpen || !!activeRollPreset || !!remoteRoll;
+    const prevExpandedRef = useRef<boolean | null>(null);
+
     useEffect(() => {
+        if (prevExpandedRef.current === isRollingOrOpen) return;
+        prevExpandedRef.current = isRollingOrOpen;
         resizePopover(isRollingOrOpen);
     }, [isRollingOrOpen]);
 
     const resizePopover = async (isExpanded: boolean) => {
+        if (!OBR.isAvailable) return;
         let width = BTN_SIZE;
         let height = BTN_SIZE;
 
@@ -287,17 +287,26 @@ export const HistoryControl: React.FC = () => {
         }
 
         try {
-            await OBR.popover.open({
-                id: 'com.fateweaver.dice.controls',
-                url: window.location.pathname + '?popover=true',
-                width,
-                height,
-                anchorOrigin: { horizontal: 'RIGHT', vertical: 'BOTTOM' },
-                disableClickAway: true,
-                hidePaper: true,
-            });
-        } catch (e) {
-            console.error("Resize failed", e);
+            await Promise.all([
+                OBR.popover.setWidth('com.fateweaver.dice.controls', width),
+                OBR.popover.setHeight('com.fateweaver.dice.controls', height)
+            ]);
+        } catch {
+            // Fallback for initial open if not yet mounted
+            try {
+                await OBR.popover.open({
+                    id: 'com.fateweaver.dice.controls',
+                    url: window.location.pathname + '?popover=true',
+                    width,
+                    height,
+                    anchorOrigin: { horizontal: 'RIGHT', vertical: 'BOTTOM' },
+                    transformOrigin: { horizontal: 'RIGHT', vertical: 'BOTTOM' },
+                    disableClickAway: true,
+                    hidePaper: true,
+                });
+            } catch (e) {
+                console.error("Resize failed", e);
+            }
         }
     };
 
@@ -311,34 +320,28 @@ export const HistoryControl: React.FC = () => {
 
     return (
         <div className="w-full h-full relative select-none">
-            {/* Fullscreen Menu Mode - Persistent DOM so Miro iframe never restarts */}
-            <div
-                className={clsx(
-                    "fixed inset-0 z-50 flex transition-all duration-300",
-                    isHistoryOpen
-                        ? "opacity-100 pointer-events-auto visible"
-                        : "opacity-0 pointer-events-none invisible"
-                )}
-            >
-                {/* Backdrop */}
-                <div
-                    className="absolute inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
-                    onClick={closeHistory}
-                />
+            {/* Fullscreen Menu Mode */}
+            {isHistoryOpen && (
+                <div className="fixed inset-0 z-50 flex transition-all duration-300">
+                    {/* Backdrop */}
+                    <div
+                        className="absolute inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
+                        onClick={closeHistory}
+                    />
 
-                {/* Left Panel - Daggerheart Stats (Hidden in Miro Mode to give Miro full left+center space) */}
-                {characterSheetMode === 'sheet' && (
-                    <div className="relative z-10 flex-1 bg-surface/95 border-r border-neutral-800/80 shadow-fey-xl flex flex-col overflow-y-auto">
-                        <div className="flex items-center justify-between p-3.5 px-5 border-b border-neutral-800/80 bg-surface">
-                            <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
-                                <Icons.Dice size={16} className="text-white" />
-                                Daggerheart
-                            </h2>
-                            <FearTracker />
+                    {/* Left Panel - Daggerheart Stats (Hidden in Miro Mode to give Miro full left+center space) */}
+                    {characterSheetMode === 'sheet' && (
+                        <div className="relative z-10 flex-1 bg-surface/95 border-r border-neutral-800/80 shadow-fey-xl flex flex-col overflow-y-auto">
+                            <div className="flex items-center justify-between p-3.5 px-5 border-b border-neutral-800/80 bg-surface">
+                                <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
+                                    <Icons.Dice size={16} className="text-white" />
+                                    Daggerheart
+                                </h2>
+                                <FearTracker />
+                            </div>
+                            <DaggerheartStats onVitalsChange={handleVitalsChange} onStatusesChange={handleStatusesChange} />
                         </div>
-                        <DaggerheartStats onVitalsChange={handleVitalsChange} onStatusesChange={handleStatusesChange} />
-                    </div>
-                )}
+                    )}
 
                 {/* Center / Miro Panel (Spans both Left & Center when in Miro Mode) */}
                 <div
@@ -552,6 +555,7 @@ export const HistoryControl: React.FC = () => {
                     <Icons.Close size={20} />
                 </button>
             </div>
+            )}
 
             {/* Normal Mode - History Toggle Button */}
             {!isHistoryOpen && (

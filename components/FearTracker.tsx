@@ -67,7 +67,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                 const fearMsg = message as FearUpdateMessage;
                 if (fearMsg.showEffect) {
                     setShowSkullEffect(true);
-                    setTimeout(() => setShowSkullEffect(false), 1200);
+                    setTimeout(() => setShowSkullEffect(false), 1500);
                 }
             }
         });
@@ -86,7 +86,7 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
 
         if (showEffect && clamped > fear) {
             setShowSkullEffect(true);
-            setTimeout(() => setShowSkullEffect(false), 1200);
+            setTimeout(() => setShowSkullEffect(false), 1500);
 
             OBRBroadcast.send({
                 type: 'FEAR_UPDATE',
@@ -184,29 +184,56 @@ export const FearTracker: React.FC<FearTrackerProps> = ({ className }) => {
                 </div>
             </div>
 
-            {/* Subtle Screen Notification when Fear increases */}
+            {/* Atmospheric Fullscreen Skull Jump-out Effect */}
             {typeof document !== 'undefined' && createPortal(
                 <AnimatePresence>
                     {showSkullEffect && (
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.8, y: -20 }}
-                            animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: -10 }}
-                            transition={{ duration: 0.2 }}
-                            className="fixed top-8 left-1/2 -translate-x-1/2 z-[9999] pointer-events-none flex items-center gap-3 px-4 py-2 bg-purple-950/90 border border-purple-500/50 rounded-2xl shadow-2xl backdrop-blur-md"
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            transition={{ duration: 0.25 }}
+                            className="fixed inset-0 z-[9999] pointer-events-none flex flex-col items-center justify-center bg-black/50 backdrop-blur-xs"
                         >
-                            <div className="w-8 h-8 rounded-xl bg-purple-900/60 flex items-center justify-center border border-purple-400/40 text-purple-300">
-                                <Icons.Death size={20} />
-                            </div>
-                            <div>
-                                <div className="text-xs font-bold text-white tracking-wider uppercase font-mono flex items-center gap-1.5">
-                                    <span>Fear Gained</span>
-                                    <span className="px-1.5 py-0.2 rounded bg-purple-500/30 text-purple-200 text-[10px]">
-                                        {fear} / {MAX_FEAR}
-                                    </span>
-                                </div>
-                                <div className="text-[10px] text-purple-300/80">The GM gained a Fear token.</div>
-                            </div>
+                            <motion.div
+                                initial={{ scale: 0.2, opacity: 0, rotate: -12 }}
+                                animate={{
+                                    scale: [0.2, 1.25, 1],
+                                    opacity: [0, 1, 1, 0],
+                                    rotate: [-12, 6, 0]
+                                }}
+                                transition={{
+                                    duration: 1.4,
+                                    times: [0, 0.25, 0.75, 1],
+                                    ease: "easeOut"
+                                }}
+                                className="relative flex flex-col items-center justify-center"
+                            >
+                                <img
+                                    src="skull.png"
+                                    alt="FEAR!"
+                                    className="w-72 h-72 sm:w-80 sm:h-80 object-contain drop-shadow-[0_0_70px_rgba(239,68,68,0.9)]"
+                                />
+
+                                {/* Atmospheric crimson/purple radial aura */}
+                                <motion.div
+                                    initial={{ opacity: 0.9, scale: 0.9 }}
+                                    animate={{ opacity: 0, scale: 1.7 }}
+                                    transition={{ duration: 0.9, ease: "easeOut" }}
+                                    className="absolute inset-0 bg-red-600/40 rounded-full blur-3xl"
+                                />
+
+                                {/* Giant Glowing FEAR Text */}
+                                <motion.div
+                                    initial={{ opacity: 0, y: 30 }}
+                                    animate={{ opacity: [0, 1, 1, 0], y: [30, 0, 0, -20] }}
+                                    transition={{ duration: 1.4, times: [0, 0.2, 0.75, 1] }}
+                                    className="text-red-500 font-black text-5xl sm:text-6xl tracking-widest mt-4 font-mono select-none"
+                                    style={{ textShadow: '0 0 40px rgba(239,68,68,0.9), 0 0 80px rgba(239,68,68,0.6)' }}
+                                >
+                                    FEAR
+                                </motion.div>
+                            </motion.div>
                         </motion.div>
                     )}
                 </AnimatePresence>,

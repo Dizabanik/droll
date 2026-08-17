@@ -34,3 +34,9 @@ coverage/
 
 # Example plugin
 example/
+
+
+.agent
+.impeccable
+PRODUCT.md
+DESIGN.md

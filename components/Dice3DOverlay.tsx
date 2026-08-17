@@ -22,8 +22,8 @@ export const Dice3DOverlay: React.FC = () => {
       <DiceRollSync />
 
       {roll && (
-        <div className="fixed inset-0 z-40 pointer-events-none flex items-center justify-center">
-          <div className="w-[420px] h-[80vh] max-h-[700px] relative rounded-2xl overflow-hidden shadow-2xl border border-zinc-800/80 bg-zinc-950/40 backdrop-blur-sm pointer-events-auto">
+        <div className="fixed inset-y-0 left-6 z-40 pointer-events-none flex items-center justify-start">
+          <div className="w-[min(calc(100vh/2),460px)] h-[90vh] max-h-[820px] relative rounded-2xl overflow-hidden shadow-2xl border border-zinc-800/80 bg-zinc-950/60 backdrop-blur-md pointer-events-auto">
             <TraySuspense>
               <Canvas frameloop="always">
                 <AudioListenerProvider>

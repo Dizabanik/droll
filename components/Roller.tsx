@@ -89,10 +89,10 @@ export const Roller: React.FC<RollerProps> = ({
       {/* 3D Dice Canvas Overlay */}
       {!hideCanvas && <Dice3DOverlay />}
 
-      {/* Results Modal */}
+      {/* Results Modal - Bottom-Right Screen Placement */}
       <AnimatePresence>
         {showResultsUI && isComplete && results.length > 0 && (
-          <div className="z-50 pointer-events-auto">
+          <div className="fixed bottom-6 right-6 z-50 pointer-events-auto max-w-md w-full sm:w-[420px]">
             <RollResults
               results={results}
               isComplete={isComplete}
@@ -107,7 +107,7 @@ export const Roller: React.FC<RollerProps> = ({
       </AnimatePresence>
 
       {!isComplete && (
-        <div className="text-white bg-zinc-950/80 border border-zinc-800 px-5 py-2 rounded-full absolute bottom-8 font-medium text-sm shadow-xl flex items-center gap-2">
+        <div className="text-white bg-zinc-950/90 border border-zinc-800 px-5 py-2 rounded-full fixed bottom-8 left-1/2 -translate-x-1/2 font-medium text-sm shadow-xl flex items-center gap-2 pointer-events-none backdrop-blur-md">
           <span className="w-2 h-2 rounded-full bg-accent animate-ping" />
           Rolling 3D Physics Dice...
         </div>

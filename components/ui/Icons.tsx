@@ -1,7 +1,7 @@
 
 import {
   Dices, Plus, Trash2, Sword, Shield,
-  ChevronRight, Sparkles, Skull, Flame,
+  ChevronRight, ChevronUp, ChevronDown, Sparkles, Skull, Flame,
   Snowflake, Zap, Droplets, Biohazard,
   Ghost, Sun, Brain, Activity, X, User, Menu,
   RefreshCw, Target, Settings
@@ -14,6 +14,8 @@ export const Icons = {
   Attack: Sword,
   Defense: Shield,
   ArrowRight: ChevronRight,
+  ChevronUp: ChevronUp,
+  ChevronDown: ChevronDown,
   Magic: Sparkles,
   Death: Skull,
   Fire: Flame,

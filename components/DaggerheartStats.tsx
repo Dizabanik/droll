@@ -46,6 +46,17 @@ const DAGGERHEART_STATUSES = [
     { key: 'empowered', label: 'Empowered', color: 'text-emerald-400' },
 ] as const;
 
+interface StatPillProps {
+    label: string;
+    value: number;
+    max: number;
+    color?: string;
+    bgColor?: string;
+    onDecrement: () => void;
+    onIncrement: () => void;
+    onMaxChange?: (newMax: number) => void;
+}
+
 const StatPill: React.FC<StatPillProps> = ({
     label,
     value,

@@ -1,4 +1,4 @@
-import { DicePreset, RollStep, StepResult, CharacterStats, DamageType } from '../../types';
+import { DicePreset, RollStep, StepResult, CharacterStats, DamageType, DiceCustomization, DEFAULT_DICE_CUSTOMIZATION } from '../../types';
 import { generateId, parseFormulaAdvanced, parseFormula, checkCondition, getStatModifierValue, getStatLabel, resolveStepResult, createSkippedResult } from '../../utils/engine';
 import { DiceRoll } from '../types/DiceRoll';
 import { Die } from '../types/Die';
@@ -45,8 +45,17 @@ export const mapSidesToDiceType = (sides: number): DiceType => {
 export const prepare3DRoll = (
   preset: DicePreset,
   characterStats: CharacterStats,
-  defaultStyle: DiceStyle = 'GEMSTONE'
+  customization?: Partial<DiceCustomization> | DiceStyle
 ): PreparedRoll => {
+  const config: DiceCustomization = typeof customization === 'string'
+    ? { ...DEFAULT_DICE_CUSTOMIZATION, standardStyle: customization }
+    : { ...DEFAULT_DICE_CUSTOMIZATION, ...(customization || {}) };
+
+  const standardStyle = config.standardStyle || 'GEMSTONE';
+  const hopeStyle = config.hopeStyle || 'SUNRISE';
+  const fearStyle = config.fearStyle || 'GALAXY';
+  const negativeStyle = config.negativeStyle || 'IRON';
+
   const diceList: Die[] = [];
   const associations: DieStepAssociation[] = [];
   const stepConfigs: Record<string, { baseModifier: number; statModifier: number; displayFormula: string }> = {};
@@ -65,14 +74,14 @@ export const prepare3DRoll = (
       const { diceGroups, modifier } = parseFormulaAdvanced(step.formula || '');
       baseMod = modifier;
 
-      // 1. Hope D12 (Sunrise/Gold)
+      // 1. Hope D12 (Customized Hope Style)
       const hopeId = generateId();
-      diceList.push({ id: hopeId, type: 'D12', style: 'SUNRISE' });
+      diceList.push({ id: hopeId, type: 'D12', style: hopeStyle });
       associations.push({ stepId: step.id, dieId: hopeId, sides: 12, sign: 1, type: 'hope' });
 
-      // 2. Fear D12 (Galaxy/Purple)
+      // 2. Fear D12 (Customized Fear Style)
       const fearId = generateId();
-      diceList.push({ id: fearId, type: 'D12', style: 'GALAXY' });
+      diceList.push({ id: fearId, type: 'D12', style: fearStyle });
       associations.push({ stepId: step.id, dieId: fearId, sides: 12, sign: 1, type: 'fear' });
 
       // 3. Any extra dice in the formula (skipping the first 2 d12s if specified)
@@ -85,7 +94,7 @@ export const prepare3DRoll = (
         for (let i = 0; i < group.count; i++) {
           const extraId = generateId();
           const diceType = mapSidesToDiceType(group.sides);
-          const style = group.sign === -1 ? 'IRON' : defaultStyle;
+          const style = group.sign === -1 ? negativeStyle : standardStyle;
           diceList.push({ id: extraId, type: diceType, style });
           associations.push({ stepId: step.id, dieId: extraId, sides: group.sides, sign: group.sign, type: 'standard' });
         }
@@ -99,7 +108,7 @@ export const prepare3DRoll = (
         for (let i = 0; i < group.count; i++) {
           const dieId = generateId();
           const diceType = mapSidesToDiceType(group.sides);
-          const style = group.sign === -1 ? 'IRON' : defaultStyle;
+          const style = group.sign === -1 ? negativeStyle : standardStyle;
           diceList.push({ id: dieId, type: diceType, style });
           associations.push({ stepId: step.id, dieId, sides: group.sides, sign: group.sign, type: 'standard' });
         }
@@ -137,12 +146,13 @@ export const execute3DFateRoll = async (
   characterStats: CharacterStats,
   itemName: string,
   playerInfo: { id: string; name: string; color: string },
-  defaultStyle: DiceStyle = 'GEMSTONE'
+  customization?: Partial<DiceCustomization> | DiceStyle
 ): Promise<RollExecutionResult> => {
-  const prepared = prepare3DRoll(preset, characterStats, defaultStyle);
+  const prepared = prepare3DRoll(preset, characterStats, customization);
+  const speed = typeof customization === 'object' ? customization.diceSpeedMultiplier : undefined;
 
   // 1. Start 3D Rapier Physics Roll in store first to generate physics throws
-  useDiceRollStore.getState().startRoll(prepared.diceRoll);
+  useDiceRollStore.getState().startRoll(prepared.diceRoll, speed);
   const initialThrows = useDiceRollStore.getState().rollThrows;
 
   // 2. Broadcast roll start with exact physical throws for identical simulation

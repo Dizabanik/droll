@@ -1,5 +1,27 @@
 
-export const APP_VERSION = "v1.8.0-3d";
+import { DiceStyle } from './dice-engine/types/DiceStyle';
+
+export const APP_VERSION = "v1.9.0-3d";
+
+export interface DiceCustomization {
+  standardStyle: DiceStyle;
+  hopeStyle: DiceStyle;
+  fearStyle: DiceStyle;
+  negativeStyle: DiceStyle;
+  hopeGlowColor?: string;
+  fearGlowColor?: string;
+  diceSpeedMultiplier?: number;
+}
+
+export const DEFAULT_DICE_CUSTOMIZATION: DiceCustomization = {
+  standardStyle: 'GEMSTONE',
+  hopeStyle: 'SUNRISE',
+  fearStyle: 'GALAXY',
+  negativeStyle: 'IRON',
+  hopeGlowColor: '#eab308',
+  fearGlowColor: '#a855f7',
+  diceSpeedMultiplier: 1.0,
+};
 
 export type DamageType =
   | 'slashing' | 'piercing' | 'bludgeoning'

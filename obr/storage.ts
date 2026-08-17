@@ -4,7 +4,7 @@
  * scoped to the current Campaign (Room ID) if available
  */
 
-import { Item, CharacterStats } from "../types";
+import { Item, CharacterStats, DiceCustomization, DEFAULT_DICE_CUSTOMIZATION } from "../types";
 import { DiceStyle } from "../dice-engine/types/DiceStyle";
 import OBR from "@owlbear-rodeo/sdk";
 
@@ -121,6 +121,7 @@ interface FateWeaverData {
   selectedTokenId?: string;
   fear?: number;
   diceStyle?: DiceStyle;
+  diceCustomization?: DiceCustomization;
   miroUrl?: string;
   characterSheetMode?: 'sheet' | 'miro';
 }
@@ -337,13 +338,30 @@ export const OBRStorage = {
     await setData({ fear });
   },
 
-  // 3D Dice style preference
+  // 3D Dice style and theme customization
   getDiceStyle: async (): Promise<DiceStyle> => {
     const data = await getData();
-    return data.diceStyle || 'GEMSTONE';
+    return data.diceCustomization?.standardStyle || data.diceStyle || 'GEMSTONE';
   },
   setDiceStyle: async (diceStyle: DiceStyle): Promise<void> => {
     await setData({ diceStyle });
+  },
+  getDiceCustomization: async (): Promise<DiceCustomization> => {
+    const data = await getData();
+    return data.diceCustomization || {
+      standardStyle: data.diceStyle || DEFAULT_DICE_CUSTOMIZATION.standardStyle,
+      hopeStyle: DEFAULT_DICE_CUSTOMIZATION.hopeStyle,
+      fearStyle: DEFAULT_DICE_CUSTOMIZATION.fearStyle,
+      negativeStyle: DEFAULT_DICE_CUSTOMIZATION.negativeStyle,
+      hopeGlowColor: DEFAULT_DICE_CUSTOMIZATION.hopeGlowColor,
+      fearGlowColor: DEFAULT_DICE_CUSTOMIZATION.fearGlowColor,
+      diceSpeedMultiplier: DEFAULT_DICE_CUSTOMIZATION.diceSpeedMultiplier,
+    };
+  },
+  setDiceCustomization: async (customization: Partial<DiceCustomization>): Promise<void> => {
+    const current = await OBRStorage.getDiceCustomization();
+    const updated: DiceCustomization = { ...current, ...customization };
+    await setData({ diceCustomization: updated, diceStyle: updated.standardStyle });
   },
 
   // Miro Board Integration

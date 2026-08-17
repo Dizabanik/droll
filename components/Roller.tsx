@@ -61,7 +61,7 @@ export const Roller: React.FC<RollerProps> = ({
     useDiceRollStore.getState().clearRoll();
 
     try {
-      const userDiceStyle = await OBRStorage.getDiceStyle();
+      const userCustomization = await OBRStorage.getDiceCustomization();
       const outcome = await execute3DFateRoll(
         preset,
         variables,
@@ -72,7 +72,7 @@ export const Roller: React.FC<RollerProps> = ({
           name: playerName || 'Unknown Player',
           color: playerColor || '#3b82f6',
         },
-        userDiceStyle
+        userCustomization
       );
 
       setResults(outcome.results);

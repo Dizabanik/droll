@@ -77,10 +77,10 @@ export const HistoryControl: React.FC = () => {
     const [hasEverLoadedMiro, setHasEverLoadedMiro] = useState<boolean>(false);
 
     useEffect(() => {
-        if (characterSheetMode === 'miro') {
+        if (characterSheetMode === 'miro' && isHistoryOpen) {
             setHasEverLoadedMiro(true);
         }
-    }, [characterSheetMode]);
+    }, [characterSheetMode, isHistoryOpen]);
 
     // Character Stats for Stat Modifiers
     const [stats, setStats] = useState<CharacterStats>({
@@ -320,28 +320,34 @@ export const HistoryControl: React.FC = () => {
 
     return (
         <div className="w-full h-full relative select-none">
-            {/* Fullscreen Menu Mode */}
-            {isHistoryOpen && (
-                <div className="fixed inset-0 z-50 flex transition-all duration-300">
-                    {/* Backdrop */}
-                    <div
-                        className="absolute inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
-                        onClick={closeHistory}
-                    />
+            {/* Fullscreen Menu Mode - Persistent DOM so Miro iframe never restarts */}
+            <div
+                className={clsx(
+                    "fixed inset-0 z-50 flex transition-all duration-300",
+                    isHistoryOpen
+                        ? "opacity-100 pointer-events-auto visible"
+                        : "opacity-0 pointer-events-none invisible"
+                )}
+            >
+                {/* Backdrop */}
+                <div
+                    className="absolute inset-0 bg-black/70 backdrop-blur-sm cursor-pointer"
+                    onClick={closeHistory}
+                />
 
-                    {/* Left Panel - Daggerheart Stats (Hidden in Miro Mode to give Miro full left+center space) */}
-                    {characterSheetMode === 'sheet' && (
-                        <div className="relative z-10 flex-1 bg-surface/95 border-r border-neutral-800/80 shadow-fey-xl flex flex-col overflow-y-auto">
-                            <div className="flex items-center justify-between p-3.5 px-5 border-b border-neutral-800/80 bg-surface">
-                                <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
-                                    <Icons.Dice size={16} className="text-white" />
-                                    Daggerheart
-                                </h2>
-                                <FearTracker />
-                            </div>
-                            <DaggerheartStats onVitalsChange={handleVitalsChange} onStatusesChange={handleStatusesChange} />
+                {/* Left Panel - Daggerheart Stats (Hidden in Miro Mode to give Miro full left+center space) */}
+                {isHistoryOpen && characterSheetMode === 'sheet' && (
+                    <div className="relative z-10 flex-1 bg-surface/95 border-r border-neutral-800/80 shadow-fey-xl flex flex-col overflow-y-auto">
+                        <div className="flex items-center justify-between p-3.5 px-5 border-b border-neutral-800/80 bg-surface">
+                            <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
+                                <Icons.Dice size={16} className="text-white" />
+                                Daggerheart
+                            </h2>
+                            <FearTracker />
                         </div>
-                    )}
+                        <DaggerheartStats onVitalsChange={handleVitalsChange} onStatusesChange={handleStatusesChange} />
+                    </div>
+                )}
 
                 {/* Center / Miro Panel (Spans both Left & Center when in Miro Mode) */}
                 <div
@@ -369,7 +375,7 @@ export const HistoryControl: React.FC = () => {
                                 </h2>
                             )}
 
-                            {characterSheetMode === 'miro' && <FearTracker />}
+                            {characterSheetMode === 'miro' && isHistoryOpen && <FearTracker />}
                         </div>
 
                         {/* Mode Toggle Button: Sheet <-> Miro */}
@@ -409,10 +415,13 @@ export const HistoryControl: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Miro Embed & Character Panel kept persistently mounted */}
+                    {/* Miro Embed & Character Panel kept persistently mounted once loaded */}
                     {hasEverLoadedMiro && (
                         <div
-                            className={clsx("flex-1 w-full h-full flex flex-col overflow-hidden", characterSheetMode === 'miro' ? "flex" : "hidden")}
+                            className={clsx(
+                                "flex-1 w-full h-full flex flex-col overflow-hidden",
+                                (characterSheetMode === 'miro' && isHistoryOpen) ? "flex" : "hidden"
+                            )}
                             style={{
                                 contentVisibility: (isHistoryOpen && characterSheetMode === 'miro') ? 'visible' : 'hidden',
                                 containIntrinsicSize: '100vw 100vh',
@@ -425,117 +434,121 @@ export const HistoryControl: React.FC = () => {
                         </div>
                     )}
 
-                    <div className={clsx("flex-1 w-full h-full flex flex-col overflow-hidden", characterSheetMode === 'sheet' ? "flex" : "hidden")}>
-                        <CharacterPanel
-                            onRoll={handleStatRoll}
-                            showSettings={showSettings}
-                            onCloseSettings={() => setShowSettings(false)}
-                        />
-                    </div>
+                    {isHistoryOpen && characterSheetMode === 'sheet' && (
+                        <div className="flex-1 w-full h-full flex flex-col overflow-hidden">
+                            <CharacterPanel
+                                onRoll={handleStatRoll}
+                                showSettings={showSettings}
+                                onCloseSettings={() => setShowSettings(false)}
+                            />
+                        </div>
+                    )}
                 </div>
 
                 {/* Right Panel - Roll History */}
-                <div className="relative z-10 flex-1 bg-surface/95 border-l border-neutral-800/80 shadow-fey-xl flex flex-col">
-                    <div className="flex items-center justify-between p-3.5 px-5 border-b border-neutral-800/80 bg-surface">
-                        <div className="flex items-center gap-2">
-                            <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
-                                <Icons.Menu size={16} className="text-white" />
-                                Roll Feed
-                            </h2>
-                            <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-elevated text-muted border border-neutral-800">
-                                {APP_VERSION}
-                            </span>
-                        </div>
-                        <button
-                            onClick={closeHistory}
-                            className="p-1 rounded-full text-muted hover:text-white hover:bg-elevated transition-colors"
-                        >
-                            <Icons.Close size={16} />
-                        </button>
-                    </div>
-
-                    <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
-                        {rollHistory.length === 0 ? (
-                            <div className="text-center text-muted py-12 flex flex-col items-center gap-2">
-                                <Icons.Dice size={36} className="opacity-20 text-muted" />
-                                <p className="text-xs font-mono">No rolls recorded yet.</p>
+                {isHistoryOpen && (
+                    <div className="relative z-10 flex-1 bg-surface/95 border-l border-neutral-800/80 shadow-fey-xl flex flex-col">
+                        <div className="flex items-center justify-between p-3.5 px-5 border-b border-neutral-800/80 bg-surface">
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-white font-bold flex items-center gap-2 text-xs tracking-tight uppercase font-mono">
+                                    <Icons.Menu size={16} className="text-white" />
+                                    Roll Feed
+                                </h2>
+                                <span className="text-[9px] font-mono font-bold px-2 py-0.5 rounded-full bg-elevated text-muted border border-neutral-800">
+                                    {APP_VERSION}
+                                </span>
                             </div>
-                        ) : (
-                            rollHistory.map((entry) => (
-                                <div key={entry.id} className="relative pl-4 border-l border-neutral-800 hover:border-neutral-600 transition-colors">
-                                    <div className="absolute -left-[3.5px] top-1.5 w-1.5 h-1.5 rounded-full bg-neutral-600" />
+                            <button
+                                onClick={closeHistory}
+                                className="p-1 rounded-full text-muted hover:text-white hover:bg-elevated transition-colors"
+                            >
+                                <Icons.Close size={16} />
+                            </button>
+                        </div>
 
-                                    <div className="flex justify-between items-start mb-1.5">
-                                        <div>
-                                            <span className="text-[9px] font-mono text-muted tracking-wider">
-                                                {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                            </span>
-                                            <h3 className="text-white font-bold text-xs tracking-tight">
-                                                {entry.playerName}
-                                            </h3>
-                                        </div>
-                                        <div className="text-[9px] font-mono text-muted bg-surface px-2 py-0.5 rounded-full border border-neutral-800 shadow-fey-subtle">
-                                            {entry.presetName}
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-surface/60 rounded-2xl p-3 border border-neutral-800/80 shadow-fey-subtle">
-                                        <div className="flex justify-between items-baseline mb-2 pb-1.5 border-b border-neutral-800/60">
-                                            <span className="text-xs font-medium text-muted">{entry.itemName}</span>
-                                            <span className="text-base font-mono font-bold text-white tracking-tight">{entry.grandTotal}</span>
-                                        </div>
-
-                                        {entry.results && entry.results.length > 0 && (
-                                            <div className="space-y-1.5">
-                                                {entry.results.map(res => (
-                                                    <div key={res.uniqueId} className={clsx(
-                                                        "flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs font-mono",
-                                                        res.wasCrit ? "bg-ember/15 text-ember border border-ember/30" : "bg-elevated/70 text-white"
-                                                    )}>
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="font-bold">{res.total}</span>
-                                                            <span className="text-muted text-[9px] uppercase font-mono">{res.damageType.slice(0, 3)}</span>
-                                                            {res.type === 'daggerheart' && res.dhHope !== undefined && res.dhFear !== undefined && (
-                                                                <div className="flex items-center gap-1 ml-1">
-                                                                    <span className={clsx(
-                                                                        "px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono",
-                                                                        res.dhOutcome === 'hope' || res.dhOutcome === 'crit'
-                                                                            ? "bg-signal/20 text-signal border border-signal/40"
-                                                                            : "bg-signal/10 text-signal/50"
-                                                                    )}>
-                                                                        H:{res.dhHope}
-                                                                    </span>
-                                                                    <span className={clsx(
-                                                                        "px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono",
-                                                                        res.dhOutcome === 'fear'
-                                                                            ? "bg-ember/20 text-ember border border-ember/40"
-                                                                            : "bg-ember/10 text-ember/50"
-                                                                    )}>
-                                                                        F:{res.dhFear}
-                                                                    </span>
-                                                                    {res.dhOutcome === 'crit' && (
-                                                                        <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black font-mono bg-white text-black shadow-fey-glow">CRIT</span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <span className="text-muted text-[10px] font-mono">{res.formula}</span>
-                                                    </div>
-                                                ))}
-                                            </div>
-                                        )}
-
-                                        {entry.breakdown && (
-                                            <div className="mt-2 text-[10px] text-right text-muted font-mono">
-                                                {entry.breakdown}
-                                            </div>
-                                        )}
-                                    </div>
+                        <div className="flex-1 overflow-y-auto p-4 space-y-3.5">
+                            {rollHistory.length === 0 ? (
+                                <div className="text-center text-muted py-12 flex flex-col items-center gap-2">
+                                    <Icons.Dice size={36} className="opacity-20 text-muted" />
+                                    <p className="text-xs font-mono">No rolls recorded yet.</p>
                                 </div>
-                            ))
-                        )}
+                            ) : (
+                                rollHistory.map((entry) => (
+                                    <div key={entry.id} className="relative pl-4 border-l border-neutral-800 hover:border-neutral-600 transition-colors">
+                                        <div className="absolute -left-[3.5px] top-1.5 w-1.5 h-1.5 rounded-full bg-neutral-600" />
+
+                                        <div className="flex justify-between items-start mb-1.5">
+                                            <div>
+                                                <span className="text-[9px] font-mono text-muted tracking-wider">
+                                                    {new Date(entry.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                                <h3 className="text-white font-bold text-xs tracking-tight">
+                                                    {entry.playerName}
+                                                </h3>
+                                            </div>
+                                            <div className="text-[9px] font-mono text-muted bg-surface px-2 py-0.5 rounded-full border border-neutral-800 shadow-fey-subtle">
+                                                {entry.presetName}
+                                            </div>
+                                        </div>
+
+                                        <div className="bg-surface/60 rounded-2xl p-3 border border-neutral-800/80 shadow-fey-subtle">
+                                            <div className="flex justify-between items-baseline mb-2 pb-1.5 border-b border-neutral-800/60">
+                                                <span className="text-xs font-medium text-muted">{entry.itemName}</span>
+                                                <span className="text-base font-mono font-bold text-white tracking-tight">{entry.grandTotal}</span>
+                                            </div>
+
+                                            {entry.results && entry.results.length > 0 && (
+                                                <div className="space-y-1.5">
+                                                    {entry.results.map(res => (
+                                                        <div key={res.uniqueId} className={clsx(
+                                                            "flex justify-between items-center px-2.5 py-1.5 rounded-xl text-xs font-mono",
+                                                            res.wasCrit ? "bg-ember/15 text-ember border border-ember/30" : "bg-elevated/70 text-white"
+                                                        )}>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-bold">{res.total}</span>
+                                                                <span className="text-muted text-[9px] uppercase font-mono">{res.damageType.slice(0, 3)}</span>
+                                                                {res.type === 'daggerheart' && res.dhHope !== undefined && res.dhFear !== undefined && (
+                                                                    <div className="flex items-center gap-1 ml-1">
+                                                                        <span className={clsx(
+                                                                            "px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono",
+                                                                            res.dhOutcome === 'hope' || res.dhOutcome === 'crit'
+                                                                                ? "bg-signal/20 text-signal border border-signal/40"
+                                                                                : "bg-signal/10 text-signal/50"
+                                                                        )}>
+                                                                            H:{res.dhHope}
+                                                                        </span>
+                                                                        <span className={clsx(
+                                                                            "px-1.5 py-0.2 rounded-full text-[9px] font-bold font-mono",
+                                                                            res.dhOutcome === 'fear'
+                                                                                ? "bg-ember/20 text-ember border border-ember/40"
+                                                                                : "bg-ember/10 text-ember/50"
+                                                                        )}>
+                                                                            F:{res.dhFear}
+                                                                        </span>
+                                                                        {res.dhOutcome === 'crit' && (
+                                                                            <span className="px-1.5 py-0.2 rounded-full text-[9px] font-black font-mono bg-white text-black shadow-fey-glow">CRIT</span>
+                                                                        )}
+                                                                    </div>
+                                                                )}
+                                                            </div>
+                                                            <span className="text-muted text-[10px] font-mono">{res.formula}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+
+                                            {entry.breakdown && (
+                                                <div className="mt-2 text-[10px] text-right text-muted font-mono">
+                                                    {entry.breakdown}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Settings Button - Bottom Left Corner */}
                 <button
@@ -555,7 +568,6 @@ export const HistoryControl: React.FC = () => {
                     <Icons.Close size={20} />
                 </button>
             </div>
-            )}
 
             {/* Normal Mode - History Toggle Button */}
             {!isHistoryOpen && (

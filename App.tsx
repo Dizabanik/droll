@@ -9,6 +9,7 @@ import { CharacterSheet } from './components/CharacterSheet';
 import { HistoryControl } from './components/HistoryControl';
 import { RollHistoryPanel, HistoryEntry } from './components/RollHistoryPanel';
 import { TokenSettings } from './components/TokenSettings';
+import { QuickDiceToolbar } from './components/QuickDiceToolbar';
 import { Icons } from './components/ui/Icons';
 import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage, DaggerheartVitals } from './obr';
 import clsx from 'clsx';
@@ -313,11 +314,11 @@ const App: React.FC = () => {
     setEditingItem(false);
   };
 
-  const initiateRoll = (preset: DicePreset) => {
+  const initiateRoll = (preset: DicePreset, itemName?: string) => {
     if (preset.variables && preset.variables.length > 0) {
       setPendingPreset(preset);
     } else {
-      startRoller(preset, {});
+      startRoller(preset, {}, itemName);
     }
   };
 
@@ -328,10 +329,10 @@ const App: React.FC = () => {
     }
   };
 
-  const startRoller = (preset: DicePreset, variables: Record<string, number>) => {
+  const startRoller = (preset: DicePreset, variables: Record<string, number>, itemName?: string) => {
     setActiveRollPreset(preset);
     setActiveRollVars(variables);
-    setActiveRollItemName(activeItem?.name || preset.name || 'Action');
+    setActiveRollItemName(itemName || activeItem?.name || preset.name || 'Action');
   };
 
   const closeRoller = () => {
@@ -716,6 +717,11 @@ const App: React.FC = () => {
       {/* History Toggle Button - Available in Plugin Window */}
       {!isOverlay && (
         <>
+          <QuickDiceToolbar
+            onRollPreset={(preset, itemName) => initiateRoll(preset, itemName)}
+            className="fixed left-3 top-1/2 -translate-y-1/2 z-40 hidden md:flex"
+          />
+
           <button
             onClick={() => setIsHistoryOpen(true)}
             className="fixed bottom-4 right-4 z-40 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95"

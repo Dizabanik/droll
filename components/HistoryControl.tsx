@@ -11,6 +11,7 @@ import { FearTracker } from './FearTracker';
 // import { CountdownTracker } from './CountdownTracker';
 import { APP_VERSION, DicePreset, CharacterStats } from '../types';
 import { Roller } from './Roller';
+import { QuickDiceToolbar } from './QuickDiceToolbar';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
@@ -28,6 +29,7 @@ export const HistoryControl: React.FC = () => {
 
     // Active Result Popup State
     const [activeResult, setActiveResult] = useState<RollCompleteMessage | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
     const resultTimerRef = useRef<number | null>(null);
 
     // Handle vitals change - sync to token attachments
@@ -111,6 +113,12 @@ export const HistoryControl: React.FC = () => {
         setActiveRollItemName(`${statLabel} Check`);
         setActiveRollVars({});
         setActiveRollPreset(statRollPreset);
+    }, []);
+
+    const handleQuickRoll = useCallback((preset: DicePreset, itemName: string) => {
+        setActiveRollPreset(preset);
+        setActiveRollItemName(itemName);
+        setActiveRollVars({});
     }, []);
 
     // Load history on mount
@@ -300,7 +308,11 @@ export const HistoryControl: React.FC = () => {
                                 Character
                             </h2>
                         </div>
-                        <CharacterPanel onRoll={handleStatRoll} />
+                        <CharacterPanel
+                            onRoll={handleStatRoll}
+                            showSettings={showSettings}
+                            onCloseSettings={() => setShowSettings(false)}
+                        />
                     </motion.div>
 
                     {/* Right Panel - Roll History */}
@@ -411,7 +423,21 @@ export const HistoryControl: React.FC = () => {
                         </div>
                     </motion.div>
 
-                    {/* Close Button - Same position as history button */}
+                    {/* Quick Dice Toolbar - Left Side */}
+                    <div className="fixed left-3 top-1/2 -translate-y-1/2 z-[70]">
+                        <QuickDiceToolbar onRollPreset={handleQuickRoll} />
+                    </div>
+
+                    {/* Settings Button - Bottom Left Corner */}
+                    <button
+                        onClick={() => setShowSettings(true)}
+                        className="absolute bottom-4 left-4 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 z-[60]"
+                        title="Character Settings"
+                    >
+                        <Icons.Settings size={24} />
+                    </button>
+
+                    {/* Close Button - Bottom Right Corner */}
                     <button
                         onClick={closeHistory}
                         className="absolute bottom-4 right-4 p-3 bg-zinc-800 text-zinc-400 hover:text-white hover:bg-zinc-700 rounded-full shadow-lg border border-zinc-700 transition-all active:scale-95 z-[60]"

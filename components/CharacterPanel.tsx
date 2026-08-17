@@ -269,16 +269,28 @@ const SettingsModal: React.FC<SettingsModalProps> = ({ isOpen, onClose, settings
 // === Main Character Panel ===
 interface CharacterPanelProps {
     onRoll?: (statKey: string, statValue: number) => void;
+    showSettings?: boolean;
+    onCloseSettings?: () => void;
 }
 
-export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
+export const CharacterPanel: React.FC<CharacterPanelProps> = ({
+    onRoll,
+    showSettings: propShowSettings,
+    onCloseSettings,
+}) => {
     const [character, setCharacter] = useState<DaggerheartCharacter>(DEFAULT_CHARACTER);
     const [daggerheartStats, setDaggerheartStats] = useState<Record<string, number>>({});
     const [customStats, setCustomStats] = useState<Array<{ id: string; name: string; value: number }>>([]);
     const [isLoaded, setIsLoaded] = useState(false);
     const [tokenImage, setTokenImage] = useState<string | null>(null);
     const [showTokenPicker, setShowTokenPicker] = useState(false);
-    const [showSettings, setShowSettings] = useState(false);
+    const [localShowSettings, setLocalShowSettings] = useState(false);
+
+    const isSettingsOpen = propShowSettings !== undefined ? propShowSettings : localShowSettings;
+    const handleCloseSettings = () => {
+        setLocalShowSettings(false);
+        onCloseSettings?.();
+    };
 
     // Load character data and sync with CharacterStats
     useEffect(() => {
@@ -423,14 +435,6 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
 
     return (
         <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto relative">
-            {/* Settings Button (Top Right) */}
-            <button
-                onClick={() => setShowSettings(true)}
-                className="absolute top-2 right-2 p-2 text-zinc-500 hover:text-white transition-colors hover:bg-zinc-800 rounded-lg"
-            >
-                <Icons.Settings size={18} />
-            </button>
-
             {/* Stats Grid - 2 rows of 3 */}
             <div className="flex flex-col gap-2 mt-4">
                 <div className="flex justify-center gap-2">
@@ -606,8 +610,8 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({ onRoll }) => {
 
             {/* Settings Modal */}
             <SettingsModal
-                isOpen={showSettings}
-                onClose={() => setShowSettings(false)}
+                isOpen={isSettingsOpen}
+                onClose={handleCloseSettings}
                 settings={character.settings}
                 onToggle={toggleSetting}
             />

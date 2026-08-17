@@ -19,11 +19,22 @@ export const LeftToolbarPopover: React.FC = () => {
     }
   };
 
+  const handleCustomDxOpenChange = async (open: boolean) => {
+    try {
+      if (OBR.isAvailable) {
+        await OBR.popover.setWidth('com.fateweaver.dice.left_toolbar', open ? 300 : 68);
+      }
+    } catch (e) {
+      console.error('Failed to resize left toolbar width:', e);
+    }
+  };
+
   return (
-    <div className="w-full h-full flex flex-col items-center justify-start p-1 bg-transparent overflow-hidden">
+    <div className="w-full h-full flex flex-col items-start justify-start p-1 bg-transparent overflow-hidden">
       <QuickDiceToolbar
         onRollPreset={handleRoll}
         onFoldChange={handleFoldChange}
+        onCustomDxOpenChange={handleCustomDxOpenChange}
         className="bg-transparent"
       />
     </div>

@@ -70,6 +70,79 @@ export const parseFormulaAdvanced = (formula: string): { diceGroups: DiceGroup[]
   return { diceGroups, modifier };
 };
 
+export const SUPPORTED_3D_DICE_SIDES = [4, 6, 8, 10, 12, 20, 100];
+
+export interface ParsedDxResult {
+  hasDuality: boolean;
+  diceGroups: DiceGroup[];
+  modifier: number;
+  is3DSupported: boolean;
+  normalizedFormula: string;
+}
+
+/**
+ * Parses freeform user formulas like "2d12+d4+d4+d6+6", "D + d6 - 2", "d3 + d7 + 4".
+ * Capital 'D' indicates Duality Dice (Hope D12 + Fear D12).
+ * Determines if all dice are supported by the 3D physics engine or if mathematical roll is required.
+ */
+export const parseCustomDxFormula = (rawFormula: string): ParsedDxResult => {
+  if (!rawFormula || !rawFormula.trim()) {
+    return {
+      hasDuality: false,
+      diceGroups: [{ count: 1, sides: 20, sign: 1 }],
+      modifier: 0,
+      is3DSupported: true,
+      normalizedFormula: '1d20',
+    };
+  }
+
+  let formula = rawFormula.trim();
+  let hasDuality = false;
+
+  // Detect standalone 'D' / 'd' (e.g. "D + d6 - 2", "D+2", "D-1", "D", "duality")
+  // Regex matches 'D' or 'd' when not part of 'd12', '2d6', etc.
+  const dualityPattern = /\bduality\b|(?<![0-9a-zA-Z])[Dd](?![0-9])/g;
+  if (dualityPattern.test(formula)) {
+    hasDuality = true;
+    formula = formula.replace(dualityPattern, ' ');
+  }
+
+  const { diceGroups, modifier } = parseFormulaAdvanced(formula);
+
+  // Check 3D compatibility
+  let is3DSupported = true;
+  for (const group of diceGroups) {
+    if (!SUPPORTED_3D_DICE_SIDES.includes(group.sides)) {
+      is3DSupported = false;
+      break;
+    }
+  }
+
+  // Construct readable formula
+  const formulaParts: string[] = [];
+  if (hasDuality) {
+    formulaParts.push('Duality');
+  }
+  for (const group of diceGroups) {
+    const signPrefix = group.sign < 0 ? '-' : (formulaParts.length > 0 ? '+' : '');
+    formulaParts.push(`${signPrefix}${group.count > 1 ? group.count : ''}d${group.sides}`);
+  }
+  if (modifier !== 0) {
+    const modPrefix = modifier > 0 && formulaParts.length > 0 ? `+${modifier}` : `${modifier}`;
+    formulaParts.push(modPrefix);
+  }
+
+  const normalizedFormula = formulaParts.join('') || (hasDuality ? 'Duality' : '0');
+
+  return {
+    hasDuality,
+    diceGroups,
+    modifier,
+    is3DSupported,
+    normalizedFormula,
+  };
+};
+
 export const getStatModifierValue = (stats: CharacterStats, key: string | undefined): number => {
   if (!key) return 0;
 

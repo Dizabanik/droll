@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DicePreview } from '../dice-engine/previews/DicePreview';
 import { DiceType } from '../dice-engine/types/DiceType';
 import { DicePreset } from '../types';
-import { generateId } from '../utils/engine';
+import { generateId, parseCustomDxFormula } from '../utils/engine';
 import { Icons } from './ui/Icons';
 import clsx from 'clsx';
 
@@ -11,6 +11,7 @@ interface QuickDiceToolbarProps {
   onRollPreset: (preset: DicePreset, itemName: string) => void;
   className?: string;
   onFoldChange?: (folded: boolean) => void;
+  onCustomDxOpenChange?: (open: boolean) => void;
 }
 
 const DIE_TYPES: Array<{ type: DiceType; label: string; sides: number }> = [
@@ -27,9 +28,12 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({
   onRollPreset,
   className,
   onFoldChange,
+  onCustomDxOpenChange,
 }) => {
   const [isFolded, setIsFolded] = useState<boolean>(false);
   const [hasDuality, setHasDuality] = useState<boolean>(false);
+  const [isCustomDxOpen, setIsCustomDxOpen] = useState<boolean>(false);
+  const [customDxFormula, setCustomDxFormula] = useState<string>('');
   const [selectedDice, setSelectedDice] = useState<Record<DiceType, number>>({
     D20: 0,
     D12: 0,
@@ -49,6 +53,17 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({
     setIsFolded((prev) => {
       const next = !prev;
       onFoldChange?.(next);
+      if (next && isCustomDxOpen) {
+        toggleCustomDx(false);
+      }
+      return next;
+    });
+  };
+
+  const toggleCustomDx = (open?: boolean) => {
+    setIsCustomDxOpen((prev) => {
+      const next = open !== undefined ? open : !prev;
+      onCustomDxOpenChange?.(next);
       return next;
     });
   };
@@ -91,7 +106,7 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({
     setIsCrit(false);
   };
 
-  // Execute the composite roll
+  // Execute standard pool roll
   const handleExecutePoolRoll = () => {
     if (!hasStagedRoll) return;
 
@@ -161,194 +176,355 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({
     handleClear();
   };
 
+  // Parsed analysis of the typed custom dX formula in real-time
+  const parsedCustom = useMemo(() => {
+    if (!customDxFormula.trim()) return null;
+    return parseCustomDxFormula(customDxFormula);
+  }, [customDxFormula]);
+
+  // Execute freeform custom dX formula roll
+  const handleRollCustomDx = () => {
+    if (!customDxFormula.trim()) return;
+    const parsed = parseCustomDxFormula(customDxFormula);
+
+    const presetName = parsed.hasDuality
+      ? `Duality (${parsed.normalizedFormula})`
+      : `Custom (${parsed.normalizedFormula})`;
+
+    const poolPreset: DicePreset = {
+      id: `custom-dx-${generateId()}`,
+      name: isCrit ? `${presetName} [CRIT]` : presetName,
+      variables: [],
+      steps: [
+        {
+          id: 'dx_step',
+          label: parsed.normalizedFormula,
+          type: parsed.hasDuality ? 'daggerheart' : 'standard',
+          formula: customDxFormula.trim(),
+          damageType: 'none',
+          addToSum: true,
+          isCrit: isCrit,
+        },
+      ],
+    };
+
+    const labelName = parsed.hasDuality
+      ? `Duality (${parsed.normalizedFormula})${isCrit ? ' [CRIT]' : ''}`
+      : `Custom Roll (${parsed.normalizedFormula})${isCrit ? ' [CRIT]' : ''}`;
+
+    onRollPreset(poolPreset, labelName);
+    setCustomDxFormula('');
+    toggleCustomDx(false);
+  };
+
   return (
     <div
       className={clsx(
-        "flex flex-col items-center select-none bg-transparent pointer-events-auto",
+        "flex items-start select-none bg-transparent pointer-events-auto gap-2",
         className
       )}
     >
-      {/* 1. Fold / Unfold Toggle Button at Absolute Top */}
-      <button
-        onClick={toggleFold}
-        className={clsx(
-          "w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md backdrop-blur-md",
-          isFolded
-            ? "bg-zinc-900/90 text-accent border border-zinc-700/80 hover:bg-zinc-800 hover:scale-110"
-            : "bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800/80 border border-zinc-800/50 mb-1"
-        )}
-        title={isFolded ? "Unfold Dice Toolbar" : "Fold Dice Toolbar"}
-      >
-        {isFolded ? (
-          <Icons.Dice size={15} className="text-accent" />
-        ) : (
-          <Icons.ChevronUp size={14} />
-        )}
-      </button>
+      {/* Vertical Dice Selector Column */}
+      <div className="flex flex-col items-center">
+        {/* 1. Fold / Unfold Toggle Button at Absolute Top */}
+        <button
+          onClick={toggleFold}
+          className={clsx(
+            "w-7 h-7 rounded-full flex items-center justify-center transition-all active:scale-90 shadow-md backdrop-blur-md",
+            isFolded
+              ? "bg-zinc-900/90 text-accent border border-zinc-700/80 hover:bg-zinc-800 hover:scale-110"
+              : "bg-zinc-900/60 text-zinc-400 hover:text-white hover:bg-zinc-800/80 border border-zinc-800/50 mb-1"
+          )}
+          title={isFolded ? "Unfold Dice Toolbar" : "Fold Dice Toolbar"}
+        >
+          {isFolded ? (
+            <Icons.Dice size={15} className="text-accent" />
+          ) : (
+            <Icons.ChevronUp size={14} />
+          )}
+        </button>
 
-      {/* 2. Unfolded Toolbar Content */}
-      <AnimatePresence>
-        {!isFolded && (
-          <motion.div
-            initial={{ opacity: 0, scale: 0.85, height: 0 }}
-            animate={{ opacity: 1, scale: 1, height: 'auto' }}
-            exit={{ opacity: 0, scale: 0.85, height: 0 }}
-            transition={{ duration: 0.2, ease: 'easeOut' }}
-            className="flex flex-col items-center gap-1 overflow-hidden"
-          >
-            {/* Duality Die Button (Clean minimal icon) */}
-            <button
-              onClick={handleToggleDuality}
-              onContextMenu={(e) => {
-                e.preventDefault();
-                handleToggleDuality();
-              }}
-              className={clsx(
-                "group relative flex items-center justify-center p-1 rounded-xl transition-all hover:scale-110 active:scale-95",
-                hasDuality
-                  ? "bg-gradient-to-b from-amber-500/20 via-purple-500/20 to-transparent ring-1 ring-amber-400/80 shadow-lg shadow-amber-500/20"
-                  : "opacity-75 hover:opacity-100 hover:bg-white/5"
-              )}
-              title="Duality Dice (1 Hope + 1 Fear d12) - Click to toggle in pool"
+        {/* 2. Unfolded Toolbar Content */}
+        <AnimatePresence>
+          {!isFolded && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.85, height: 0 }}
+              animate={{ opacity: 1, scale: 1, height: 'auto' }}
+              exit={{ opacity: 0, scale: 0.85, height: 0 }}
+              transition={{ duration: 0.2, ease: 'easeOut' }}
+              className="flex flex-col items-center gap-1 overflow-hidden"
             >
-              <div className="flex items-center -space-x-2">
-                {/* Hope Mini Preview */}
-                <div className="w-5 h-5 rounded-full overflow-hidden border border-amber-400/80 shadow-sm flex items-center justify-center bg-amber-950/40">
-                  <DicePreview diceStyle="SUNRISE" diceType="D12" size="small" />
-                </div>
-                {/* Fear Mini Preview */}
-                <div className="w-5 h-5 rounded-full overflow-hidden border border-purple-400/80 shadow-sm flex items-center justify-center bg-purple-950/40">
-                  <DicePreview diceStyle="GALAXY" diceType="D12" size="small" />
-                </div>
-              </div>
-
-              {/* Selected indicator badge */}
-              {hasDuality && (
-                <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-black font-black text-[9px] flex items-center justify-center shadow-md animate-in zoom-in-50">
-                  1
-                </span>
-              )}
-            </button>
-
-            {/* Standard Polyhedral Dice */}
-            <div className="flex flex-col gap-0.5 my-0.5">
-              {DIE_TYPES.map(({ type, label }) => {
-                const count = selectedDice[type] || 0;
-                const isPositive = count > 0;
-                const isNegative = count < 0;
-
-                return (
-                  <button
-                    key={type}
-                    onClick={() => handleLeftClick(type)}
-                    onContextMenu={(e) => handleRightClick(type, e)}
-                    className={clsx(
-                      "relative p-0.5 rounded-xl transition-all flex items-center justify-center hover:scale-110 active:scale-95",
-                      isPositive && "ring-1 ring-accent bg-accent/15 shadow-sm shadow-accent/30",
-                      isNegative && "ring-1 ring-rose-500 bg-rose-950/30 shadow-sm shadow-rose-900/30",
-                      !isPositive && !isNegative && "opacity-80 hover:opacity-100 hover:bg-white/5"
-                    )}
-                    title={`${label} (Left-click: +1 | Right-click: -1 / Subtract)`}
-                  >
-                    <DicePreview
-                      diceStyle={isNegative ? "IRON" : "GEMSTONE"}
-                      diceType={type}
-                      size="medium"
-                    />
-
-                    {/* Count Badge */}
-                    {count !== 0 && (
-                      <span
-                        className={clsx(
-                          "absolute -top-1 -right-1 min-w-3.5 h-3.5 px-0.5 rounded-full font-black text-[8px] flex items-center justify-center shadow-md animate-in zoom-in-50",
-                          isPositive ? "bg-accent text-black" : "bg-rose-600 text-white"
-                        )}
-                      >
-                        {count > 0 ? `+${count}` : count}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Modifier Stepper & Input */}
-            <div
-              className="flex items-center gap-0.5 bg-zinc-900/80 border border-zinc-800/80 rounded-full px-1 py-0.5 shadow-sm my-0.5"
-              title="Modifier (+/-)"
-            >
+              {/* Duality Die Button (Clean minimal icon) */}
               <button
-                onClick={() => setModifier((m) => m - 1)}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-white/10 transition-colors font-bold text-xs active:scale-90"
-              >
-                -
-              </button>
-
-              <input
-                type="number"
-                value={modifier === 0 ? '' : modifier}
-                placeholder="0"
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10);
-                  setModifier(isNaN(val) ? 0 : val);
+                onClick={handleToggleDuality}
+                onContextMenu={(e) => {
+                  e.preventDefault();
+                  handleToggleDuality();
                 }}
                 className={clsx(
-                  "w-7 bg-transparent text-center text-[10px] font-mono font-bold focus:outline-none",
-                  modifier > 0 && "text-amber-400",
-                  modifier < 0 && "text-rose-400",
-                  modifier === 0 && "text-zinc-500"
+                  "group relative flex items-center justify-center p-1 rounded-xl transition-all hover:scale-110 active:scale-95",
+                  hasDuality
+                    ? "bg-gradient-to-b from-amber-500/20 via-purple-500/20 to-transparent ring-1 ring-amber-400/80 shadow-lg shadow-amber-500/20"
+                    : "opacity-75 hover:opacity-100 hover:bg-white/5"
                 )}
-              />
-
-              <button
-                onClick={() => setModifier((m) => m + 1)}
-                className="w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-accent hover:bg-white/10 transition-colors font-bold text-xs active:scale-90"
+                title="Duality Dice (1 Hope + 1 Fear d12) - Click to toggle in pool"
               >
-                +
+                <div className="flex items-center -space-x-2">
+                  {/* Hope Mini Preview */}
+                  <div className="w-5 h-5 rounded-full overflow-hidden border border-amber-400/80 shadow-sm flex items-center justify-center bg-amber-950/40">
+                    <DicePreview diceStyle="SUNRISE" diceType="D12" size="small" />
+                  </div>
+                  {/* Fear Mini Preview */}
+                  <div className="w-5 h-5 rounded-full overflow-hidden border border-purple-400/80 shadow-sm flex items-center justify-center bg-purple-950/40">
+                    <DicePreview diceStyle="GALAXY" diceType="D12" size="small" />
+                  </div>
+                </div>
+
+                {/* Selected indicator badge */}
+                {hasDuality && (
+                  <span className="absolute -top-1 -right-1 w-3.5 h-3.5 rounded-full bg-amber-400 text-black font-black text-[9px] flex items-center justify-center shadow-md animate-in zoom-in-50">
+                    1
+                  </span>
+                )}
+              </button>
+
+              {/* Standard Polyhedral Dice */}
+              <div className="flex flex-col gap-0.5 my-0.5">
+                {DIE_TYPES.map(({ type, label }) => {
+                  const count = selectedDice[type] || 0;
+                  const isPositive = count > 0;
+                  const isNegative = count < 0;
+
+                  return (
+                    <button
+                      key={type}
+                      onClick={() => handleLeftClick(type)}
+                      onContextMenu={(e) => handleRightClick(type, e)}
+                      className={clsx(
+                        "relative p-0.5 rounded-xl transition-all flex items-center justify-center hover:scale-110 active:scale-95",
+                        isPositive && "ring-1 ring-accent bg-accent/15 shadow-sm shadow-accent/30",
+                        isNegative && "ring-1 ring-rose-500 bg-rose-950/30 shadow-sm shadow-rose-900/30",
+                        !isPositive && !isNegative && "opacity-80 hover:opacity-100 hover:bg-white/5"
+                      )}
+                      title={`${label} (Left-click: +1 | Right-click: -1 / Subtract)`}
+                    >
+                      <DicePreview
+                        diceStyle={isNegative ? "IRON" : "GEMSTONE"}
+                        diceType={type}
+                        size="medium"
+                      />
+
+                      {/* Count Badge */}
+                      {count !== 0 && (
+                        <span
+                          className={clsx(
+                            "absolute -top-1 -right-1 min-w-3.5 h-3.5 px-0.5 rounded-full font-black text-[8px] flex items-center justify-center shadow-md animate-in zoom-in-50",
+                            isPositive ? "bg-accent text-black" : "bg-rose-600 text-white"
+                          )}
+                        >
+                          {count > 0 ? `+${count}` : count}
+                        </span>
+                      )}
+                    </button>
+                  );
+                })}
+
+                {/* Custom Formula dX Button */}
+                <button
+                  type="button"
+                  onClick={() => toggleCustomDx()}
+                  className={clsx(
+                    "relative w-7 h-7 rounded-xl font-mono font-black text-[11px] transition-all flex items-center justify-center hover:scale-110 active:scale-95 shadow-sm my-0.5",
+                    isCustomDxOpen
+                      ? "bg-accent text-zinc-950 ring-1 ring-accent font-bold shadow-accent/30"
+                      : "bg-zinc-900/80 border border-zinc-700/80 text-zinc-300 hover:text-white hover:border-accent"
+                  )}
+                  title="Write custom formula (e.g. 2d12+d4+6 or D+d6-2, supports d3, d7, etc.)"
+                >
+                  dX
+                </button>
+              </div>
+
+              {/* Modifier Stepper & Input */}
+              <div
+                className="flex items-center gap-0.5 bg-zinc-900/80 border border-zinc-800/80 rounded-full px-1 py-0.5 shadow-sm my-0.5"
+                title="Modifier (+/-)"
+              >
+                <button
+                  onClick={() => setModifier((m) => m - 1)}
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-rose-400 hover:bg-white/10 transition-colors font-bold text-xs active:scale-90"
+                >
+                  -
+                </button>
+
+                <input
+                  type="number"
+                  value={modifier === 0 ? '' : modifier}
+                  placeholder="0"
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10);
+                    setModifier(isNaN(val) ? 0 : val);
+                  }}
+                  className={clsx(
+                    "w-7 bg-transparent text-center text-[10px] font-mono font-bold focus:outline-none",
+                    modifier > 0 && "text-amber-400",
+                    modifier < 0 && "text-rose-400",
+                    modifier === 0 && "text-zinc-500"
+                  )}
+                />
+
+                <button
+                  onClick={() => setModifier((m) => m + 1)}
+                  className="w-4 h-4 rounded-full flex items-center justify-center text-zinc-400 hover:text-accent hover:bg-white/10 transition-colors font-bold text-xs active:scale-90"
+                >
+                  +
+                </button>
+              </div>
+
+              {/* CRIT Toggle Button */}
+              <button
+                onClick={() => setIsCrit((c) => !c)}
+                className={clsx(
+                  "w-full py-0.5 px-1.5 rounded-full font-black text-[9px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 my-0.5",
+                  isCrit
+                    ? "bg-yellow-500/20 text-yellow-300 ring-1 ring-yellow-400/70 shadow-sm shadow-yellow-500/20"
+                    : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
+                )}
+                title="Toggle Critical Hit"
+              >
+                <Icons.Target size={10} className={isCrit ? "text-yellow-400" : "text-zinc-500"} />
+                <span>Crit</span>
+              </button>
+
+              {/* Actions / Roll Trigger when staged */}
+              <AnimatePresence>
+                {hasStagedRoll && (
+                  <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.8 }}
+                    className="flex flex-col items-center gap-0.5 mt-0.5 w-full"
+                  >
+                    <button
+                      onClick={handleExecutePoolRoll}
+                      className="w-full py-1 px-2 rounded-full bg-accent text-zinc-950 font-bold text-[10px] hover:bg-accent/90 transition-all shadow-md active:scale-95 flex items-center justify-center gap-1"
+                      title="Roll staged dice"
+                    >
+                      <Icons.Dice size={12} />
+                      <span>Roll</span>
+                    </button>
+                    <button
+                      onClick={handleClear}
+                      className="text-[8px] text-zinc-500 hover:text-zinc-300 py-0.5 transition-colors"
+                    >
+                      Clear
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+
+      {/* Floating Custom dX Formula Input Popout */}
+      <AnimatePresence>
+        {isCustomDxOpen && !isFolded && (
+          <motion.div
+            initial={{ opacity: 0, x: -10, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -10, scale: 0.95 }}
+            transition={{ duration: 0.15 }}
+            className="w-52 p-3 bg-zinc-950/95 backdrop-blur-md rounded-2xl border border-zinc-700/90 shadow-2xl space-y-2.5 z-50 text-left"
+          >
+            <div className="flex items-center justify-between pb-1 border-b border-zinc-800">
+              <span className="text-[11px] font-bold text-white flex items-center gap-1.5 font-mono">
+                <span className="px-1.5 py-0.5 rounded bg-accent/20 text-accent text-[10px]">dX</span>
+                Formula Roller
+              </span>
+              <button
+                type="button"
+                onClick={() => toggleCustomDx(false)}
+                className="text-zinc-500 hover:text-white transition-colors p-0.5 rounded"
+              >
+                <Icons.Close size={12} />
               </button>
             </div>
 
-            {/* CRIT Toggle Button */}
-            <button
-              onClick={() => setIsCrit((c) => !c)}
-              className={clsx(
-                "w-full py-0.5 px-1.5 rounded-full font-black text-[9px] uppercase tracking-wider transition-all flex items-center justify-center gap-1 active:scale-95 my-0.5",
-                isCrit
-                  ? "bg-yellow-500/20 text-yellow-300 ring-1 ring-yellow-400/70 shadow-sm shadow-yellow-500/20"
-                  : "text-zinc-500 hover:text-zinc-300 hover:bg-white/5"
-              )}
-              title="Toggle Critical Hit (Max dice + actual roll)"
-            >
-              <Icons.Target size={10} className={isCrit ? "text-yellow-400" : "text-zinc-500"} />
-              <span>Crit</span>
-            </button>
+            {/* Input Box */}
+            <div className="space-y-1">
+              <input
+                type="text"
+                value={customDxFormula}
+                onChange={(e) => setCustomDxFormula(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    handleRollCustomDx();
+                  }
+                  if (e.key === 'Escape') {
+                    toggleCustomDx(false);
+                  }
+                }}
+                placeholder="2d12+d4+6 or D+d6-2"
+                className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 rounded-xl text-white text-xs font-mono focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
+                autoFocus
+              />
 
-            {/* Actions / Roll Trigger when staged */}
-            <AnimatePresence>
-              {hasStagedRoll && (
-                <motion.div
-                  initial={{ opacity: 0, scale: 0.8 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  exit={{ opacity: 0, scale: 0.8 }}
-                  className="flex flex-col items-center gap-0.5 mt-0.5 w-full"
-                >
-                  <button
-                    onClick={handleExecutePoolRoll}
-                    className="w-full py-1 px-2 rounded-full bg-accent text-zinc-950 font-bold text-[10px] hover:bg-accent/90 transition-all shadow-md active:scale-95 flex items-center justify-center gap-1"
-                    title="Roll staged dice"
-                  >
-                    <Icons.Dice size={12} />
-                    <span>Roll</span>
-                  </button>
-                  <button
-                    onClick={handleClear}
-                    className="text-[8px] text-zinc-500 hover:text-zinc-300 py-0.5 transition-colors"
-                  >
-                    Clear
-                  </button>
-                </motion.div>
+              {/* Real-time Indicator Badges */}
+              {parsedCustom && (
+                <div className="flex items-center justify-between text-[10px] pt-0.5">
+                  {parsedCustom.hasDuality ? (
+                    <span className="text-amber-400 font-medium">✨ Duality (Hope+Fear)</span>
+                  ) : (
+                    <span className="text-zinc-400 font-mono">{parsedCustom.normalizedFormula}</span>
+                  )}
+
+                  {parsedCustom.is3DSupported ? (
+                    <span className="text-emerald-400 font-medium">🎲 3D Physics</span>
+                  ) : (
+                    <span className="text-purple-400 font-medium">🔢 Math Roll</span>
+                  )}
+                </div>
               )}
-            </AnimatePresence>
+            </div>
+
+            {/* Example Formula Quick Chips */}
+            <div className="space-y-1">
+              <span className="text-[9px] uppercase tracking-wider font-semibold text-zinc-500">Examples:</span>
+              <div className="flex flex-wrap gap-1">
+                {['D + d6 - 2', '2d12+d4+6', 'd3 + d7', '1d20+5'].map((example) => (
+                  <button
+                    key={example}
+                    type="button"
+                    onClick={() => setCustomDxFormula(example)}
+                    className="px-1.5 py-0.5 rounded bg-zinc-900 hover:bg-zinc-800 text-zinc-300 hover:text-white border border-zinc-800 text-[10px] font-mono transition-colors active:scale-95"
+                  >
+                    {example}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-[9px] text-zinc-500 leading-tight">
+              💡 <strong>'D'</strong> = Duality (Hope + Fear). Supports any dice (d2, d3, d7, etc.).
+            </div>
+
+            {/* Roll Button */}
+            <button
+              type="button"
+              onClick={handleRollCustomDx}
+              disabled={!customDxFormula.trim()}
+              className={clsx(
+                "w-full py-1.5 rounded-xl font-bold text-xs transition-all shadow-md flex items-center justify-center gap-1.5",
+                customDxFormula.trim()
+                  ? "bg-accent hover:bg-accent/90 text-zinc-950 shadow-accent/20 active:scale-95 cursor-pointer"
+                  : "bg-zinc-800 text-zinc-500 cursor-not-allowed"
+              )}
+            >
+              <Icons.Dice size={14} />
+              <span>Roll Formula</span>
+            </button>
           </motion.div>
         )}
       </AnimatePresence>

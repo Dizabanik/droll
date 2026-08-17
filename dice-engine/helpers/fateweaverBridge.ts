@@ -1,5 +1,5 @@
 import { DicePreset, RollStep, StepResult, CharacterStats, DamageType, DiceCustomization, DEFAULT_DICE_CUSTOMIZATION } from '../../types';
-import { generateId, parseFormulaAdvanced, parseFormula, checkCondition, getStatModifierValue, getStatLabel, resolveStepResult, createSkippedResult } from '../../utils/engine';
+import { generateId, parseFormulaAdvanced, parseFormula, checkCondition, getStatModifierValue, getStatLabel, resolveStepResult, createSkippedResult, SUPPORTED_3D_DICE_SIDES } from '../../utils/engine';
 import { DiceRoll } from '../types/DiceRoll';
 import { Die } from '../types/Die';
 import { DiceType } from '../types/DiceType';
@@ -21,6 +21,7 @@ export interface PreparedRoll {
   diceRoll: DiceRoll;
   associations: DieStepAssociation[];
   stepConfigs: Record<string, { baseModifier: number; statModifier: number; displayFormula: string }>;
+  is3DSupported: boolean;
 }
 
 export const mapSidesToDiceType = (sides: number): DiceType => {
@@ -122,15 +123,24 @@ export const prepare3DRoll = (
     };
   }
 
+  let is3DSupported = true;
+  for (const assoc of associations) {
+    if (!SUPPORTED_3D_DICE_SIDES.includes(assoc.sides)) {
+      is3DSupported = false;
+      break;
+    }
+  }
+
   const diceRoll: DiceRoll = {
-    dice: diceList,
+    dice: is3DSupported ? diceList : [],
     combination: 'SUM'
   };
 
   return {
     diceRoll,
     associations,
-    stepConfigs
+    stepConfigs,
+    is3DSupported
   };
 };
 
@@ -149,69 +159,103 @@ export const execute3DFateRoll = async (
   customization?: Partial<DiceCustomization> | DiceStyle
 ): Promise<RollExecutionResult> => {
   const prepared = prepare3DRoll(preset, characterStats, customization);
+  let rollValues: Record<string, number> = {};
 
-  // 1. Start 3D Rapier Physics Roll in store first to generate physics throws
-  useDiceRollStore.getState().startRoll(prepared.diceRoll);
-  const initialThrows = useDiceRollStore.getState().rollThrows;
+  if (prepared.is3DSupported && prepared.diceRoll.dice.length > 0) {
+    // 1. Start 3D Rapier Physics Roll in store first to generate physics throws
+    useDiceRollStore.getState().startRoll(prepared.diceRoll);
+    const initialThrows = useDiceRollStore.getState().rollThrows;
 
-  // 2. Broadcast roll start with exact physical throws for identical simulation
-  OBRBroadcast.send({
-    type: 'ROLL_START',
-    playerId: playerInfo.id,
-    playerName: playerInfo.name,
-    playerColor: playerInfo.color,
-    presetName: preset.name,
-    itemName,
-    diceRoll: prepared.diceRoll,
-    rollThrows: initialThrows,
-    diceConfig: prepared.associations.map(a => ({
-      id: a.dieId,
-      sides: a.sides,
-      type: a.type
-    })),
-    steps: preset.steps.map(s => ({
-      id: s.id,
-      label: s.label,
-      type: s.type,
-      formula: s.formula,
-      damageType: s.damageType,
-      isCrit: s.isCrit
-    })),
-    variables
-  });
-
-  // Wait for all dice to settle
-  const rollValues = await new Promise<Record<string, number>>((resolve) => {
-    const unsubscribe = useDiceRollStore.subscribe((state) => {
-      if (!state.roll) return;
-      const values = state.rollValues;
-      const ids = prepared.associations.map(a => a.dieId);
-      const allFinished = ids.length > 0 && ids.every(id => values[id] !== null && values[id] !== undefined);
-
-      if (allFinished) {
-        unsubscribe();
-        const resolvedMap: Record<string, number> = {};
-        ids.forEach(id => {
-          resolvedMap[id] = values[id]!;
-        });
-        resolve(resolvedMap);
-      }
+    // 2. Broadcast roll start with exact physical throws for identical simulation
+    OBRBroadcast.send({
+      type: 'ROLL_START',
+      playerId: playerInfo.id,
+      playerName: playerInfo.name,
+      playerColor: playerInfo.color,
+      presetName: preset.name,
+      itemName,
+      diceRoll: prepared.diceRoll,
+      rollThrows: initialThrows,
+      diceConfig: prepared.associations.map(a => ({
+        id: a.dieId,
+        sides: a.sides,
+        type: a.type
+      })),
+      steps: preset.steps.map(s => ({
+        id: s.id,
+        label: s.label,
+        type: s.type,
+        formula: s.formula,
+        damageType: s.damageType,
+        isCrit: s.isCrit
+      })),
+      variables
     });
 
-    // Safety timeout in case a die gets stuck
-    setTimeout(() => {
-      const state = useDiceRollStore.getState();
-      const values = state.rollValues;
-      const ids = prepared.associations.map(a => a.dieId);
-      const fallbackMap: Record<string, number> = {};
-      ids.forEach(id => {
-        fallbackMap[id] = values[id] !== null && values[id] !== undefined
-          ? values[id]!
-          : Math.ceil(Math.random() * (prepared.associations.find(a => a.dieId === id)?.sides || 20));
+    // Wait for all dice to settle
+    rollValues = await new Promise<Record<string, number>>((resolve) => {
+      const unsubscribe = useDiceRollStore.subscribe((state) => {
+        if (!state.roll) return;
+        const values = state.rollValues;
+        const ids = prepared.associations.map(a => a.dieId);
+        const allFinished = ids.length > 0 && ids.every(id => values[id] !== null && values[id] !== undefined);
+
+        if (allFinished) {
+          unsubscribe();
+          const resolvedMap: Record<string, number> = {};
+          ids.forEach(id => {
+            resolvedMap[id] = values[id]!;
+          });
+          resolve(resolvedMap);
+        }
       });
-      resolve(fallbackMap);
-    }, 6000);
-  });
+
+      // Safety timeout in case a die gets stuck
+      setTimeout(() => {
+        const state = useDiceRollStore.getState();
+        const values = state.rollValues;
+        const ids = prepared.associations.map(a => a.dieId);
+        const fallbackMap: Record<string, number> = {};
+        ids.forEach(id => {
+          fallbackMap[id] = values[id] !== null && values[id] !== undefined
+            ? values[id]!
+            : Math.ceil(Math.random() * (prepared.associations.find(a => a.dieId === id)?.sides || 20));
+        });
+        resolve(fallbackMap);
+      }, 6000);
+    });
+  } else {
+    // Unsupported 3D dice (e.g. d3, d2, d7) or purely flat formula: Mathematically evaluate directly
+    for (const a of prepared.associations) {
+      rollValues[a.dieId] = Math.floor(Math.random() * Math.max(1, a.sides)) + 1;
+    }
+
+    // Broadcast roll start so all players are notified
+    OBRBroadcast.send({
+      type: 'ROLL_START',
+      playerId: playerInfo.id,
+      playerName: playerInfo.name,
+      playerColor: playerInfo.color,
+      presetName: preset.name,
+      itemName,
+      diceRoll: { dice: [], combination: 'SUM' },
+      rollThrows: {},
+      diceConfig: prepared.associations.map(a => ({
+        id: a.dieId,
+        sides: a.sides,
+        type: a.type
+      })),
+      steps: preset.steps.map(s => ({
+        id: s.id,
+        label: s.label,
+        type: s.type,
+        formula: s.formula,
+        damageType: s.damageType,
+        isCrit: s.isCrit
+      })),
+      variables
+    });
+  }
 
   // Evaluate step results
   const calculatedResults: StepResult[] = [];

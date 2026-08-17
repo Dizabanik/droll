@@ -1,16 +1,12 @@
 import React from 'react';
 import { QuickDiceToolbar } from './QuickDiceToolbar';
 import { DicePreset } from '../types';
-import { OBRBroadcast } from '../obr/broadcast';
+import { sendLocalQuickRoll } from '../obr/localEvents';
 import OBR from '@owlbear-rodeo/sdk';
 
 export const LeftToolbarPopover: React.FC = () => {
   const handleRoll = (preset: DicePreset, itemName: string) => {
-    OBRBroadcast.send({
-      type: 'QUICK_ROLL_EXECUTE',
-      preset,
-      itemName,
-    });
+    sendLocalQuickRoll(preset, itemName);
   };
 
   const handleFoldChange = async (folded: boolean) => {

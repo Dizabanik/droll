@@ -63,13 +63,7 @@ export interface FearUpdateMessage {
     showEffect: boolean;  // Whether to show the fullscreen skull effect
 }
 
-export interface QuickRollExecuteMessage {
-    type: 'QUICK_ROLL_EXECUTE';
-    preset: DicePreset;
-    itemName: string;
-}
-
-export type DiceRollMessage = DiceRollStartMessage | DiceValuesMessage | RollCompleteMessage | StatRollRequestMessage | FearUpdateMessage | QuickRollExecuteMessage;
+export type DiceRollMessage = DiceRollStartMessage | DiceValuesMessage | RollCompleteMessage | StatRollRequestMessage | FearUpdateMessage;
 
 type MessageCallback = (message: DiceRollMessage, senderId: string) => void;
 

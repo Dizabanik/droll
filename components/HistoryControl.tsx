@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import clsx from 'clsx';
@@ -15,6 +14,7 @@ import { QuickDiceToolbar } from './QuickDiceToolbar';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
+import { onLocalQuickRoll } from '../obr/localEvents';
 
 // Popover Dimensions
 const BTN_SIZE = 60;
@@ -166,13 +166,23 @@ export const HistoryControl: React.FC = () => {
         resizePopover(false, false);
     }, []);
 
-    // Listen for Rolls
+    // Listen for local quick rolls from this client's left toolbar iframe
+    useEffect(() => {
+        const cleanup = onLocalQuickRoll((preset, itemName) => {
+            setActiveRollPreset(preset);
+            setActiveRollItemName(itemName);
+            setActiveRollVars({});
+        });
+        return cleanup;
+    }, []);
+
+    // Listen for remote rolls across the room
     useEffect(() => {
         const unsubscribe = OBRBroadcast.onMessage((message: DiceRollMessage, senderId: string) => {
             if (message.type === 'ROLL_COMPLETE') {
                 const msg = message as RollCompleteMessage;
 
-                // 1. Update History
+                // 1. Update History for all room rolls
                 const newEntry: HistoryEntry = {
                     id: `${msg.playerId}-${Date.now()}`,
                     timestamp: Date.now(),
@@ -190,10 +200,6 @@ export const HistoryControl: React.FC = () => {
                 if (!isHistoryOpen && msg.playerId !== playerId) {
                     setActiveResult(msg);
                 }
-            } else if (message.type === 'QUICK_ROLL_EXECUTE') {
-                setActiveRollPreset(message.preset);
-                setActiveRollItemName(message.itemName);
-                setActiveRollVars({});
             }
         });
         return () => {

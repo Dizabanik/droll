@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { LucideIcon } from 'lucide-react';
 import { DiceStyle } from '../dice-engine/types/DiceStyle';
 import { standardPreviews } from '../dice-engine/sets/diceSets';
 import { DiceCustomization, DEFAULT_DICE_CUSTOMIZATION } from '../types';
@@ -21,14 +22,16 @@ export const PRESET_THEMES: {
   id: string;
   name: string;
   desc: string;
-  icon: string;
+  IconComponent: LucideIcon;
+  iconColor: string;
   config: Partial<DiceCustomization>;
 }[] = [
   {
     id: 'classic',
     name: 'Classic Daggerheart',
     desc: 'Golden Sunrise Hope, Cosmic Galaxy Fear, Gemstone polyhedrals',
-    icon: '🌟',
+    IconComponent: Icons.Magic,
+    iconColor: 'text-amber-400',
     config: {
       standardStyle: 'GEMSTONE',
       hopeStyle: 'SUNRISE',
@@ -40,7 +43,8 @@ export const PRESET_THEMES: {
     id: 'blood_steel',
     name: 'Blood & Steel',
     desc: 'Radiant Sunrise Hope, Forged Iron Fear, Battle Iron polyhedrals',
-    icon: '⚔️',
+    IconComponent: Icons.Attack,
+    iconColor: 'text-rose-400',
     config: {
       standardStyle: 'IRON',
       hopeStyle: 'SUNRISE',
@@ -52,7 +56,8 @@ export const PRESET_THEMES: {
     id: 'ancient_grove',
     name: 'Ancient Grove',
     desc: 'Emerald Gemstone Hope, Dark Walnut Fear, Carved Walnut polyhedrals',
-    icon: '🌲',
+    IconComponent: Icons.Defense,
+    iconColor: 'text-emerald-400',
     config: {
       standardStyle: 'WALNUT',
       hopeStyle: 'GEMSTONE',
@@ -64,7 +69,8 @@ export const PRESET_THEMES: {
     id: 'astral_void',
     name: 'Astral Void',
     desc: 'Nebula Hope, Deep Galaxy Fear, Translucent Glass polyhedrals',
-    icon: '🔮',
+    IconComponent: Icons.Psychic,
+    iconColor: 'text-purple-400',
     config: {
       standardStyle: 'GLASS',
       hopeStyle: 'NEBULA',
@@ -76,7 +82,8 @@ export const PRESET_THEMES: {
     id: 'solar_eclipse',
     name: 'Solar Eclipse',
     desc: 'Blazing Sunrise Hope, Amber Sunset Fear, Frosted Glass polyhedrals',
-    icon: '🌅',
+    IconComponent: Icons.Radiant,
+    iconColor: 'text-yellow-400',
     config: {
       standardStyle: 'GLASS',
       hopeStyle: 'SUNRISE',
@@ -186,20 +193,25 @@ export const DiceStylePicker: React.FC<DiceStylePickerProps> = ({
       <div className="space-y-2">
         <label className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Preset Themes</label>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2">
-          {PRESET_THEMES.map((theme) => (
-            <button
-              key={theme.id}
-              type="button"
-              onClick={() => updateConfig(theme.config)}
-              className="flex items-center gap-2 p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:border-accent hover:bg-zinc-800/80 transition-all text-left group shadow-sm active:scale-95"
-            >
-              <span className="text-xl">{theme.icon}</span>
-              <div className="overflow-hidden">
-                <div className="text-xs font-bold text-zinc-200 group-hover:text-white truncate">{theme.name}</div>
-                <div className="text-[10px] text-zinc-500 truncate">{theme.desc}</div>
-              </div>
-            </button>
-          ))}
+          {PRESET_THEMES.map((theme) => {
+            const IconComp = theme.IconComponent;
+            return (
+              <button
+                key={theme.id}
+                type="button"
+                onClick={() => updateConfig(theme.config)}
+                className="flex items-center gap-2 p-2 rounded-xl bg-zinc-900/80 border border-zinc-800 hover:border-accent hover:bg-zinc-800/80 transition-all text-left group shadow-sm active:scale-95"
+              >
+                <div className="w-7 h-7 rounded-lg bg-zinc-950 flex items-center justify-center border border-zinc-800/80 shrink-0">
+                  <IconComp size={15} className={theme.iconColor} />
+                </div>
+                <div className="overflow-hidden">
+                  <div className="text-xs font-bold text-zinc-200 group-hover:text-white truncate">{theme.name}</div>
+                  <div className="text-[10px] text-zinc-500 truncate">{theme.desc}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

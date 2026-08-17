@@ -169,7 +169,7 @@ const App: React.FC = () => {
 
     const loadData = async () => {
       try {
-        console.log("Loading FateWeaver data...");
+        console.log("Loading Die data...");
         const [savedItems, savedStats] = await Promise.all([
           OBRStorage.getItems(),
           OBRStorage.getStats(),
@@ -419,7 +419,7 @@ const App: React.FC = () => {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `fateweaver-${playerName || 'export'}-${new Date().toISOString().split('T')[0]}.json`;
+    a.download = `die-${playerName || 'export'}-${new Date().toISOString().split('T')[0]}.json`;
     a.click();
     URL.revokeObjectURL(url);
   };
@@ -506,7 +506,7 @@ const App: React.FC = () => {
           <div className="flex items-center justify-between">
             <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
               <Icons.Dice className="text-accent" />
-              FateWeaver
+              Die
             </h1>
             <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/50">
               {APP_VERSION}

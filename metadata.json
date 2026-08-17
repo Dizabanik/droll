@@ -1,5 +1,5 @@
 {
-  "name": "FateWeaver",
-  "description": "A visually stunning, advanced dice rolling engine for D&D and Daggerheart with conditional chaining.",
+  "name": "Die",
+  "description": "Die - A visually stunning 3D dice rolling engine for D&D and Daggerheart with character sheet integration.",
   "requestFramePermissions": []
 }

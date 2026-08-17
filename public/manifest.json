@@ -1,12 +1,12 @@
 {
     "manifest_version": 1,
-    "name": "FateWeaver Dice Roller",
-    "version": "1.0.0",
-    "author": "FateWeaver",
-    "description": "A beautiful 3D dice roller with chain presets and character integration",
+    "name": "Die",
+    "version": "1.12.0",
+    "author": "Die",
+    "description": "Die - 3D Rapier Physics Dice Roller & Character Sheets for Owlbear Rodeo",
     "icon": "https://dizabanik.github.io/droll/dice-icon.svg",
     "action": {
-        "title": "FateWeaver",
+        "title": "Die",
         "icon": "https://dizabanik.github.io/droll/dice-icon.svg",
         "popover": "https://dizabanik.github.io/droll/index.html",
         "width": 800,

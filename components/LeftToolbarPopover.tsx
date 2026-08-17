@@ -12,7 +12,7 @@ export const LeftToolbarPopover: React.FC = () => {
   const handleFoldChange = async (folded: boolean) => {
     try {
       if (OBR.isAvailable) {
-        await OBR.popover.setHeight('com.fateweaver.dice.left_toolbar', folded ? 44 : 520);
+        await OBR.popover.setHeight('com.fateweaver.dice.left_toolbar', folded ? 44 : 550);
       }
     } catch (e) {
       console.error('Failed to resize left toolbar popover:', e);
@@ -22,7 +22,7 @@ export const LeftToolbarPopover: React.FC = () => {
   const handleCustomDxOpenChange = async (open: boolean) => {
     try {
       if (OBR.isAvailable) {
-        await OBR.popover.setWidth('com.fateweaver.dice.left_toolbar', open ? 300 : 68);
+        await OBR.popover.setWidth('com.fateweaver.dice.left_toolbar', open ? 310 : 80);
       }
     } catch (e) {
       console.error('Failed to resize left toolbar width:', e);
@@ -30,7 +30,7 @@ export const LeftToolbarPopover: React.FC = () => {
   };
 
   return (
-    <div className="w-full h-full flex flex-col items-start justify-start p-1 bg-transparent overflow-hidden">
+    <div className="w-full h-full flex flex-col items-center justify-start p-1.5 bg-transparent overflow-visible">
       <QuickDiceToolbar
         onRollPreset={handleRoll}
         onFoldChange={handleFoldChange}

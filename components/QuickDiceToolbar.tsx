@@ -220,12 +220,12 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({
   return (
     <div
       className={clsx(
-        "flex items-start select-none bg-transparent pointer-events-auto gap-2",
+        "flex items-start select-none bg-transparent pointer-events-auto gap-2 overflow-visible",
         className
       )}
     >
       {/* Vertical Dice Selector Column */}
-      <div className="flex flex-col items-center">
+      <div className="flex flex-col items-center justify-start w-12 px-1 overflow-visible">
         {/* 1. Fold / Unfold Toggle Button at Absolute Top */}
         <button
           onClick={toggleFold}
@@ -252,7 +252,7 @@ export const QuickDiceToolbar: React.FC<QuickDiceToolbarProps> = ({
               animate={{ opacity: 1, scale: 1, height: 'auto' }}
               exit={{ opacity: 0, scale: 0.85, height: 0 }}
               transition={{ duration: 0.2, ease: 'easeOut' }}
-              className="flex flex-col items-center gap-1 overflow-hidden"
+              className="flex flex-col items-center gap-1 overflow-visible w-full"
             >
               {/* Duality Die Button (Clean minimal icon) */}
               <button

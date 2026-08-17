@@ -239,8 +239,8 @@ const App: React.FC = () => {
         OBR.popover.open({
           id: 'com.fateweaver.dice.left_toolbar',
           url: window.location.pathname + '?toolbar=true',
-          width: 68,
-          height: 520,
+          width: 80,
+          height: 550,
           anchorOrigin: { horizontal: 'LEFT', vertical: 'CENTER' },
           transformOrigin: { horizontal: 'LEFT', vertical: 'CENTER' },
           disableClickAway: true,

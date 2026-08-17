@@ -74,6 +74,13 @@ export const HistoryControl: React.FC = () => {
     const [activeRollItemName, setActiveRollItemName] = useState<string>('');
     const [rollKey, setRollKey] = useState<number>(0);
     const [characterSheetMode, setCharacterSheetMode] = useState<'sheet' | 'miro'>('sheet');
+    const [hasEverLoadedMiro, setHasEverLoadedMiro] = useState<boolean>(false);
+
+    useEffect(() => {
+        if (characterSheetMode === 'miro') {
+            setHasEverLoadedMiro(true);
+        }
+    }, [characterSheetMode]);
 
     // Character Stats for Stat Modifiers
     const [stats, setStats] = useState<CharacterStats>({
@@ -404,10 +411,21 @@ export const HistoryControl: React.FC = () => {
                         </div>
                     </div>
 
-                    {/* Miro Embed & Character Panel kept persistently mounted so Miro iframe never resets */}
-                    <div className={clsx("flex-1 w-full h-full flex flex-col overflow-hidden", characterSheetMode === 'miro' ? "flex" : "hidden")}>
-                        <MiroBoardEmbed onRollStat={handleStatRoll} />
-                    </div>
+                    {/* Miro Embed & Character Panel kept persistently mounted with zero background GPU overhead */}
+                    {hasEverLoadedMiro && (
+                        <div
+                            className={clsx("flex-1 w-full h-full flex flex-col overflow-hidden", characterSheetMode === 'miro' ? "flex" : "hidden")}
+                            style={{
+                                contentVisibility: (isHistoryOpen && characterSheetMode === 'miro') ? 'visible' : 'hidden',
+                                containIntrinsicSize: '100vw 100vh',
+                            }}
+                        >
+                            <MiroBoardEmbed
+                                onRollStat={handleStatRoll}
+                                isActive={isHistoryOpen && characterSheetMode === 'miro'}
+                            />
+                        </div>
+                    )}
 
                     <div className={clsx("flex-1 w-full h-full flex flex-col overflow-hidden", characterSheetMode === 'sheet' ? "flex" : "hidden")}>
                         <CharacterPanel

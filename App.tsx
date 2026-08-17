@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Item, DicePreset, StepResult, CharacterStats } from './types';
+import { Item, DicePreset, StepResult, CharacterStats, APP_VERSION } from './types';
 import { generateId, getStatLabel } from './utils/engine';
 import { DiceChainEditor } from './components/DiceChainEditor';
 import { Roller } from './components/Roller';
@@ -469,10 +469,15 @@ const App: React.FC = () => {
       {/* Sidebar */}
       <div className="w-64 border-r border-border flex flex-col bg-zinc-950/50">
         <div className="p-4 border-b border-border">
-          <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
-            <Icons.Dice className="text-accent" />
-            FateWeaver
-          </h1>
+          <div className="flex items-center justify-between">
+            <h1 className="text-xl font-bold tracking-tight text-white flex items-center gap-2">
+              <Icons.Dice className="text-accent" />
+              FateWeaver
+            </h1>
+            <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-zinc-800 text-zinc-400 border border-zinc-700/50">
+              {APP_VERSION}
+            </span>
+          </div>
           {isOBR && playerName && (
             <p className="text-xs text-zinc-500 mt-1">{playerName}</p>
           )}

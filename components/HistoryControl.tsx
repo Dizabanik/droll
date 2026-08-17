@@ -9,6 +9,7 @@ import { DaggerheartStats } from './DaggerheartStats';
 import { CharacterPanel } from './CharacterPanel';
 import { FearTracker } from './FearTracker';
 // import { CountdownTracker } from './CountdownTracker';
+import { APP_VERSION } from '../types';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
@@ -288,10 +289,15 @@ export const HistoryControl: React.FC = () => {
                         className="relative z-10 flex-1 bg-zinc-950 border-l border-zinc-800 shadow-2xl flex flex-col"
                     >
                         <div className="flex items-center justify-between p-4 border-b border-zinc-800 bg-zinc-950">
-                            <h2 className="text-white font-bold flex items-center gap-2">
-                                <Icons.Menu size={20} className="text-accent" />
-                                Roll History
-                            </h2>
+                            <div className="flex items-center gap-2">
+                                <h2 className="text-white font-bold flex items-center gap-2">
+                                    <Icons.Menu size={20} className="text-accent" />
+                                    Roll History
+                                </h2>
+                                <span className="text-[10px] font-mono font-medium px-1.5 py-0.5 rounded bg-zinc-900 text-zinc-400 border border-zinc-800">
+                                    {APP_VERSION}
+                                </span>
+                            </div>
                             <button
                                 onClick={closeHistory}
                                 className="p-2 hover:bg-zinc-900 rounded-full text-zinc-400 hover:text-white transition-colors"

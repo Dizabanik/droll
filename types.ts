@@ -1,4 +1,6 @@
 
+export const APP_VERSION = "v1.1.0-3d";
+
 export type DamageType =
   | 'slashing' | 'piercing' | 'bludgeoning'
   | 'fire' | 'cold' | 'lightning' | 'thunder' | 'acid' | 'poison'

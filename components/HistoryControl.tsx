@@ -9,7 +9,8 @@ import { DaggerheartStats } from './DaggerheartStats';
 import { CharacterPanel } from './CharacterPanel';
 import { FearTracker } from './FearTracker';
 // import { CountdownTracker } from './CountdownTracker';
-import { APP_VERSION } from '../types';
+import { APP_VERSION, DicePreset, CharacterStats } from '../types';
+import { Roller } from './Roller';
 import OBR from "@owlbear-rodeo/sdk";
 import { OBRBroadcast, DiceRollMessage, RollCompleteMessage, OBRStorage, RollHistoryEntry, DaggerheartVitals, DaggerheartStatuses, TokenAttachments } from '../obr';
 import { useOBR } from '../obr';
@@ -77,11 +78,41 @@ export const HistoryControl: React.FC = () => {
         syncTokenOnLoad();
     }, []);
 
-    // Handle stat roll from Character Panel - trigger roll via broadcast (cross-iframe)
+    const [activeRollPreset, setActiveRollPreset] = useState<DicePreset | null>(null);
+    const [activeRollVars, setActiveRollVars] = useState<Record<string, number>>({});
+    const [activeRollItemName, setActiveRollItemName] = useState<string>('');
+    const [stats, setStats] = useState<CharacterStats>({
+        activeSystem: 'daggerheart',
+        dndAttributes: {},
+        dndSkills: {},
+        daggerheartStats: {},
+        customStats: []
+    });
+
+    // Handle stat roll from Character Panel - trigger roll directly with 3D physics & broadcast
     const handleStatRoll = useCallback((statKey: string, statValue: number) => {
         const statLabel = statKey.charAt(0).toUpperCase() + statKey.slice(1);
 
-        // Send via OBR broadcast so it reaches App.tsx in the main window
+        const statRollPreset: DicePreset = {
+            id: `stat-roll-${statKey}`,
+            name: `${statLabel} Check`,
+            variables: [],
+            steps: [{
+                id: 'dh_stat_roll',
+                label: `${statLabel} Check`,
+                type: 'daggerheart',
+                formula: `2d12+${statValue}`,
+                damageType: 'none',
+                addToSum: true,
+                isCrit: true,
+            }]
+        };
+
+        setActiveRollItemName(`${statLabel} Check`);
+        setActiveRollVars({});
+        setActiveRollPreset(statRollPreset);
+
+        // Also broadcast so any other open windows/overlays know about the roll
         OBRBroadcast.send({
             type: 'STAT_ROLL_REQUEST',
             statKey,
@@ -169,15 +200,15 @@ export const HistoryControl: React.FC = () => {
 
     // Resize Window Effect
     useEffect(() => {
-        resizePopover(isHistoryOpen, !!activeResult);
-    }, [isHistoryOpen, activeResult]);
+        resizePopover(isHistoryOpen, !!activeResult, !!activeRollPreset);
+    }, [isHistoryOpen, activeResult, activeRollPreset]);
 
-    const resizePopover = async (historyOpen: boolean, hasPopup: boolean) => {
+    const resizePopover = async (historyOpen: boolean, hasPopup: boolean, isRolling: boolean = false) => {
         let width = BTN_SIZE;
         let height = BTN_SIZE;
 
-        if (historyOpen) {
-            // FULLSCREEN mode - use OBR viewport dimensions
+        if (historyOpen || isRolling) {
+            // FULLSCREEN mode - use OBR viewport dimensions so 3D dice and menu can render seamlessly
             try {
                 width = await OBR.viewport.getWidth();
                 height = await OBR.viewport.getHeight();
@@ -433,6 +464,21 @@ export const HistoryControl: React.FC = () => {
                     >
                         <Icons.Menu size={24} />
                     </button>
+                </div>
+            )}
+
+            {/* 3D Physics Roller Overlay */}
+            {activeRollPreset && (
+                <div className="fixed inset-0 z-[100] flex items-center justify-center pointer-events-auto">
+                    <Roller
+                        preset={activeRollPreset}
+                        variables={activeRollVars}
+                        characterStats={stats}
+                        itemName={activeRollItemName}
+                        onClose={() => setActiveRollPreset(null)}
+                        hideCanvas={false}
+                        showResultsUI={true}
+                    />
                 </div>
             )}
         </div>

@@ -72,9 +72,16 @@ export const getToken = async (tokenId: string): Promise<Image | null> => {
     }
 };
 
-export const getTokenTrackerData = (item: Item): TokenTrackerData | null => {
-    if (!item.metadata || !item.metadata[TRACKER_METADATA_ID]) return null;
-    return item.metadata[TRACKER_METADATA_ID] as TokenTrackerData;
+export const getTokenTrackerData = (token: Item): TokenTrackerData | null => {
+    try {
+        const metadata = token.metadata[TRACKER_METADATA_ID];
+        if (metadata && typeof metadata === 'object') {
+            return metadata as TokenTrackerData;
+        }
+        return null;
+    } catch {
+        return null;
+    }
 };
 
 export const setTokenTrackerData = async (tokenId: string, data: Partial<TokenTrackerData>): Promise<void> => {
@@ -87,7 +94,7 @@ export const setTokenTrackerData = async (tokenId: string, data: Partial<TokenTr
                     stress: 0,
                     armor: 0,
                     hope: 0,
-                    showHp: true,
+                    showHp: false,
                     hideStats: false,
                     statuses: {
                         vulnerable: false,
@@ -116,7 +123,7 @@ export const setTokenTrackerData = async (tokenId: string, data: Partial<TokenTr
         if (token) {
             const tracker = getTokenTrackerData(token);
             if (tracker) {
-                await updateTokenAttachments(tokenId, tracker, tracker.statuses, tracker.showHp ?? true);
+                await updateTokenAttachments(tokenId, tracker, tracker.statuses, tracker.showHp ?? false);
             }
         }
     } catch (e) {
@@ -141,7 +148,7 @@ export const createTokenAttachments = async (
     tokenId: string,
     vitals: DaggerheartVitals | TokenTrackerData,
     statuses?: DaggerheartStatuses,
-    showHp: boolean = true
+    showHp: boolean = false
 ): Promise<void> => {
     const token = await getToken(tokenId);
     const bounds = await getTokenBounds(tokenId);
@@ -545,7 +552,7 @@ export const updateTokenAttachments = async (
     tokenId: string,
     vitals: DaggerheartVitals | TokenTrackerData,
     statuses?: DaggerheartStatuses,
-    showHp: boolean = true
+    showHp: boolean = false
 ): Promise<void> => {
     try {
         const attachments = await OBR.scene.items.getItemAttachments([tokenId]);
@@ -601,7 +608,7 @@ export const syncAllSceneTokenAttachments = async (): Promise<void> => {
                     item.id,
                     trackerData,
                     trackerData.statuses,
-                    trackerData.showHp ?? true
+                    trackerData.showHp ?? false
                 );
             } else if (item.id === playerSelectedTokenId && playerVitals) {
                 await updateTokenAttachments(

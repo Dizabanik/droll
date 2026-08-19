@@ -224,7 +224,7 @@ export const TokenQuickEditor: React.FC = () => {
         stress: 0,
         armor: 0,
         hope: 0,
-        showHp: true,
+        showHp: false,
         hideStats: false,
         statuses: DEFAULT_STATUSES,
     });
@@ -243,7 +243,7 @@ export const TokenQuickEditor: React.FC = () => {
                 stress: existing.stress ?? 0,
                 armor: existing.armor ?? 0,
                 hope: existing.hope ?? 0,
-                showHp: existing.showHp ?? true,
+                showHp: existing.showHp ?? false,
                 hideStats: existing.hideStats ?? false,
                 statuses: existing.statuses || DEFAULT_STATUSES,
             });
@@ -254,7 +254,7 @@ export const TokenQuickEditor: React.FC = () => {
                 stress: 0,
                 armor: 0,
                 hope: 0,
-                showHp: true,
+                showHp: false,
                 hideStats: false,
                 statuses: DEFAULT_STATUSES,
             });
@@ -339,7 +339,7 @@ export const TokenQuickEditor: React.FC = () => {
                                 stress: existing.stress ?? 0,
                                 armor: existing.armor ?? 0,
                                 hope: existing.hope ?? 0,
-                                showHp: existing.showHp ?? true,
+                                showHp: existing.showHp ?? false,
                                 hideStats: existing.hideStats ?? false,
                                 statuses: existing.statuses || DEFAULT_STATUSES,
                             });
@@ -431,7 +431,7 @@ export const TokenQuickEditor: React.FC = () => {
                 stress: 0,
                 armor: 0,
                 hope: 0,
-                showHp: true,
+                showHp: false,
                 hideStats: false,
                 statuses: DEFAULT_STATUSES,
             });

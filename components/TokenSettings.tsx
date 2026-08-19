@@ -279,13 +279,13 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
                                                 </div>
                                                 <div className="text-[10px] font-mono text-muted flex items-center gap-2 mt-0.5">
                                                     {tracker ? (
-                                                        tracker.showHp ?? true ? (
+                                                        tracker.showHp ?? false ? (
                                                             <span className="text-emerald-400 font-bold">
                                                                 HP: {tracker.hp}/{tracker.hpMax}
                                                             </span>
                                                         ) : (
                                                             <span className="text-rose-400 font-bold">
-                                                                💥 {damageDealt} Dealt
+                                                                {damageDealt} Dealt
                                                             </span>
                                                         )
                                                     ) : (
@@ -392,7 +392,7 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
                                                 <p className="text-[10px] text-muted font-mono mt-0.5">
                                                     {currentTracker.showHp
                                                         ? "Players see full HP bar (e.g. 24/30)"
-                                                        : "Stealth: Players see only damage dealt (e.g. 💥 6 Dealt)"}
+                                                        : "Stealth: Players see only damage dealt (e.g. 6 Dealt)"}
                                                 </p>
                                             </div>
                                             <button

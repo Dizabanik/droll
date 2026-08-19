@@ -154,12 +154,24 @@ export const TokenQuickEditor: React.FC = () => {
         }
     };
 
+const DEFAULT_STATUSES: DaggerheartStatuses = {
+    vulnerable: false,
+    blinded: false,
+    frightened: false,
+    hidden: false,
+    restrained: false,
+    slowed: false,
+    weakened: false,
+    empowered: false,
+};
+
     const handleToggleStatus = async (statusKey: keyof DaggerheartStatuses) => {
-        const updatedStatuses = {
-            ...(tracker.statuses || {}),
-            [statusKey]: !tracker.statuses?.[statusKey],
+        const baseStatuses: DaggerheartStatuses = tracker.statuses || DEFAULT_STATUSES;
+        const updatedStatuses: DaggerheartStatuses = {
+            ...baseStatuses,
+            [statusKey]: !baseStatuses[statusKey],
         };
-        const updated = {
+        const updated: TokenTrackerData = {
             ...tracker,
             statuses: updatedStatuses,
         };

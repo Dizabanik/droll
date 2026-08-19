@@ -36,8 +36,19 @@ const STATUS_OPTIONS: { key: keyof DaggerheartStatuses; label: string; abbr: str
     { key: 'empowered', label: 'Empowered', abbr: 'EMP', color: 'text-emerald-400', bg: 'bg-emerald-950/60 border-emerald-800/80' },
 ];
 
+const DEFAULT_STATUSES: DaggerheartStatuses = {
+    vulnerable: false,
+    blinded: false,
+    frightened: false,
+    hidden: false,
+    restrained: false,
+    slowed: false,
+    weakened: false,
+    empowered: false,
+};
+
 export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
-    const { isOBR, ready, userRole } = useOBR();
+    const { isOBR, ready, role } = useOBR();
     const [availableTokens, setAvailableTokens] = useState<TokenInfo[]>([]);
     const [selectedTokenId, setSelectedTokenId] = useState<string | null>(null);
     const [editingTokenId, setEditingTokenId] = useState<string | null>(null);
@@ -45,7 +56,7 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
     const [isLoading, setIsLoading] = useState(true);
     const [isRefreshing, setIsRefreshing] = useState(false);
 
-    const isGM = userRole === 'GM' || !isOBR;
+    const isGM = role === 'GM' || !isOBR;
 
     // Load selected token & refresh list
     useEffect(() => {
@@ -579,13 +590,16 @@ export const TokenSettings: React.FC<TokenSettingsProps> = ({ vitals }) => {
                                                 return (
                                                     <button
                                                         key={status.key}
-                                                        onClick={() => handleUpdateTokenTracker(editingToken.id, {
-                                                            ...currentTracker,
-                                                            statuses: {
-                                                                ...(currentTracker.statuses || {}),
-                                                                [status.key]: !isActive,
-                                                            },
-                                                        })}
+                                                        onClick={() => {
+                                                            const baseStatuses: DaggerheartStatuses = currentTracker.statuses || DEFAULT_STATUSES;
+                                                            handleUpdateTokenTracker(editingToken.id, {
+                                                                ...currentTracker,
+                                                                statuses: {
+                                                                    ...baseStatuses,
+                                                                    [status.key]: !isActive,
+                                                                },
+                                                            });
+                                                        }}
                                                         className={clsx(
                                                             "px-2 py-1 rounded-lg text-[10px] font-mono font-bold transition-all border text-center",
                                                             isActive

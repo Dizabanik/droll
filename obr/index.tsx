@@ -14,6 +14,7 @@ interface OBRContextValue {
     playerId: string | null;
     playerName: string | null;
     playerColor: string | null;
+    role: "GM" | "PLAYER" | null;
     isOBR: boolean;
 }
 
@@ -22,6 +23,7 @@ const OBRContext = createContext<OBRContextValue>({
     playerId: null,
     playerName: null,
     playerColor: null,
+    role: null,
     isOBR: false,
 });
 
@@ -36,6 +38,7 @@ export const OBRProvider: React.FC<OBRProviderProps> = ({ children }) => {
     const [playerId, setPlayerId] = useState<string | null>(null);
     const [playerName, setPlayerName] = useState<string | null>(null);
     const [playerColor, setPlayerColor] = useState<string | null>(null);
+    const [role, setRole] = useState<"GM" | "PLAYER" | null>(null);
     const [isOBR] = useState(() => isOBREnvironment());
 
     useEffect(() => {
@@ -45,6 +48,7 @@ export const OBRProvider: React.FC<OBRProviderProps> = ({ children }) => {
             setPlayerId('local-dev');
             setPlayerName('Local Player');
             setPlayerColor('#3b82f6');
+            setRole('GM');
             return;
         }
 
@@ -54,25 +58,29 @@ export const OBRProvider: React.FC<OBRProviderProps> = ({ children }) => {
                 await OBRBroadcast.init();
 
                 // Get player info
-                const [id, name, color] = await Promise.all([
+                const [id, name, color, userRole] = await Promise.all([
                     OBR.player.getId(),
                     OBR.player.getName(),
                     OBR.player.getColor(),
+                    OBR.player.getRole(),
                 ]);
 
                 setPlayerId(id);
                 setPlayerName(name);
                 setPlayerColor(color);
+                setRole(userRole);
                 setReady(true);
 
                 // Subscribe to player changes
                 OBR.player.onChange(async () => {
-                    const [newName, newColor] = await Promise.all([
+                    const [newName, newColor, newRole] = await Promise.all([
                         OBR.player.getName(),
                         OBR.player.getColor(),
+                        OBR.player.getRole(),
                     ]);
                     setPlayerName(newName);
                     setPlayerColor(newColor);
+                    setRole(newRole);
                 });
 
             } catch (e) {
@@ -84,7 +92,7 @@ export const OBRProvider: React.FC<OBRProviderProps> = ({ children }) => {
     }, [isOBR]);
 
     return (
-        <OBRContext.Provider value={{ ready, playerId, playerName, playerColor, isOBR }}>
+        <OBRContext.Provider value={{ ready, playerId, playerName, playerColor, role, isOBR }}>
             {children}
         </OBRContext.Provider>
     );

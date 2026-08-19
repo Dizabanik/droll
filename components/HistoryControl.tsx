@@ -92,18 +92,19 @@ export const HistoryControl: React.FC = () => {
     });
 
     // Handle stat roll from Character Panel - trigger roll directly with 3D physics & broadcast
-    const handleStatRoll = useCallback((statKey: string, statValue: number) => {
+    const handleStatRoll = useCallback((statKey: string, statValue: number, isDndCheck?: boolean) => {
         const statLabel = statKey.charAt(0).toUpperCase() + statKey.slice(1);
+        const isDnd = isDndCheck !== undefined ? isDndCheck : (stats.activeSystem === 'dnd5e');
 
         const statRollPreset: DicePreset = {
             id: `stat-roll-${statKey}-${Date.now()}`,
             name: `${statLabel} Check`,
             variables: [],
             steps: [{
-                id: 'dh_stat_roll',
+                id: isDnd ? 'dnd_stat_roll' : 'dh_stat_roll',
                 label: `${statLabel} Check`,
-                type: 'daggerheart',
-                formula: `2d12+${statValue}`,
+                type: isDnd ? 'standard' : 'daggerheart',
+                formula: isDnd ? `1d20+${statValue}` : `2d12+${statValue}`,
                 damageType: 'none',
                 addToSum: true,
                 isCrit: false,
@@ -115,7 +116,7 @@ export const HistoryControl: React.FC = () => {
         setActiveRollVars({});
         setActiveRollPreset(statRollPreset);
         setRollKey(k => k + 1);
-    }, []);
+    }, [stats.activeSystem]);
 
     // Load Initial History and Stats
     useEffect(() => {

@@ -1,11 +1,13 @@
-
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { OBRStorage, TokenAttachments, DaggerheartCharacter } from '../obr';
+import { CharacterStats, GameSystem } from '../types';
 import { Icons } from './ui/Icons';
 import { EssenceSphere } from './EssenceSphere';
 import clsx from 'clsx';
 import OBR, { Image } from "@owlbear-rodeo/sdk";
+import { DiceStyle } from '../dice-engine/types/DiceStyle';
+import { DiceStylePicker } from './DiceStylePicker';
 
 const DEFAULT_CHARACTER: DaggerheartCharacter = {
     agility: 0,
@@ -31,19 +33,50 @@ const DEFAULT_CHARACTER: DaggerheartCharacter = {
     },
 };
 
-const STAT_NAMES = [
-    { key: 'agility', label: 'AGI', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
-    { key: 'strength', label: 'STR', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
-    { key: 'finesse', label: 'FIN', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
-    { key: 'instinct', label: 'INS', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
-    { key: 'presence', label: 'PRE', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
-    { key: 'knowledge', label: 'KNO', color: 'text-zinc-300', bg: 'border-zinc-600 bg-zinc-800/50' },
+const DH_STAT_NAMES = [
+    { key: 'agility', label: 'AGI', full: 'Agility' },
+    { key: 'strength', label: 'STR', full: 'Strength' },
+    { key: 'finesse', label: 'FIN', full: 'Finesse' },
+    { key: 'instinct', label: 'INS', full: 'Instinct' },
+    { key: 'presence', label: 'PRE', full: 'Presence' },
+    { key: 'knowledge', label: 'KNO', full: 'Knowledge' },
+] as const;
+
+const DND_ATTR_NAMES = [
+    { key: 'str', label: 'STR', full: 'Strength' },
+    { key: 'dex', label: 'DEX', full: 'Dexterity' },
+    { key: 'con', label: 'CON', full: 'Constitution' },
+    { key: 'int', label: 'INT', full: 'Intelligence' },
+    { key: 'wis', label: 'WIS', full: 'Wisdom' },
+    { key: 'cha', label: 'CHA', full: 'Charisma' },
+] as const;
+
+const DND_SKILLS_LIST = [
+    { name: 'Athletics', attr: 'str' },
+    { name: 'Acrobatics', attr: 'dex' },
+    { name: 'Sleight of Hand', attr: 'dex' },
+    { name: 'Stealth', attr: 'dex' },
+    { name: 'Arcana', attr: 'int' },
+    { name: 'History', attr: 'int' },
+    { name: 'Investigation', attr: 'int' },
+    { name: 'Nature', attr: 'int' },
+    { name: 'Religion', attr: 'int' },
+    { name: 'Animal Handling', attr: 'wis' },
+    { name: 'Insight', attr: 'wis' },
+    { name: 'Medicine', attr: 'wis' },
+    { name: 'Perception', attr: 'wis' },
+    { name: 'Survival', attr: 'wis' },
+    { name: 'Deception', attr: 'cha' },
+    { name: 'Intimidation', attr: 'cha' },
+    { name: 'Performance', attr: 'cha' },
+    { name: 'Persuasion', attr: 'cha' },
 ] as const;
 
 // === Vertical Stat Pill Component ===
 interface VerticalStatPillProps {
     label: string;
     value: number;
+    subLabel?: string;
     color?: string;
     bgClass?: string;
     showSign?: boolean;
@@ -56,8 +89,8 @@ interface VerticalStatPillProps {
 const VerticalStatPill: React.FC<VerticalStatPillProps> = ({
     label,
     value,
+    subLabel,
     color = "text-white",
-    bgClass,
     showSign = true,
     large = false,
     onIncrement,
@@ -95,6 +128,11 @@ const VerticalStatPill: React.FC<VerticalStatPillProps> = ({
                 <span className="text-[9px] uppercase font-bold tracking-widest text-muted font-mono mt-0.5">
                     {label}
                 </span>
+                {subLabel && (
+                    <span className="text-[8px] text-muted/60 font-mono">
+                        {subLabel}
+                    </span>
+                )}
             </button>
 
             {/* Decrement Button */}
@@ -184,13 +222,12 @@ const TokenPicker: React.FC<TokenPickerProps> = ({ isOpen, onClose, onSelect }) 
     );
 };
 
-import { DiceStyle } from '../dice-engine/types/DiceStyle';
-import { DiceStylePicker } from './DiceStylePicker';
-
 // === Settings Modal ===
 interface SettingsModalProps {
     isOpen: boolean;
     onClose: () => void;
+    activeSystem: GameSystem;
+    onSelectSystem: (system: GameSystem) => void;
     settings: DaggerheartCharacter['settings'];
     onToggle: (key: keyof DaggerheartCharacter['settings']) => void;
     diceStyle: DiceStyle;
@@ -200,6 +237,8 @@ interface SettingsModalProps {
 const SettingsModal: React.FC<SettingsModalProps> = ({
     isOpen,
     onClose,
+    activeSystem,
+    onSelectSystem,
     settings,
     onToggle,
     diceStyle,
@@ -233,6 +272,38 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
                 </div>
 
                 <div className="space-y-5">
+                    {/* Game System Selection */}
+                    <div className="p-3.5 bg-elevated/70 rounded-2xl border border-neutral-800 flex items-center justify-between">
+                        <div className="flex flex-col">
+                            <span className="text-xs font-semibold text-white">Active System</span>
+                            <span className="text-[11px] text-muted">Switch character sheet attributes & roll style</span>
+                        </div>
+                        <div className="flex items-center bg-surface border border-neutral-800 rounded-full p-0.5 shadow-inner">
+                            <button
+                                onClick={() => onSelectSystem('daggerheart')}
+                                className={clsx(
+                                    "px-3 py-1 rounded-full text-xs font-semibold transition-all",
+                                    activeSystem === 'daggerheart'
+                                        ? "bg-white text-black font-bold shadow-fey-subtle"
+                                        : "text-muted hover:text-white"
+                                )}
+                            >
+                                Daggerheart
+                            </button>
+                            <button
+                                onClick={() => onSelectSystem('dnd5e')}
+                                className={clsx(
+                                    "px-3 py-1 rounded-full text-xs font-semibold transition-all",
+                                    activeSystem === 'dnd5e'
+                                        ? "bg-signal text-white font-bold shadow-fey-signal"
+                                        : "text-muted hover:text-white"
+                                )}
+                            >
+                                D&D 5e
+                            </button>
+                        </div>
+                    </div>
+
                     {/* 3D Dice Skin Picker */}
                     <div className="p-4 bg-elevated/70 rounded-2xl border border-neutral-800 shadow-inner">
                         <DiceStylePicker
@@ -243,7 +314,7 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
                     {/* Sheet Toggles */}
                     <div className="space-y-2.5">
-                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted font-mono px-1">Sheet Features</h4>
+                        <h4 className="text-[10px] font-bold uppercase tracking-widest text-muted font-mono px-1">Optional Features</h4>
 
                         {/* Strain Tracker Toggle */}
                         <div className="flex items-center justify-between p-3.5 bg-elevated/60 rounded-xl border border-neutral-800">
@@ -297,26 +368,32 @@ const SettingsModal: React.FC<SettingsModalProps> = ({
 
 // === Main Character Panel ===
 interface CharacterPanelProps {
-    onRoll?: (statKey: string, statValue: number) => void;
+    onRoll?: (statKey: string, statValue: number, isDndCheck?: boolean) => void;
     showSettings?: boolean;
     onCloseSettings?: () => void;
 }
 
 export const CharacterPanel: React.FC<CharacterPanelProps> = ({
     onRoll,
-    showSettings: propShowSettings,
-    onCloseSettings,
+    showSettings = false,
+    onCloseSettings
 }) => {
     const [character, setCharacter] = useState<DaggerheartCharacter>(DEFAULT_CHARACTER);
+    const [activeSystem, setActiveSystem] = useState<GameSystem>('daggerheart');
     const [daggerheartStats, setDaggerheartStats] = useState<Record<string, number>>({});
+    const [dndAttributes, setDndAttributes] = useState<Record<string, number>>({
+        str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10
+    });
+    const [dndSkills, setDndSkills] = useState<Record<string, number>>({});
     const [customStats, setCustomStats] = useState<Array<{ id: string; name: string; value: number }>>([]);
-    const [isLoaded, setIsLoaded] = useState(false);
     const [tokenImage, setTokenImage] = useState<string | null>(null);
     const [showTokenPicker, setShowTokenPicker] = useState(false);
     const [localShowSettings, setLocalShowSettings] = useState(false);
     const [diceStyle, setDiceStyle] = useState<DiceStyle>('GEMSTONE');
+    const [isLoaded, setIsLoaded] = useState(false);
 
-    const isSettingsOpen = propShowSettings !== undefined ? propShowSettings : localShowSettings;
+    const isSettingsOpen = showSettings || localShowSettings;
+
     const handleCloseSettings = () => {
         setLocalShowSettings(false);
         onCloseSettings?.();
@@ -325,6 +402,17 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
     const handleDiceStyleChange = async (style: DiceStyle) => {
         setDiceStyle(style);
         await OBRStorage.setDiceStyle(style);
+    };
+
+    const handleSystemChange = async (system: GameSystem) => {
+        setActiveSystem(system);
+        const currentStats = await OBRStorage.getStats();
+        if (currentStats) {
+            await OBRStorage.setStats({
+                ...currentStats,
+                activeSystem: system,
+            });
+        }
     };
 
     // Load character data and sync with CharacterStats
@@ -345,7 +433,10 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
 
                 const stats = await OBRStorage.getStats();
                 if (stats) {
+                    setActiveSystem(stats.activeSystem || 'daggerheart');
                     setDaggerheartStats(stats.daggerheartStats || {});
+                    setDndAttributes(stats.dndAttributes || { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
+                    setDndSkills(stats.dndSkills || {});
                     setCustomStats(stats.customStats || []);
                 }
 
@@ -370,7 +461,10 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
         const handleStorageChange = async () => {
             const stats = await OBRStorage.getStats();
             if (stats) {
+                setActiveSystem(stats.activeSystem || 'daggerheart');
                 setDaggerheartStats(stats.daggerheartStats || {});
+                setDndAttributes(stats.dndAttributes || { str: 10, dex: 10, con: 10, int: 10, wis: 10, cha: 10 });
+                setDndSkills(stats.dndSkills || {});
                 setCustomStats(stats.customStats || []);
             }
             const savedStyle = await OBRStorage.getDiceStyle();
@@ -399,6 +493,36 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
         }
     };
 
+    const updateDndAttr = async (key: string, delta: number) => {
+        const currentScore = dndAttributes[key] ?? 10;
+        const newScore = Math.max(1, currentScore + delta);
+        const updated = { ...dndAttributes, [key]: newScore };
+        setDndAttributes(updated);
+
+        const stats = await OBRStorage.getStats();
+        if (stats) {
+            await OBRStorage.setStats({
+                ...stats,
+                dndAttributes: { ...stats.dndAttributes, [key]: newScore }
+            });
+        }
+    };
+
+    const toggleDndSkillProficiency = async (skillName: string) => {
+        const current = dndSkills[skillName] ?? 0;
+        const newProf = current > 0 ? 0 : 1;
+        const updated = { ...dndSkills, [skillName]: newProf };
+        setDndSkills(updated);
+
+        const stats = await OBRStorage.getStats();
+        if (stats) {
+            await OBRStorage.setStats({
+                ...stats,
+                dndSkills: updated
+            });
+        }
+    };
+
     const updateCharacter = (updates: Partial<DaggerheartCharacter>) => {
         const newChar = { ...character, ...updates };
         setCharacter(newChar);
@@ -412,9 +536,9 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
         }));
     };
 
-    const handleStatRoll = (statKey: string, statValue: number) => {
+    const handleStatRoll = (statKey: string, statValue: number, isDndCheck?: boolean) => {
         if (onRoll) {
-            onRoll(statKey, statValue);
+            onRoll(statKey, statValue, isDndCheck !== undefined ? isDndCheck : (activeSystem === 'dnd5e'));
         }
     };
 
@@ -462,81 +586,297 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
         updateCharacter({ settings: newSettings });
     };
 
+    const profBonus = useMemo(() => {
+        return Math.floor((character.level - 1) / 4) + 2;
+    }, [character.level]);
+
     const separatorAfter = [2, 6, 9];
 
     return (
         <div className="flex flex-col gap-4 p-4 h-full overflow-y-auto relative select-none">
-            {/* Stats Grid - 2 rows of 3 */}
-            <div className="flex flex-col gap-2 mt-2">
-                <div className="flex justify-center gap-2">
-                    {STAT_NAMES.slice(0, 3).map((stat) => (
-                        <VerticalStatPill
-                            key={stat.key}
-                            label={stat.label}
-                            value={daggerheartStats[stat.key] || 0}
-                            color="text-white"
-                            onIncrement={() => updateDaggerheartStat(stat.key, 1)}
-                            onDecrement={() => updateDaggerheartStat(stat.key, -1)}
-                            onValueClick={() => handleStatRoll(stat.key, daggerheartStats[stat.key] || 0)}
-                        />
-                    ))}
-                </div>
-                <div className="flex justify-center gap-2">
-                    {STAT_NAMES.slice(3, 6).map((stat) => (
-                        <VerticalStatPill
-                            key={stat.key}
-                            label={stat.label}
-                            value={daggerheartStats[stat.key] || 0}
-                            color="text-white"
-                            onIncrement={() => updateDaggerheartStat(stat.key, 1)}
-                            onDecrement={() => updateDaggerheartStat(stat.key, -1)}
-                            onValueClick={() => handleStatRoll(stat.key, daggerheartStats[stat.key] || 0)}
-                        />
-                    ))}
-                </div>
+            {/* System Switch Indicator Header */}
+            <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] uppercase font-bold text-muted font-mono tracking-wider">
+                    {activeSystem === 'dnd5e' ? 'D&D 5e Character Sheet' : 'Daggerheart Character Sheet'}
+                </span>
+                <button
+                    onClick={() => handleSystemChange(activeSystem === 'dnd5e' ? 'daggerheart' : 'dnd5e')}
+                    className="text-[10px] font-mono text-signal hover:underline"
+                >
+                    Switch to {activeSystem === 'dnd5e' ? 'Daggerheart' : 'D&D 5e'}
+                </button>
             </div>
 
-            {/* Portrait + Evasion/Level Row */}
-            <div className="flex items-center justify-center gap-4 my-1">
-                {/* Portrait */}
-                <button
-                    onClick={() => setShowTokenPicker(true)}
-                    className="w-28 h-28 rounded-2xl border border-neutral-800 hover:border-neutral-600 overflow-hidden transition-all bg-surface flex items-center justify-center shadow-fey-subtle group"
-                >
-                    {tokenImage ? (
-                        <img src={tokenImage} alt="Character" className="w-full h-full object-cover" />
-                    ) : (
-                        <div className="flex flex-col items-center gap-1 text-muted group-hover:text-white transition-colors">
-                            <Icons.User size={28} />
-                            <span className="text-[10px] font-mono">Token</span>
+            {/* D&D 5E STATS VIEW */}
+            {activeSystem === 'dnd5e' ? (
+                <>
+                    {/* DND Attributes Grid - 2 rows of 3 */}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex justify-center gap-2">
+                            {DND_ATTR_NAMES.slice(0, 3).map((attr) => {
+                                const score = dndAttributes[attr.key] ?? 10;
+                                const mod = Math.floor((score - 10) / 2);
+                                return (
+                                    <VerticalStatPill
+                                        key={attr.key}
+                                        label={attr.label}
+                                        subLabel={`${score}`}
+                                        value={mod}
+                                        color="text-white"
+                                        onIncrement={() => updateDndAttr(attr.key, 1)}
+                                        onDecrement={() => updateDndAttr(attr.key, -1)}
+                                        onValueClick={() => handleStatRoll(`${attr.full} Check`, mod, true)}
+                                    />
+                                );
+                            })}
+                        </div>
+                        <div className="flex justify-center gap-2">
+                            {DND_ATTR_NAMES.slice(3, 6).map((attr) => {
+                                const score = dndAttributes[attr.key] ?? 10;
+                                const mod = Math.floor((score - 10) / 2);
+                                return (
+                                    <VerticalStatPill
+                                        key={attr.key}
+                                        label={attr.label}
+                                        subLabel={`${score}`}
+                                        value={mod}
+                                        color="text-white"
+                                        onIncrement={() => updateDndAttr(attr.key, 1)}
+                                        onDecrement={() => updateDndAttr(attr.key, -1)}
+                                        onValueClick={() => handleStatRoll(`${attr.full} Check`, mod, true)}
+                                    />
+                                );
+                            })}
+                        </div>
+                    </div>
+
+                    {/* Portrait + Proficiency / Level Row */}
+                    <div className="flex items-center justify-center gap-4 my-1">
+                        {/* Portrait */}
+                        <button
+                            onClick={() => setShowTokenPicker(true)}
+                            className="w-28 h-28 rounded-2xl border border-neutral-800 hover:border-neutral-600 overflow-hidden transition-all bg-surface flex items-center justify-center shadow-fey-subtle group"
+                        >
+                            {tokenImage ? (
+                                <img src={tokenImage} alt="Character" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="flex flex-col items-center gap-1 text-muted group-hover:text-white transition-colors">
+                                    <Icons.User size={28} />
+                                    <span className="text-[10px] font-mono">Token</span>
+                                </div>
+                            )}
+                        </button>
+
+                        {/* Prof Bonus & Level */}
+                        <div className="flex gap-2.5">
+                            <VerticalStatPill
+                                label="PROF"
+                                value={profBonus}
+                                color="text-growth"
+                                showSign={true}
+                                large={true}
+                                onIncrement={() => {}}
+                                onDecrement={() => {}}
+                            />
+                            <VerticalStatPill
+                                label="LVL"
+                                value={character.level}
+                                color="text-signal"
+                                showSign={false}
+                                large={true}
+                                onIncrement={() => updateCharacter({ level: character.level + 1 })}
+                                onDecrement={() => updateCharacter({ level: Math.max(1, character.level - 1) })}
+                            />
+                        </div>
+                    </div>
+
+                    {/* DND 5e Skills List */}
+                    <div className="bg-surface/50 border border-neutral-800 rounded-2xl p-3 space-y-2 shadow-fey-subtle">
+                        <div className="flex items-center justify-between px-1">
+                            <span className="text-[10px] uppercase font-bold text-muted font-mono tracking-wider">Skill Proficiencies & Checks</span>
+                            <span className="text-[10px] text-muted font-mono">Click circle to toggle proficiency</span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 max-h-56 overflow-y-auto pr-1">
+                            {DND_SKILLS_LIST.map((skill) => {
+                                const attrMod = Math.floor(((dndAttributes[skill.attr] ?? 10) - 10) / 2);
+                                const isProf = (dndSkills[skill.name] ?? 0) > 0;
+                                const skillBonus = attrMod + (isProf ? profBonus : 0);
+                                const displayBonus = skillBonus >= 0 ? `+${skillBonus}` : `${skillBonus}`;
+
+                                return (
+                                    <div
+                                        key={skill.name}
+                                        className={clsx(
+                                            "flex items-center justify-between px-2.5 py-1.5 rounded-xl border text-xs transition-all",
+                                            isProf
+                                                ? "bg-elevated/90 border-signal/40 text-white shadow-fey-subtle"
+                                                : "bg-surface/40 border-neutral-800/80 text-muted hover:border-neutral-700"
+                                        )}
+                                    >
+                                        <div className="flex items-center gap-1.5 min-w-0">
+                                            <button
+                                                onClick={() => toggleDndSkillProficiency(skill.name)}
+                                                className={clsx(
+                                                    "w-2.5 h-2.5 rounded-full border transition-all flex-shrink-0",
+                                                    isProf ? "bg-signal border-signal shadow-fey-glow" : "bg-neutral-800 border-neutral-600 hover:border-neutral-400"
+                                                )}
+                                                title={isProf ? "Proficient" : "Not Proficient"}
+                                            />
+                                            <button
+                                                onClick={() => handleStatRoll(`${skill.name} Check`, skillBonus, true)}
+                                                className="text-left font-medium truncate hover:text-white transition-colors"
+                                                title={`Roll ${skill.name} (1d20 ${displayBonus})`}
+                                            >
+                                                {skill.name}
+                                            </button>
+                                        </div>
+                                        <button
+                                            onClick={() => handleStatRoll(`${skill.name} Check`, skillBonus, true)}
+                                            className={clsx(
+                                                "font-mono font-bold text-xs ml-1 flex-shrink-0 px-1.5 py-0.5 rounded bg-surface/80 border border-neutral-800",
+                                                isProf ? "text-signal" : "text-muted hover:text-white"
+                                            )}
+                                            title={`Roll ${skill.name} (1d20 ${displayBonus})`}
+                                        >
+                                            {displayBonus}
+                                        </button>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    </div>
+                </>
+            ) : (
+                /* DAGGERHEART STATS VIEW */
+                <>
+                    {/* Daggerheart Stats Grid - 2 rows of 3 */}
+                    <div className="flex flex-col gap-2">
+                        <div className="flex justify-center gap-2">
+                            {DH_STAT_NAMES.slice(0, 3).map((stat) => (
+                                <VerticalStatPill
+                                    key={stat.key}
+                                    label={stat.label}
+                                    value={daggerheartStats[stat.key] || 0}
+                                    color="text-white"
+                                    onIncrement={() => updateDaggerheartStat(stat.key, 1)}
+                                    onDecrement={() => updateDaggerheartStat(stat.key, -1)}
+                                    onValueClick={() => handleStatRoll(`${stat.full} Check`, daggerheartStats[stat.key] || 0, false)}
+                                />
+                            ))}
+                        </div>
+                        <div className="flex justify-center gap-2">
+                            {DH_STAT_NAMES.slice(3, 6).map((stat) => (
+                                <VerticalStatPill
+                                    key={stat.key}
+                                    label={stat.label}
+                                    value={daggerheartStats[stat.key] || 0}
+                                    color="text-white"
+                                    onIncrement={() => updateDaggerheartStat(stat.key, 1)}
+                                    onDecrement={() => updateDaggerheartStat(stat.key, -1)}
+                                    onValueClick={() => handleStatRoll(`${stat.full} Check`, daggerheartStats[stat.key] || 0, false)}
+                                />
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Portrait + Evasion/Level Row */}
+                    <div className="flex items-center justify-center gap-4 my-1">
+                        {/* Portrait */}
+                        <button
+                            onClick={() => setShowTokenPicker(true)}
+                            className="w-28 h-28 rounded-2xl border border-neutral-800 hover:border-neutral-600 overflow-hidden transition-all bg-surface flex items-center justify-center shadow-fey-subtle group"
+                        >
+                            {tokenImage ? (
+                                <img src={tokenImage} alt="Character" className="w-full h-full object-cover" />
+                            ) : (
+                                <div className="flex flex-col items-center gap-1 text-muted group-hover:text-white transition-colors">
+                                    <Icons.User size={28} />
+                                    <span className="text-[10px] font-mono">Token</span>
+                                </div>
+                            )}
+                        </button>
+
+                        {/* Evasion & Level */}
+                        <div className="flex gap-2.5">
+                            <VerticalStatPill
+                                label="EVA"
+                                value={character.evasion}
+                                color="text-growth"
+                                showSign={false}
+                                large={true}
+                                onIncrement={() => updateCharacterStat('evasion', 1)}
+                                onDecrement={() => updateCharacterStat('evasion', -1)}
+                            />
+                            <VerticalStatPill
+                                label="LVL"
+                                value={character.level}
+                                color="text-signal"
+                                showSign={false}
+                                large={true}
+                                onIncrement={() => updateCharacter({ level: character.level + 1 })}
+                                onDecrement={() => updateCharacter({ level: Math.max(1, character.level - 1) })}
+                            />
+                        </div>
+                    </div>
+
+                    {/* Damage Thresholds */}
+                    <div className="flex items-center justify-center gap-2 flex-wrap">
+                        <div className="flex items-center bg-surface border border-neutral-800 rounded-full p-1 shadow-fey-subtle">
+                            <span className="px-2.5 text-[10px] font-bold text-mist uppercase font-mono">Minor</span>
+                            <input
+                                type="number"
+                                value={character.thresholdMinor}
+                                onChange={(e) => setCharacter(prev => ({ ...prev, thresholdMinor: parseInt(e.target.value) || 0 }))}
+                                className="w-10 py-0.5 bg-elevated border border-neutral-800 rounded-full text-center text-white text-xs font-mono font-bold focus:outline-none focus:border-white/50"
+                            />
+                        </div>
+                        <div className="flex items-center bg-surface border border-neutral-800 rounded-full p-1 shadow-fey-subtle">
+                            <span className="px-2.5 text-[10px] font-bold text-ember uppercase font-mono">Major</span>
+                            <input
+                                type="number"
+                                value={character.thresholdMajor}
+                                onChange={(e) => setCharacter(prev => ({ ...prev, thresholdMajor: parseInt(e.target.value) || 0 }))}
+                                className="w-10 py-0.5 bg-elevated border border-neutral-800 rounded-full text-center text-white text-xs font-mono font-bold focus:outline-none focus:border-white/50"
+                            />
+                        </div>
+                        <div className="flex items-center bg-surface border border-neutral-800 rounded-full p-1 shadow-fey-subtle">
+                            <span className="px-2.5 text-[10px] font-bold text-rose-400 uppercase font-mono">Severe</span>
+                            <input
+                                type="number"
+                                value={character.thresholdSevere}
+                                onChange={(e) => setCharacter(prev => ({ ...prev, thresholdSevere: parseInt(e.target.value) || 0 }))}
+                                className="w-10 py-0.5 bg-elevated border border-neutral-800 rounded-full text-center text-white text-xs font-mono font-bold focus:outline-none focus:border-white/50"
+                            />
+                        </div>
+                    </div>
+
+                    {/* Skull Tracker (Conditional Mode) */}
+                    {character.settings.showStrain && (
+                        <div className="flex items-center justify-center gap-1 flex-wrap bg-surface/40 p-2 rounded-2xl border border-neutral-800/80">
+                            {Array.from({ length: 11 }).map((_, i) => (
+                                <React.Fragment key={i}>
+                                    <button
+                                        onClick={() => handleSkullClick(i)}
+                                        className={clsx(
+                                            "p-1.5 rounded-lg transition-all",
+                                            i < character.skulls
+                                                ? "text-ember bg-ember/15 shadow-fey-ember"
+                                                : "text-neutral-700 hover:text-muted"
+                                        )}
+                                    >
+                                        <Icons.Death size={18} />
+                                    </button>
+                                    {separatorAfter.includes(i) && (
+                                        <div className="w-px h-5 bg-neutral-800 mx-0.5" />
+                                    )}
+                                </React.Fragment>
+                            ))}
                         </div>
                     )}
-                </button>
+                </>
+            )}
 
-                {/* Evasion & Level - Larger */}
-                <div className="flex gap-2.5">
-                    <VerticalStatPill
-                        label="EVA"
-                        value={character.evasion}
-                        color="text-growth"
-                        showSign={false}
-                        large={true}
-                        onIncrement={() => updateCharacterStat('evasion', 1)}
-                        onDecrement={() => updateCharacterStat('evasion', -1)}
-                    />
-                    <VerticalStatPill
-                        label="LVL"
-                        value={character.level}
-                        color="text-signal"
-                        showSign={false}
-                        large={true}
-                        onIncrement={() => updateCharacter({ level: character.level + 1 })}
-                        onDecrement={() => updateCharacter({ level: Math.max(1, character.level - 1) })}
-                    />
-                </div>
-            </div>
-
-            {/* Essence Sphere (Conditional Mode) */}
+            {/* Essence Sphere (Conditional Mode for both systems if enabled) */}
             {character.settings.showReverendInsanity && (
                 <div className="mx-auto my-2">
                     <EssenceSphere
@@ -556,7 +896,7 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 </div>
             )}
 
-            {/* Custom Stats Row (if any, up to 3) */}
+            {/* Custom Stats Row (if any) */}
             {customStats.length > 0 && (
                 <div className="flex justify-center gap-2">
                     {customStats.slice(0, 3).map((stat) => (
@@ -574,61 +914,6 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
                 </div>
             )}
 
-            {/* Damage Thresholds */}
-            <div className="flex items-center justify-center gap-2 flex-wrap">
-                <div className="flex items-center bg-surface border border-neutral-800 rounded-full p-1 shadow-fey-subtle">
-                    <span className="px-2.5 text-[10px] font-bold text-mist uppercase font-mono">Minor</span>
-                    <input
-                        type="number"
-                        value={character.thresholdMinor}
-                        onChange={(e) => setCharacter(prev => ({ ...prev, thresholdMinor: parseInt(e.target.value) || 0 }))}
-                        className="w-10 py-0.5 bg-elevated border border-neutral-800 rounded-full text-center text-white text-xs font-mono font-bold focus:outline-none focus:border-white/50"
-                    />
-                </div>
-                <div className="flex items-center bg-surface border border-neutral-800 rounded-full p-1 shadow-fey-subtle">
-                    <span className="px-2.5 text-[10px] font-bold text-ember uppercase font-mono">Major</span>
-                    <input
-                        type="number"
-                        value={character.thresholdMajor}
-                        onChange={(e) => setCharacter(prev => ({ ...prev, thresholdMajor: parseInt(e.target.value) || 0 }))}
-                        className="w-10 py-0.5 bg-elevated border border-neutral-800 rounded-full text-center text-white text-xs font-mono font-bold focus:outline-none focus:border-white/50"
-                    />
-                </div>
-                <div className="flex items-center bg-surface border border-neutral-800 rounded-full p-1 shadow-fey-subtle">
-                    <span className="px-2.5 text-[10px] font-bold text-rose-400 uppercase font-mono">Severe</span>
-                    <input
-                        type="number"
-                        value={character.thresholdSevere}
-                        onChange={(e) => setCharacter(prev => ({ ...prev, thresholdSevere: parseInt(e.target.value) || 0 }))}
-                        className="w-10 py-0.5 bg-elevated border border-neutral-800 rounded-full text-center text-white text-xs font-mono font-bold focus:outline-none focus:border-white/50"
-                    />
-                </div>
-            </div>
-
-            {/* Skull Tracker (Conditional Mode) */}
-            {character.settings.showStrain && (
-                <div className="flex items-center justify-center gap-1 flex-wrap bg-surface/40 p-2 rounded-2xl border border-neutral-800/80">
-                    {Array.from({ length: 11 }).map((_, i) => (
-                        <React.Fragment key={i}>
-                            <button
-                                onClick={() => handleSkullClick(i)}
-                                className={clsx(
-                                    "p-1.5 rounded-lg transition-all",
-                                    i < character.skulls
-                                        ? "text-ember bg-ember/15 shadow-fey-ember"
-                                        : "text-neutral-700 hover:text-muted"
-                                )}
-                            >
-                                <Icons.Death size={18} />
-                            </button>
-                            {separatorAfter.includes(i) && (
-                                <div className="w-px h-5 bg-neutral-800 mx-0.5" />
-                            )}
-                        </React.Fragment>
-                    ))}
-                </div>
-            )}
-
             {/* Token Picker Modal */}
             <TokenPicker
                 isOpen={showTokenPicker}
@@ -640,6 +925,8 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
             <SettingsModal
                 isOpen={isSettingsOpen}
                 onClose={handleCloseSettings}
+                activeSystem={activeSystem}
+                onSelectSystem={handleSystemChange}
                 settings={character.settings}
                 onToggle={toggleSetting}
                 diceStyle={diceStyle}
@@ -648,4 +935,3 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
         </div>
     );
 };
-

@@ -1,7 +1,7 @@
 
 import { DiceStyle } from './dice-engine/types/DiceStyle';
 
-export const APP_VERSION = "v1.18.0-3d";
+export const APP_VERSION = "v1.19.0-trackers";
 
 export interface DiceCustomization {
   standardStyle: DiceStyle;

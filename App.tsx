@@ -9,6 +9,7 @@ import { CharacterSheet } from './components/CharacterSheet';
 import { HistoryControl } from './components/HistoryControl';
 import { RollHistoryPanel, HistoryEntry } from './components/RollHistoryPanel';
 import { TokenSettings } from './components/TokenSettings';
+import { TokenQuickEditor } from './components/TokenQuickEditor';
 import { QuickDiceToolbar } from './components/QuickDiceToolbar';
 import { LeftToolbarPopover } from './components/LeftToolbarPopover';
 import { Icons } from './components/ui/Icons';
@@ -16,6 +17,7 @@ import { DiceStyle } from './dice-engine/types/DiceStyle';
 import { DiceStylePicker } from './components/DiceStylePicker';
 import { MiroBoardEmbed } from './components/MiroBoardEmbed';
 import { useOBR, OBRStorage, OBRBroadcast, DiceRollMessage, RollCompleteMessage, DaggerheartVitals } from './obr';
+import { TokenAttachments } from './obr/tokenAttachments';
 import clsx from 'clsx';
 
 // Initial Mock Data
@@ -74,16 +76,18 @@ const INITIAL_STATS: CharacterStats = {
 const App: React.FC = () => {
   const { ready, isOBR, playerName, playerId } = useOBR();
 
-  // Overlay / Popover / Toolbar Mode Detection
+  // Overlay / Popover / Toolbar / ContextMenu Mode Detection
   const [isOverlay, setIsOverlay] = useState(false);
   const [isPopover, setIsPopover] = useState(false);
   const [isToolbar, setIsToolbar] = useState(false);
+  const [isContextMenu, setIsContextMenu] = useState(false);
 
   useEffect(() => {
     const query = new URLSearchParams(window.location.search);
     setIsOverlay(query.get('overlay') === 'true');
     setIsPopover(query.get('popover') === 'true');
     setIsToolbar(query.get('toolbar') === 'true');
+    setIsContextMenu(query.get('contextMenu') === 'true');
   }, []);
 
   const [items, setItems] = useState<Item[]>(INITIAL_ITEMS);
@@ -216,10 +220,10 @@ const App: React.FC = () => {
     loadData();
   }, [ready, isOverlay, isPopover]);
 
-  // Open the overlay window on mount (if acting as controller)
+  // Open the overlay window and register tools on mount (if acting as controller)
   useEffect(() => {
-    if (ready && isOBR && !isOverlay && !isPopover && !isToolbar) {
-      // We are the controller. Try to open the controls AND the left dice toolbar popovers.
+    if (ready && isOBR && !isOverlay && !isPopover && !isToolbar && !isContextMenu) {
+      // We are the controller. Try to open the controls, left dice toolbar, and register context menu.
       import('@owlbear-rodeo/sdk').then(({ default: OBR }) => {
         // Ensure legacy overlay is closed
         OBR.modal.close('com.fateweaver.dice.overlay');
@@ -246,9 +250,36 @@ const App: React.FC = () => {
           disableClickAway: true,
           hidePaper: true,
         }).catch(e => console.error("Failed to open left toolbar popover:", e));
+
+        // 3. Register Context Menu for Token Trackers (Shift + S / right-click token)
+        OBR.contextMenu.create({
+          id: 'com.fateweaver.dice.token_stats',
+          icons: [
+            {
+              icon: '/stats-icon.svg',
+              label: 'Edit Stats / Tracker',
+              filter: {
+                every: [
+                  { key: 'type', value: 'IMAGE' },
+                  { key: 'layer', value: 'CHARACTER', coordinator: '||' },
+                  { key: 'layer', value: 'MOUNT' },
+                ],
+                max: 1,
+              },
+            },
+          ],
+          shortcut: 'Shift + S',
+          embed: {
+            url: window.location.pathname + '?contextMenu=true',
+            height: 220,
+          },
+        }).catch(e => console.error("Failed to create context menu:", e));
+
+        // Initial sync of all scene token attachments
+        TokenAttachments.syncAll();
       });
     }
-  }, [ready, isOBR, isOverlay, isPopover, isToolbar]);
+  }, [ready, isOBR, isOverlay, isPopover, isToolbar, isContextMenu]);
 
   // Save items when they change (only in main controller mode)
   useEffect(() => {
@@ -468,6 +499,15 @@ const App: React.FC = () => {
     return (
       <div className="w-full h-full overflow-hidden bg-transparent">
         <LeftToolbarPopover />
+      </div>
+    );
+  }
+
+  // If Context Menu Mode, render TokenQuickEditor
+  if (isContextMenu) {
+    return (
+      <div className="w-full h-full overflow-hidden bg-background">
+        <TokenQuickEditor />
       </div>
     );
   }

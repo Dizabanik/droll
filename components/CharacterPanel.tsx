@@ -26,7 +26,7 @@ const DEFAULT_CHARACTER: DaggerheartCharacter = {
     essenceStage: 1,
     customStats: [],
     settings: {
-        showStrain: true,
+        showStrain: false,
         showReverendInsanity: false,
     },
 };
@@ -332,7 +332,16 @@ export const CharacterPanel: React.FC<CharacterPanelProps> = ({
         const load = async () => {
             try {
                 const saved = await OBRStorage.getDaggerheartCharacter();
-                if (saved) setCharacter({ ...DEFAULT_CHARACTER, ...saved });
+                if (saved) {
+                    setCharacter({
+                        ...DEFAULT_CHARACTER,
+                        ...saved,
+                        settings: {
+                            ...DEFAULT_CHARACTER.settings,
+                            ...(saved.settings || {}),
+                        },
+                    });
+                }
 
                 const stats = await OBRStorage.getStats();
                 if (stats) {

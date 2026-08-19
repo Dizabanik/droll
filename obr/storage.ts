@@ -97,8 +97,8 @@ export const DEFAULT_CHARACTER: DaggerheartCharacter = {
   essenceCurrent: 0, essenceMax: 0, essenceRank: 1, essenceStage: 1,
   customStats: [],
   settings: {
-    showStrain: true,
-    showReverendInsanity: false, // Hidden by default
+    showStrain: false, // Off by default
+    showReverendInsanity: false, // Off by default
   },
 };
 

@@ -27,6 +27,14 @@ const BookOpen = () => (
     </svg>
 );
 
+const TrashIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M3 6h18" />
+        <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+        <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+    </svg>
+);
+
 const MagicIcon = () => (
     <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <path d="m19 11-8-8-8.5 8.5a2.12 2.12 0 0 0 0 3L11 23l8-8Z" />
@@ -414,6 +422,22 @@ export const TokenQuickEditor: React.FC = () => {
         }
     };
 
+    const handleRemoveTracker = async () => {
+        if (token) {
+            await removeTokenTrackerData(token.id);
+            setTracker({
+                hp: 10,
+                hpMax: 10,
+                stress: 0,
+                armor: 0,
+                hope: 0,
+                showHp: true,
+                hideStats: false,
+                statuses: DEFAULT_STATUSES,
+            });
+        }
+    };
+
     if (isLoading) {
         return (
             <div className="w-full h-full flex items-center justify-center bg-background text-muted select-none">
@@ -471,7 +495,7 @@ export const TokenQuickEditor: React.FC = () => {
                         className="h-[24px] w-full rounded-lg bg-surface border border-neutral-800 px-2 text-center text-xs font-bold text-white outline-none focus:border-neutral-500 shadow-inner"
                     />
                 </div>
-                <div className="flex items-center pl-1">
+                <div className="flex items-center gap-1 pl-1">
                     <button
                         onClick={async () => {
                             if (token) {
@@ -484,6 +508,13 @@ export const TokenQuickEditor: React.FC = () => {
                         title="Sync token name"
                     >
                         <MagicIcon />
+                    </button>
+                    <button
+                        onClick={handleRemoveTracker}
+                        className="p-1 rounded-md bg-surface/50 hover:bg-rose-950/50 border border-neutral-800 hover:border-rose-800 text-muted hover:text-rose-400 transition-all"
+                        title="Remove HUD attachments from token"
+                    >
+                        <TrashIcon />
                     </button>
                 </div>
             </div>
@@ -581,28 +612,38 @@ export const TokenQuickEditor: React.FC = () => {
                 })}
             </div>
 
-            {/* 4. DM Mode / Stealth Toggle (Compact Button, No Emojis) */}
-            <button
-                onClick={handleToggleShowHp}
-                className={clsx(
-                    "w-full py-1 px-2.5 rounded-lg text-[10.5px] font-mono font-medium transition-all flex items-center justify-center gap-1.5 border shadow-sm",
-                    !tracker.showHp
-                        ? "bg-rose-950/40 border-rose-800 text-rose-300 hover:bg-rose-900/40"
-                        : "bg-surface/80 border-neutral-800 text-muted hover:text-white hover:bg-surface"
-                )}
-            >
-                {!tracker.showHp ? (
-                    <>
-                        <BookLock />
-                        <span>Stealth (Damage Dealt Only)</span>
-                    </>
-                ) : (
-                    <>
-                        <BookOpen />
-                        <span>Visible (Standard HP Bar)</span>
-                    </>
-                )}
-            </button>
+            {/* 4. DM Mode / Stealth Toggle + Clear Attachments */}
+            <div className="flex items-center gap-1.5 w-full">
+                <button
+                    onClick={handleToggleShowHp}
+                    className={clsx(
+                        "flex-1 py-1 px-2.5 rounded-lg text-[10.5px] font-mono font-medium transition-all flex items-center justify-center gap-1.5 border shadow-sm",
+                        !tracker.showHp
+                            ? "bg-rose-950/40 border-rose-800 text-rose-300 hover:bg-rose-900/40"
+                            : "bg-surface/80 border-neutral-800 text-muted hover:text-white hover:bg-surface"
+                    )}
+                >
+                    {!tracker.showHp ? (
+                        <>
+                            <BookLock />
+                            <span>Stealth (Damage Dealt Only)</span>
+                        </>
+                    ) : (
+                        <>
+                            <BookOpen />
+                            <span>Visible (Standard HP Bar)</span>
+                        </>
+                    )}
+                </button>
+                <button
+                    onClick={handleRemoveTracker}
+                    className="py-1 px-2 rounded-lg bg-surface/80 hover:bg-rose-950/40 border border-neutral-800 hover:border-rose-800 text-muted hover:text-rose-400 transition-all flex items-center justify-center gap-1 text-[10px] font-mono"
+                    title="Remove HUD attachments from token"
+                >
+                    <TrashIcon />
+                    <span>Clear</span>
+                </button>
+            </div>
         </div>
     );
 };

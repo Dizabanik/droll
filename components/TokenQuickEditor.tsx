@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import OBR, { Image, Item, isImage } from '@owlbear-rodeo/sdk';
 import { Icons } from './ui/Icons';
 import {
@@ -22,8 +22,20 @@ const STATUS_OPTIONS: { key: keyof DaggerheartStatuses; label: string; abbr: str
     { key: 'empowered', label: 'Empowered', abbr: 'EMP', color: 'text-emerald-400', bg: 'bg-emerald-950/60 border-emerald-800/80' },
 ];
 
+const DEFAULT_STATUSES: DaggerheartStatuses = {
+    vulnerable: false,
+    blinded: false,
+    frightened: false,
+    hidden: false,
+    restrained: false,
+    slowed: false,
+    weakened: false,
+    empowered: false,
+};
+
 export const TokenQuickEditor: React.FC = () => {
     const [token, setToken] = useState<Image | null>(null);
+    const [sceneTokens, setSceneTokens] = useState<Image[]>([]);
     const [tracker, setTracker] = useState<TokenTrackerData>({
         hp: 10,
         hpMax: 10,
@@ -32,62 +44,139 @@ export const TokenQuickEditor: React.FC = () => {
         hope: 0,
         showHp: true,
         hideStats: false,
-        statuses: {
-            vulnerable: false,
-            blinded: false,
-            frightened: false,
-            hidden: false,
-            restrained: false,
-            slowed: false,
-            weakened: false,
-            empowered: false,
-        },
+        statuses: DEFAULT_STATUSES,
     });
     const [isLoading, setIsLoading] = useState(true);
     const [mathInput, setMathInput] = useState('');
 
+    const selectToken = useCallback((target: Image) => {
+        setToken(target);
+        const existing = getTokenTrackerData(target);
+        if (existing) {
+            setTracker({
+                hp: existing.hp ?? 10,
+                hpMax: existing.hpMax ?? 10,
+                stress: existing.stress ?? 0,
+                armor: existing.armor ?? 0,
+                hope: existing.hope ?? 0,
+                showHp: existing.showHp ?? true,
+                hideStats: existing.hideStats ?? false,
+                statuses: existing.statuses || DEFAULT_STATUSES,
+            });
+        } else {
+            setTracker({
+                hp: 10,
+                hpMax: 10,
+                stress: 0,
+                armor: 0,
+                hope: 0,
+                showHp: true,
+                hideStats: false,
+                statuses: DEFAULT_STATUSES,
+            });
+        }
+    }, []);
+
     useEffect(() => {
-        const loadSelectedToken = async () => {
+        let isMounted = true;
+
+        const load = async () => {
+            try {
+                if (!OBR.isReady) {
+                    await new Promise<void>((resolve) => {
+                        OBR.onReady(() => resolve());
+                    });
+                }
+
+                // Fetch character tokens in scene
+                const allCharacterItems = (await OBR.scene.items.getItems(
+                    (i) => isImage(i) && (i.layer === 'CHARACTER' || i.layer === 'MOUNT')
+                )) as Image[];
+
+                if (isMounted) {
+                    setSceneTokens(allCharacterItems);
+                }
+
+                // Try getting current player selection
+                let selection = await OBR.player.getSelection();
+                if (!selection || selection.length === 0) {
+                    // Quick 100ms retry to let selection propagate
+                    await new Promise(r => setTimeout(r, 100));
+                    selection = await OBR.player.getSelection();
+                }
+
+                let targetItem: Image | undefined;
+                if (selection && selection.length > 0) {
+                    const selectedItems = await OBR.scene.items.getItems(selection);
+                    targetItem = selectedItems.find((i) => isImage(i)) as Image | undefined;
+                }
+
+                if (!targetItem && allCharacterItems.length === 1) {
+                    targetItem = allCharacterItems[0];
+                }
+
+                if (targetItem && isMounted) {
+                    selectToken(targetItem);
+                }
+            } catch (e) {
+                console.error("Error loading selected token in quick editor:", e);
+            } finally {
+                if (isMounted) setIsLoading(false);
+            }
+        };
+
+        load();
+
+        // Listen for selection changes
+        const unsubSelection = OBR.player.onChange(async () => {
             try {
                 const selection = await OBR.player.getSelection();
                 if (selection && selection.length > 0) {
                     const items = await OBR.scene.items.getItems(selection);
                     const valid = items.find((i) => isImage(i)) as Image | undefined;
-                    if (valid) {
-                        setToken(valid);
-                        const existing = getTokenTrackerData(valid);
-                        if (existing) {
-                            setTracker({
-                                hp: existing.hp ?? 10,
-                                hpMax: existing.hpMax ?? 10,
-                                stress: existing.stress ?? 0,
-                                armor: existing.armor ?? 0,
-                                hope: existing.hope ?? 0,
-                                showHp: existing.showHp ?? true,
-                                hideStats: existing.hideStats ?? false,
-                                statuses: existing.statuses || {
-                                    vulnerable: false,
-                                    blinded: false,
-                                    frightened: false,
-                                    hidden: false,
-                                    restrained: false,
-                                    slowed: false,
-                                    weakened: false,
-                                    empowered: false,
-                                },
-                            });
-                        }
+                    if (valid && isMounted) {
+                        selectToken(valid);
                     }
                 }
-            } catch (e) {
-                console.error("Failed to load selected token:", e);
-            } finally {
-                setIsLoading(false);
+            } catch (err) {
+                console.error("Selection update error:", err);
             }
-        };
+        });
 
-        loadSelectedToken();
-    }, []);
+        // Listen for scene items updates
+        const unsubItems = OBR.scene.items.onChange(async (items) => {
+            if (!isMounted) return;
+            const characterItems = items.filter(
+                (i) => isImage(i) && (i.layer === 'CHARACTER' || i.layer === 'MOUNT')
+            ) as Image[];
+            setSceneTokens(characterItems);
+
+            if (token) {
+                const currentUpdated = characterItems.find(i => i.id === token.id);
+                if (currentUpdated) {
+                    const existing = getTokenTrackerData(currentUpdated);
+                    if (existing) {
+                        setTracker({
+                            hp: existing.hp ?? 10,
+                            hpMax: existing.hpMax ?? 10,
+                            stress: existing.stress ?? 0,
+                            armor: existing.armor ?? 0,
+                            hope: existing.hope ?? 0,
+                            showHp: existing.showHp ?? true,
+                            hideStats: existing.hideStats ?? false,
+                            statuses: existing.statuses || DEFAULT_STATUSES,
+                        });
+                    }
+                }
+            }
+        });
+
+        return () => {
+            isMounted = false;
+            unsubSelection();
+            unsubItems();
+        };
+    }, [selectToken, token?.id]);
 
     const handleHpChange = async (newHp: number, newMax?: number) => {
         const updated = {
@@ -154,17 +243,6 @@ export const TokenQuickEditor: React.FC = () => {
         }
     };
 
-const DEFAULT_STATUSES: DaggerheartStatuses = {
-    vulnerable: false,
-    blinded: false,
-    frightened: false,
-    hidden: false,
-    restrained: false,
-    slowed: false,
-    weakened: false,
-    empowered: false,
-};
-
     const handleToggleStatus = async (statusKey: keyof DaggerheartStatuses) => {
         const baseStatuses: DaggerheartStatuses = tracker.statuses || DEFAULT_STATUSES;
         const updatedStatuses: DaggerheartStatuses = {
@@ -197,10 +275,30 @@ const DEFAULT_STATUSES: DaggerheartStatuses = {
 
     if (!token) {
         return (
-            <div className="w-full h-full flex flex-col items-center justify-center p-4 bg-background text-muted text-center select-none">
-                <Icons.Target size={24} className="mb-2 opacity-30 text-white" />
-                <p className="text-xs font-mono">No character token selected.</p>
-                <p className="text-[10px] text-muted font-mono mt-1">Select a token on the map to edit stats.</p>
+            <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-background text-muted text-center select-none overflow-y-auto">
+                <Icons.Target size={22} className="mb-1 text-white opacity-40" />
+                <p className="text-xs font-mono font-bold text-white">Select a Token</p>
+                <p className="text-[10px] text-muted font-mono mt-0.5 mb-2">Click a token from the scene below to edit stats:</p>
+                {sceneTokens.length > 0 ? (
+                    <div className="grid grid-cols-4 gap-1.5 w-full max-h-32 overflow-y-auto p-1">
+                        {sceneTokens.map((t) => (
+                            <button
+                                key={t.id}
+                                onClick={() => selectToken(t)}
+                                className="aspect-square rounded-lg border border-neutral-800 hover:border-signal p-1 bg-surface flex flex-col items-center justify-center gap-1 transition-all"
+                            >
+                                {t.image?.url ? (
+                                    <img src={t.image.url} alt={t.name} className="w-6 h-6 object-cover rounded" />
+                                ) : (
+                                    <Icons.User size={14} className="text-muted" />
+                                )}
+                                <span className="text-[8px] font-mono text-muted truncate w-full">{t.name || 'Token'}</span>
+                            </button>
+                        ))}
+                    </div>
+                ) : (
+                    <p className="text-[10px] text-muted font-mono">No character tokens found in scene.</p>
+                )}
             </div>
         );
     }
@@ -300,69 +398,69 @@ const DEFAULT_STATUSES: DaggerheartStatuses = {
                         <form onSubmit={handleMathSubmit} className="flex items-center">
                             <input
                                 type="text"
+                                placeholder="+/-"
                                 value={mathInput}
                                 onChange={(e) => setMathInput(e.target.value)}
-                                placeholder="+/-"
-                                className="w-9 px-1 py-0.5 bg-elevated border border-neutral-700 rounded text-center text-[10px] font-mono text-white focus:outline-none focus:border-white"
+                                className="w-10 px-1 py-0.5 bg-elevated border border-neutral-700 rounded text-center text-[10px] font-mono text-white focus:outline-none focus:border-white"
                             />
                         </form>
                     </div>
                 </div>
 
-                {/* Armor Class / Armor */}
-                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-2 flex flex-col items-center justify-center">
-                    <span className="text-[9px] uppercase font-bold text-sky-400 font-mono">Armor</span>
-                    <div className="flex items-center gap-1 mt-1">
+                {/* Armor Box */}
+                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-1.5 flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-mono uppercase font-bold text-muted">Armor (AC)</span>
+                    <div className="flex items-center gap-1.5 mt-1">
                         <button
                             onClick={() => handleStatDelta('armor', -1)}
-                            className="w-5 h-5 flex items-center justify-center bg-elevated hover:bg-neutral-800 rounded text-xs text-muted hover:text-white"
+                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
                         >
                             -
                         </button>
-                        <span className="w-6 text-center text-xs font-mono font-bold text-white">{tracker.armor ?? 0}</span>
+                        <span className="text-sm font-mono font-bold text-white px-1">{tracker.armor}</span>
                         <button
                             onClick={() => handleStatDelta('armor', 1)}
-                            className="w-5 h-5 flex items-center justify-center bg-elevated hover:bg-neutral-800 rounded text-xs text-muted hover:text-white"
+                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
                         >
                             +
                         </button>
                     </div>
                 </div>
 
-                {/* Stress */}
-                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-2 flex flex-col items-center justify-center">
-                    <span className="text-[9px] uppercase font-bold text-purple-400 font-mono">Stress</span>
-                    <div className="flex items-center gap-1 mt-1">
+                {/* Stress Box */}
+                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-1.5 flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-mono uppercase font-bold text-ember">Stress</span>
+                    <div className="flex items-center gap-1.5 mt-1">
                         <button
                             onClick={() => handleStatDelta('stress', -1)}
-                            className="w-5 h-5 flex items-center justify-center bg-elevated hover:bg-neutral-800 rounded text-xs text-muted hover:text-white"
+                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
                         >
                             -
                         </button>
-                        <span className="w-6 text-center text-xs font-mono font-bold text-white">{tracker.stress ?? 0}</span>
+                        <span className="text-sm font-mono font-bold text-ember px-1">{tracker.stress}</span>
                         <button
                             onClick={() => handleStatDelta('stress', 1)}
-                            className="w-5 h-5 flex items-center justify-center bg-elevated hover:bg-neutral-800 rounded text-xs text-muted hover:text-white"
+                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
                         >
                             +
                         </button>
                     </div>
                 </div>
 
-                {/* Hope */}
-                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-2 flex flex-col items-center justify-center">
-                    <span className="text-[9px] uppercase font-bold text-amber-400 font-mono">Hope</span>
-                    <div className="flex items-center gap-1 mt-1">
+                {/* Hope Box */}
+                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-1.5 flex flex-col items-center justify-center">
+                    <span className="text-[9px] font-mono uppercase font-bold text-growth">Hope</span>
+                    <div className="flex items-center gap-1.5 mt-1">
                         <button
                             onClick={() => handleStatDelta('hope', -1)}
-                            className="w-5 h-5 flex items-center justify-center bg-elevated hover:bg-neutral-800 rounded text-xs text-muted hover:text-white"
+                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
                         >
                             -
                         </button>
-                        <span className="w-6 text-center text-xs font-mono font-bold text-white">{tracker.hope ?? 0}</span>
+                        <span className="text-sm font-mono font-bold text-growth px-1">{tracker.hope}</span>
                         <button
                             onClick={() => handleStatDelta('hope', 1)}
-                            className="w-5 h-5 flex items-center justify-center bg-elevated hover:bg-neutral-800 rounded text-xs text-muted hover:text-white"
+                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
                         >
                             +
                         </button>
@@ -370,18 +468,9 @@ const DEFAULT_STATUSES: DaggerheartStatuses = {
                 </div>
             </div>
 
-            {/* Bottom Section: Status Badges */}
-            <div className="pt-1 border-t border-neutral-800/80">
-                <div className="flex items-center justify-between mb-1.5">
-                    <span className="text-[9px] uppercase font-bold text-muted font-mono tracking-wider">Statuses</span>
-                    <button
-                        onClick={handleRemoveTracker}
-                        className="text-[9px] text-muted hover:text-rose-400 font-mono underline"
-                    >
-                        Remove Tracker
-                    </button>
-                </div>
-
+            {/* Conditions / Status Badges */}
+            <div className="space-y-1">
+                <span className="text-[9px] font-mono uppercase font-bold text-muted">Conditions</span>
                 <div className="grid grid-cols-4 gap-1">
                     {STATUS_OPTIONS.map((status) => {
                         const isActive = !!tracker.statuses?.[status.key];
@@ -393,7 +482,7 @@ const DEFAULT_STATUSES: DaggerheartStatuses = {
                                     "px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-all border text-center",
                                     isActive
                                         ? `${status.bg} ${status.color} shadow-fey-subtle`
-                                        : "bg-surface/40 border-neutral-800 text-muted/60 hover:text-white hover:border-neutral-700"
+                                        : "bg-surface border-neutral-800 text-muted/60 hover:text-white hover:border-neutral-700"
                                 )}
                             >
                                 {status.abbr}
@@ -401,6 +490,17 @@ const DEFAULT_STATUSES: DaggerheartStatuses = {
                         );
                     })}
                 </div>
+            </div>
+
+            {/* Footer: Remove Tracker */}
+            <div className="flex items-center justify-end pt-2 border-t border-neutral-800">
+                <button
+                    onClick={handleRemoveTracker}
+                    className="text-[9px] font-mono text-muted hover:text-rose-400 transition-colors flex items-center gap-1"
+                >
+                    <Icons.Delete size={10} />
+                    <span>Clear HUD</span>
+                </button>
             </div>
         </div>
     );

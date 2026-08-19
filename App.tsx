@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Item, DicePreset, StepResult, CharacterStats, APP_VERSION } from './types';
 import { generateId, getStatLabel } from './utils/engine';
 import { DiceChainEditor } from './components/DiceChainEditor';
@@ -76,23 +76,16 @@ const INITIAL_STATS: CharacterStats = {
 const App: React.FC = () => {
   const { ready, isOBR, playerName, playerId } = useOBR();
 
-  // Overlay / Popover / Toolbar / ContextMenu Mode Detection
-  const [isOverlay, setIsOverlay] = useState(false);
-  const [isPopover, setIsPopover] = useState(false);
-  const [isToolbar, setIsToolbar] = useState(false);
-  const [isContextMenu, setIsContextMenu] = useState(false);
-
-  useEffect(() => {
-    const query = new URLSearchParams(window.location.search);
-    setIsOverlay(query.get('overlay') === 'true');
-    setIsPopover(query.get('popover') === 'true');
-    setIsToolbar(query.get('toolbar') === 'true');
-    setIsContextMenu(query.get('contextMenu') === 'true');
-  }, []);
+  // Overlay / Popover / Toolbar / ContextMenu Mode Detection - Synchronous
+  const isOverlay = useMemo(() => new URLSearchParams(window.location.search).get('overlay') === 'true', []);
+  const isPopover = useMemo(() => new URLSearchParams(window.location.search).get('popover') === 'true', []);
+  const isToolbar = useMemo(() => new URLSearchParams(window.location.search).get('toolbar') === 'true', []);
+  const isContextMenu = useMemo(() => new URLSearchParams(window.location.search).get('contextMenu') === 'true', []);
+  const isSubframe = isOverlay || isPopover || isToolbar || isContextMenu;
 
   const [items, setItems] = useState<Item[]>(INITIAL_ITEMS);
   const [stats, setStats] = useState<CharacterStats>(INITIAL_STATS);
-  const [isLoaded, setIsLoaded] = useState(false);
+  const [isLoaded, setIsLoaded] = useState(() => isSubframe);
 
   const [activeItemId, setActiveItemId] = useState<string | null>(null);
   const [activeView, setActiveView] = useState<'items' | 'character' | 'token' | 'settings'>('items');
@@ -116,8 +109,10 @@ const App: React.FC = () => {
   // Cache for mapping results back to names
   const [playerMetaCache, setPlayerMetaCache] = useState<Record<string, { name: string, preset: string, item: string }>>({});
 
-  // Listen for Rolls for History
+  // Listen for Rolls for History (only in main controller)
   useEffect(() => {
+    if (isSubframe) return;
+
     const unsubscribe = OBRBroadcast.onMessage((message: DiceRollMessage, senderId: string) => {
       if (message.type === 'ROLL_START') {
         const startMsg = message;
@@ -132,10 +127,7 @@ const App: React.FC = () => {
       } else if (message.type === 'ROLL_COMPLETE') {
         const msg = message as RollCompleteMessage;
         setRollHistory(prev => {
-          // Try to resolve name from cache or current message if available (it isn't in COMPLETE)
-          // Or fallback to "Unknown"
           const meta = playerMetaCache[msg.playerId];
-          // If it's me, use my name from hook if cache missing
           const resolvedName = (msg.playerId === playerId) ? (playerName || 'Me') : (meta?.name || 'Unknown');
           const resolvedPreset = meta?.preset || 'Roll';
           const resolvedItem = meta?.item || 'Item';
@@ -156,20 +148,13 @@ const App: React.FC = () => {
       }
     });
     return () => unsubscribe();
-  }, [playerId, playerName, playerMetaCache, isOverlay, isPopover]);
-  // dependency on playerMetaCache might cause excessive re-binds but onMessage returns unsubscribe so it's fine. 
-  // actually, using functional state updates inside callback is safer to avoid dep loops.
-  // usage of playerMetaCache inside callback checks the CURRENT closure value. 
-  // So I SHOULD assume playerMetaCache is fresh. 
-  // But standard pattern: use refs or updated deps. 
-  // Let's rely on functional updates where possible, but here we read separate state.
-  // It's acceptable for now given low traffic.
+  }, [playerId, playerName, playerMetaCache, isSubframe]);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Load data from OBR storage on mount (only in main controller mode)
   useEffect(() => {
-    if (!ready || isOverlay || isPopover || isLoaded) return;
+    if (!ready || isSubframe || isLoaded) return;
 
     const loadData = async () => {
       try {
@@ -184,14 +169,11 @@ const App: React.FC = () => {
           setItems(savedItems);
           setActiveItemId(savedItems[0]?.id || null);
         } else {
-          // If explicitly empty array (user deleted all), keep empty.
-          // If undefined (new user), use INITIAL.
           console.log("No saved items found (or new user). Using defaults if undefined.");
           if (savedItems && savedItems.length === 0) {
             setItems([]);
             setActiveItemId(null);
           } else {
-            // Only reset to initial if we truly have nothing
             setActiveItemId(INITIAL_ITEMS[0]?.id || null);
           }
         }
@@ -218,11 +200,11 @@ const App: React.FC = () => {
     };
 
     loadData();
-  }, [ready, isOverlay, isPopover]);
+  }, [ready, isSubframe, isLoaded]);
 
   // Open the overlay window and register tools on mount (if acting as controller)
   useEffect(() => {
-    if (ready && isOBR && !isOverlay && !isPopover && !isToolbar && !isContextMenu) {
+    if (ready && isOBR && !isSubframe) {
       // We are the controller. Try to open the controls, left dice toolbar, and register context menu.
       import('@owlbear-rodeo/sdk').then(({ default: OBR }) => {
         // Ensure legacy overlay is closed
@@ -252,11 +234,12 @@ const App: React.FC = () => {
         }).catch(e => console.error("Failed to open left toolbar popover:", e));
 
         // 3. Register Context Menu for Token Trackers (Shift + S / right-click token)
+        const iconUrl = new URL('stats-icon.svg', window.location.href).href;
         OBR.contextMenu.create({
           id: 'com.fateweaver.dice.token_stats',
           icons: [
             {
-              icon: '/stats-icon.svg',
+              icon: iconUrl,
               label: 'Edit Stats / Tracker',
               filter: {
                 every: [
@@ -279,32 +262,32 @@ const App: React.FC = () => {
         TokenAttachments.syncAll();
       });
     }
-  }, [ready, isOBR, isOverlay, isPopover, isToolbar, isContextMenu]);
+  }, [ready, isOBR, isSubframe]);
 
   // Save items when they change (only in main controller mode)
   useEffect(() => {
-    if (!isLoaded || isOverlay || isPopover) return;
+    if (!isLoaded || isSubframe) return;
     console.log("Saving items...");
     OBRStorage.setItems(items);
-  }, [items, isLoaded, isOverlay, isPopover]);
+  }, [items, isLoaded, isSubframe]);
 
   // Save stats when they change (only in main controller mode)
-  // Use ref to track if change came from storage event to avoid loop
   const statsFromStorageRef = useRef(false);
 
   useEffect(() => {
-    if (!isLoaded || isOverlay || isPopover) return;
+    if (!isLoaded || isSubframe) return;
     if (statsFromStorageRef.current) {
-      // Skip save - this change came from storage event
       statsFromStorageRef.current = false;
       return;
     }
     console.log("Saving stats...");
     OBRStorage.setStats(stats);
-  }, [stats, isLoaded, isOverlay, isPopover]);
+  }, [stats, isLoaded, isSubframe]);
 
-  // Listen for storage changes to sync stats and settings
+  // Listen for storage changes to sync stats and settings (only in main controller mode)
   useEffect(() => {
+    if (isSubframe) return;
+
     const handleStorageChange = async () => {
       const newStats = await OBRStorage.getStats();
       if (newStats) {
@@ -322,7 +305,7 @@ const App: React.FC = () => {
     };
     window.addEventListener('storage', handleStorageChange);
     return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
+  }, [isSubframe]);
 
   const handleDiceStyleChange = async (style: DiceStyle) => {
     setDiceStyle(style);

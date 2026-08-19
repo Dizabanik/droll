@@ -159,16 +159,16 @@ export const createTokenAttachments = async (
     const absHeight = Math.abs(bounds.height);
 
     // === DIMENSIONS ===
-    const height = Math.abs(Math.ceil(absHeight / 4.85));
+    const height = Math.abs(Math.ceil(absHeight / 6.5));
     const width = absWidth;
-    const border = Math.max(1, Math.floor(width / 75));
+    const border = Math.max(1, Math.floor(width / 100));
 
     const shapeHeight = Math.abs(absHeight / 2.3);
     const shapeWidth = Math.abs(absWidth / 3);
 
     const barPosition = {
         x: bounds.width < 0 ? bounds.position.x - width : bounds.position.x,
-        y: bounds.position.y + absHeight - height - absHeight / 10,
+        y: bounds.position.y + absHeight - height - (absHeight * 0.02),
     };
 
     if (trackerShowHp) {
@@ -180,9 +180,9 @@ export const createTokenAttachments = async (
             .width(width)
             .height(height)
             .fillColor("black")
-            .fillOpacity(0.65)
+            .fillOpacity(0.7)
             .strokeColor("black")
-            .strokeOpacity(0.8)
+            .strokeOpacity(0.9)
             .position(barPosition)
             .attachedTo(tokenId)
             .layer(token.layer)
@@ -200,7 +200,7 @@ export const createTokenAttachments = async (
             .width(fillWidth)
             .height(height - border * 2)
             .fillColor("#dc2626") // Crimson Red for HP bar
-            .fillOpacity(0.85)
+            .fillOpacity(0.9)
             .strokeWidth(0)
             .strokeOpacity(0)
             .position({ x: barPosition.x + border, y: barPosition.y + border })
@@ -233,7 +233,7 @@ export const createTokenAttachments = async (
             .fillColor("#ffffff")
             .strokeColor("black")
             .strokeWidth(2)
-            .fontSize(Math.max(10, Math.floor(height * 0.7)))
+            .fontSize(Math.max(9, Math.floor(height * 0.75)))
             .lineHeight(1)
             .disableHit(true)
             .disableAttachmentBehavior(["ROTATION"])
@@ -247,7 +247,7 @@ export const createTokenAttachments = async (
         hpText.metadata[ATTACHMENT_PREFIX] = { type: "hp.text" };
         items.push(hpBg, hpFill, hpText);
     } else {
-        // === 2. HP DEALT MODE (Stealth mode for enemies - Only displays damage taken) ===
+        // === 2. HP DEALT MODE (Stealth mode for enemies - Only displays damage taken number) ===
         const damageDealt = Math.max(0, vitals.hpMax - vitals.hp);
 
         const dealtBg = buildShape()
@@ -256,7 +256,7 @@ export const createTokenAttachments = async (
             .height(height)
             .fillColor("#18181b")
             .fillOpacity(0.85)
-            .strokeColor(damageDealt > 0 ? "#ef4444" : "#3f3f46")
+            .strokeColor(damageDealt > 0 ? "#dc2626" : "#3f3f46")
             .strokeWidth(border)
             .strokeOpacity(0.9)
             .position(barPosition)
@@ -281,7 +281,7 @@ export const createTokenAttachments = async (
             })
             .attachedTo(tokenId)
             .layer(token.layer)
-            .plainText(damageDealt > 0 ? `💥 ${damageDealt} DEALT` : `NO DMG`)
+            .plainText(`${damageDealt}`)
             .locked(true)
             .textAlign("CENTER")
             .textAlignVertical("MIDDLE")
@@ -289,7 +289,7 @@ export const createTokenAttachments = async (
             .fillColor(damageDealt > 0 ? "#fca5a5" : "#a1a1aa")
             .strokeColor("black")
             .strokeWidth(2)
-            .fontSize(Math.max(10, Math.floor(height * 0.65)))
+            .fontSize(Math.max(9, Math.floor(height * 0.75)))
             .lineHeight(1)
             .disableHit(true)
             .disableAttachmentBehavior(["ROTATION"])

@@ -130,20 +130,20 @@ function PartiallyControlledInput({
 const TextRing = ({
     topText,
     bottomText,
-    letterSpacing = 1,
+    letterSpacing = 0.8,
 }: {
     topText: string;
     bottomText: string;
     letterSpacing?: number;
 }): JSX.Element => {
-    const radius = 23;
+    const radius = 19;
     return (
         <svg
             xmlns="http://www.w3.org/2000/svg"
-            className="overflow-visible text-[8px] font-bold tracking-wider select-none pointer-events-none fill-muted/70"
-            width="56"
-            height="56"
-            viewBox="-28 -28 56 56"
+            className="overflow-visible text-[7px] font-bold tracking-wider select-none pointer-events-none fill-muted/70"
+            width="46"
+            height="46"
+            viewBox="-23 -23 46 46"
         >
             <path
                 id={`topCirclePath-${topText}`}
@@ -424,39 +424,39 @@ export const TokenQuickEditor: React.FC = () => {
 
     if (!token) {
         return (
-            <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-background text-muted text-center select-none overflow-y-auto">
+            <div className="w-full h-full flex flex-col items-center justify-center p-2 bg-background text-muted text-center select-none overflow-y-auto">
                 <p className="text-xs font-mono font-bold text-white mb-1">Select a Token</p>
-                <p className="text-[10px] text-muted font-mono mb-2">Click a token from the scene below to edit stats:</p>
+                <p className="text-[10px] text-muted font-mono mb-2">Click a token from the scene to edit:</p>
                 {sceneTokens.length > 0 ? (
-                    <div className="grid grid-cols-4 gap-1.5 w-full max-h-32 overflow-y-auto p-1">
+                    <div className="grid grid-cols-4 gap-1 w-full max-h-28 overflow-y-auto p-1">
                         {sceneTokens.map((t) => (
                             <button
                                 key={t.id}
                                 onClick={() => selectToken(t)}
-                                className="aspect-square rounded-lg border border-neutral-800 hover:border-signal p-1 bg-surface flex flex-col items-center justify-center gap-1 transition-all"
+                                className="aspect-square rounded-lg border border-neutral-800 hover:border-neutral-600 p-1 bg-surface flex flex-col items-center justify-center gap-1 transition-all"
                             >
                                 {t.image?.url ? (
-                                    <img src={t.image.url} alt={t.name} className="w-6 h-6 object-cover rounded" />
+                                    <img src={t.image.url} alt={t.name} className="w-5 h-5 object-cover rounded" />
                                 ) : (
-                                    <div className="w-6 h-6 rounded bg-neutral-800" />
+                                    <div className="w-5 h-5 rounded bg-neutral-800" />
                                 )}
                                 <span className="text-[8px] font-mono text-muted truncate w-full">{t.name || 'Token'}</span>
                             </button>
                         ))}
                     </div>
                 ) : (
-                    <p className="text-[10px] text-muted font-mono">No character tokens found in scene.</p>
+                    <p className="text-[10px] text-muted font-mono">No character tokens found.</p>
                 )}
             </div>
         );
     }
 
     return (
-        <div className="h-full w-full space-y-2 overflow-hidden px-2.5 py-2 select-none bg-background text-white font-sans">
-            {/* 1. Name Field (Exact Bubbles Design) */}
+        <div className="h-full w-full space-y-1.5 overflow-hidden px-2 py-1.5 select-none bg-background text-white font-sans flex flex-col justify-between">
+            {/* 1. Name Field */}
             <div className="grid grid-cols-[1fr,auto,1fr] place-items-center">
                 <div />
-                <div className="w-[160px] relative">
+                <div className="w-[140px] relative">
                     <input
                         value={tokenName}
                         onChange={(e) => setTokenName(e.target.value)}
@@ -467,8 +467,8 @@ export const TokenQuickEditor: React.FC = () => {
                                 handleNameChange(tokenName);
                             }
                         }}
-                        placeholder="Token Name"
-                        className="h-[32px] w-full rounded-xl bg-surface border border-neutral-800 px-2 py-0.5 text-center text-xs font-bold text-white outline-none focus:border-neutral-500 shadow-inner"
+                        placeholder="Name"
+                        className="h-[24px] w-full rounded-lg bg-surface border border-neutral-800 px-2 text-center text-xs font-bold text-white outline-none focus:border-neutral-500 shadow-inner"
                     />
                 </div>
                 <div className="flex items-center pl-1">
@@ -480,7 +480,7 @@ export const TokenQuickEditor: React.FC = () => {
                                 await handleNameChange(currentName);
                             }
                         }}
-                        className="p-1.5 rounded-lg bg-surface/50 hover:bg-surface border border-neutral-800 text-muted hover:text-white transition-all"
+                        className="p-1 rounded-md bg-surface/50 hover:bg-surface border border-neutral-800 text-muted hover:text-white transition-all"
                         title="Sync token name"
                     >
                         <MagicIcon />
@@ -488,20 +488,20 @@ export const TokenQuickEditor: React.FC = () => {
                 </div>
             </div>
 
-            {/* 2. Stats Grid (Exact Bubbles 4-Column Bar + Rings Design) */}
-            <div className="grid grid-cols-5 rounded-xl bg-surface/60 border border-neutral-800/80 p-2 gap-1.5 items-center shadow-inner">
+            {/* 2. Stats Grid (5-Column Bar + Bubbles) */}
+            <div className="grid grid-cols-5 rounded-xl bg-surface/60 border border-neutral-800/80 p-1.5 gap-1 items-center shadow-inner">
                 {/* Column 1-2: Hit Points & Maximum (BarInput) */}
                 <div className="col-span-2 flex flex-col items-center justify-center gap-0.5">
-                    <span className="text-[8px] font-bold tracking-wider text-muted uppercase font-mono">
+                    <span className="text-[7.5px] font-bold tracking-wider text-muted uppercase font-mono">
                         HIT POINTS
                     </span>
-                    <div className="relative flex h-[38px] w-[96px] justify-between items-center rounded-xl bg-rose-950/30 border border-rose-800/50 shadow-inner">
+                    <div className="relative flex h-[30px] w-[86px] justify-between items-center rounded-lg bg-rose-950/30 border border-rose-800/50 shadow-inner">
                         <PartiallyControlledInput
                             parentValue={tracker.hp.toString()}
                             onUserConfirm={handleUpdateHp}
                             onFocus={() => setValueHasFocus(true)}
                             onBlur={() => setValueHasFocus(false)}
-                            className="w-[42px] h-full bg-transparent text-center text-xs font-bold font-mono text-white outline-none"
+                            className="w-[38px] h-full bg-transparent text-center text-xs font-bold font-mono text-white outline-none"
                         />
                         <span className="text-muted/60 font-mono text-xs select-none">/</span>
                         <PartiallyControlledInput
@@ -509,20 +509,20 @@ export const TokenQuickEditor: React.FC = () => {
                             onUserConfirm={handleUpdateMaxHp}
                             onFocus={() => setMaxHasFocus(true)}
                             onBlur={() => setMaxHasFocus(false)}
-                            className="w-[42px] h-full bg-transparent text-center text-xs font-bold font-mono text-muted focus:text-white outline-none"
+                            className="w-[38px] h-full bg-transparent text-center text-xs font-bold font-mono text-muted focus:text-white outline-none"
                         />
                     </div>
-                    <span className="text-[8px] font-bold tracking-wider text-muted uppercase font-mono">
+                    <span className="text-[7.5px] font-bold tracking-wider text-muted uppercase font-mono">
                         & MAXIMUM
                     </span>
                 </div>
 
-                {/* Column 3: Armor Class Bubble (Exact Bubbles BubbleInput) */}
+                {/* Column 3: Armor Class Bubble */}
                 <div className="flex flex-col items-center justify-center relative">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <TextRing topText="ARMOR" bottomText="CLASS" letterSpacing={1} />
+                        <TextRing topText="ARMOR" bottomText="CLASS" letterSpacing={0.8} />
                     </div>
-                    <div className="w-[36px] h-[36px] rounded-full bg-blue-950/40 border border-blue-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
+                    <div className="w-[30px] h-[30px] rounded-full bg-blue-950/40 border border-blue-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
                         <PartiallyControlledInput
                             parentValue={tracker.armor.toString()}
                             onUserConfirm={(val) => handleUpdateStat('armor', val)}
@@ -534,9 +534,9 @@ export const TokenQuickEditor: React.FC = () => {
                 {/* Column 4: Stress Bubble */}
                 <div className="flex flex-col items-center justify-center relative">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <TextRing topText="STRESS" bottomText="VALUE" letterSpacing={0.8} />
+                        <TextRing topText="STRESS" bottomText="VALUE" letterSpacing={0.7} />
                     </div>
-                    <div className="w-[36px] h-[36px] rounded-full bg-amber-950/40 border border-amber-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
+                    <div className="w-[30px] h-[30px] rounded-full bg-amber-950/40 border border-amber-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
                         <PartiallyControlledInput
                             parentValue={tracker.stress.toString()}
                             onUserConfirm={(val) => handleUpdateStat('stress', val)}
@@ -548,9 +548,9 @@ export const TokenQuickEditor: React.FC = () => {
                 {/* Column 5: Hope Bubble */}
                 <div className="flex flex-col items-center justify-center relative">
                     <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                        <TextRing topText="HOPE" bottomText="POINTS" letterSpacing={1} />
+                        <TextRing topText="HOPE" bottomText="POINTS" letterSpacing={0.8} />
                     </div>
-                    <div className="w-[36px] h-[36px] rounded-full bg-emerald-950/40 border border-emerald-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
+                    <div className="w-[30px] h-[30px] rounded-full bg-emerald-950/40 border border-emerald-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
                         <PartiallyControlledInput
                             parentValue={tracker.hope.toString()}
                             onUserConfirm={(val) => handleUpdateStat('hope', val)}
@@ -561,7 +561,7 @@ export const TokenQuickEditor: React.FC = () => {
             </div>
 
             {/* 3. Daggerheart Status Conditions */}
-            <div className="grid grid-cols-4 gap-1 pt-0.5">
+            <div className="grid grid-cols-8 gap-0.5">
                 {STATUS_OPTIONS.map((status) => {
                     const isActive = !!tracker.statuses?.[status.key];
                     return (
@@ -569,7 +569,7 @@ export const TokenQuickEditor: React.FC = () => {
                             key={status.key}
                             onClick={() => handleToggleStatus(status.key)}
                             className={clsx(
-                                "px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-all border text-center",
+                                "py-0.5 rounded text-[8px] font-mono font-bold transition-all border text-center",
                                 isActive
                                     ? `${status.bg} ${status.color} shadow-fey-subtle`
                                     : "bg-surface/50 border-neutral-800 text-muted/60 hover:text-white hover:border-neutral-700"
@@ -581,11 +581,11 @@ export const TokenQuickEditor: React.FC = () => {
                 })}
             </div>
 
-            {/* 4. DM Mode / Stealth Toggle (Exact Bubbles BookLock Button Design) */}
+            {/* 4. DM Mode / Stealth Toggle (Compact Button, No Emojis) */}
             <button
                 onClick={handleToggleShowHp}
                 className={clsx(
-                    "w-full py-1.5 px-3 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 border shadow-sm",
+                    "w-full py-1 px-2.5 rounded-lg text-[10.5px] font-mono font-medium transition-all flex items-center justify-center gap-1.5 border shadow-sm",
                     !tracker.showHp
                         ? "bg-rose-950/40 border-rose-800 text-rose-300 hover:bg-rose-900/40"
                         : "bg-surface/80 border-neutral-800 text-muted hover:text-white hover:bg-surface"
@@ -594,12 +594,12 @@ export const TokenQuickEditor: React.FC = () => {
                 {!tracker.showHp ? (
                     <>
                         <BookLock />
-                        <span className="font-mono text-[11px] font-bold">DM Stealth Mode (HP Dealt Only)</span>
+                        <span>Stealth (Damage Dealt Only)</span>
                     </>
                 ) : (
                     <>
                         <BookOpen />
-                        <span className="font-mono text-[11px] font-semibold">Player Visible (Standard HP Bar)</span>
+                        <span>Visible (Standard HP Bar)</span>
                     </>
                 )}
             </button>

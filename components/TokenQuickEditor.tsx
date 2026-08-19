@@ -11,6 +11,8 @@ import {
 import { DaggerheartStatuses } from '../obr/storage';
 import clsx from 'clsx';
 
+import { useOBR } from '../obr';
+
 const STATUS_OPTIONS: { key: keyof DaggerheartStatuses; label: string; abbr: string; color: string; bg: string }[] = [
     { key: 'vulnerable', label: 'Vulnerable', abbr: 'VUL', color: 'text-red-400', bg: 'bg-red-950/60 border-red-800/80' },
     { key: 'blinded', label: 'Blinded', abbr: 'BLN', color: 'text-purple-400', bg: 'bg-purple-950/60 border-purple-800/80' },
@@ -34,6 +36,7 @@ const DEFAULT_STATUSES: DaggerheartStatuses = {
 };
 
 export const TokenQuickEditor: React.FC = () => {
+    const { ready, isOBR } = useOBR();
     const [token, setToken] = useState<Image | null>(null);
     const [sceneTokens, setSceneTokens] = useState<Image[]>([]);
     const [tracker, setTracker] = useState<TokenTrackerData>({
@@ -78,16 +81,13 @@ export const TokenQuickEditor: React.FC = () => {
     }, []);
 
     useEffect(() => {
+        if (!ready) return;
         let isMounted = true;
+        let unsubSelection: (() => void) | undefined;
+        let unsubItems: (() => void) | undefined;
 
         const load = async () => {
             try {
-                if (!OBR.isReady) {
-                    await new Promise<void>((resolve) => {
-                        OBR.onReady(() => resolve());
-                    });
-                }
-
                 // Fetch character tokens in scene
                 const allCharacterItems = (await OBR.scene.items.getItems(
                     (i) => isImage(i) && (i.layer === 'CHARACTER' || i.layer === 'MOUNT')
@@ -127,56 +127,56 @@ export const TokenQuickEditor: React.FC = () => {
 
         load();
 
-        // Listen for selection changes
-        const unsubSelection = OBR.player.onChange(async () => {
-            try {
-                const selection = await OBR.player.getSelection();
-                if (selection && selection.length > 0) {
-                    const items = await OBR.scene.items.getItems(selection);
-                    const valid = items.find((i) => isImage(i)) as Image | undefined;
-                    if (valid && isMounted) {
-                        selectToken(valid);
+        if (isOBR) {
+            unsubSelection = OBR.player.onChange(async () => {
+                try {
+                    const selection = await OBR.player.getSelection();
+                    if (selection && selection.length > 0) {
+                        const items = await OBR.scene.items.getItems(selection);
+                        const valid = items.find((i) => isImage(i)) as Image | undefined;
+                        if (valid && isMounted) {
+                            selectToken(valid);
+                        }
+                    }
+                } catch (err) {
+                    console.error("Selection update error:", err);
+                }
+            });
+
+            unsubItems = OBR.scene.items.onChange(async (items) => {
+                if (!isMounted) return;
+                const characterItems = items.filter(
+                    (i) => isImage(i) && (i.layer === 'CHARACTER' || i.layer === 'MOUNT')
+                ) as Image[];
+                setSceneTokens(characterItems);
+
+                if (token) {
+                    const currentUpdated = characterItems.find(i => i.id === token.id);
+                    if (currentUpdated) {
+                        const existing = getTokenTrackerData(currentUpdated);
+                        if (existing) {
+                            setTracker({
+                                hp: existing.hp ?? 10,
+                                hpMax: existing.hpMax ?? 10,
+                                stress: existing.stress ?? 0,
+                                armor: existing.armor ?? 0,
+                                hope: existing.hope ?? 0,
+                                showHp: existing.showHp ?? true,
+                                hideStats: existing.hideStats ?? false,
+                                statuses: existing.statuses || DEFAULT_STATUSES,
+                            });
+                        }
                     }
                 }
-            } catch (err) {
-                console.error("Selection update error:", err);
-            }
-        });
-
-        // Listen for scene items updates
-        const unsubItems = OBR.scene.items.onChange(async (items) => {
-            if (!isMounted) return;
-            const characterItems = items.filter(
-                (i) => isImage(i) && (i.layer === 'CHARACTER' || i.layer === 'MOUNT')
-            ) as Image[];
-            setSceneTokens(characterItems);
-
-            if (token) {
-                const currentUpdated = characterItems.find(i => i.id === token.id);
-                if (currentUpdated) {
-                    const existing = getTokenTrackerData(currentUpdated);
-                    if (existing) {
-                        setTracker({
-                            hp: existing.hp ?? 10,
-                            hpMax: existing.hpMax ?? 10,
-                            stress: existing.stress ?? 0,
-                            armor: existing.armor ?? 0,
-                            hope: existing.hope ?? 0,
-                            showHp: existing.showHp ?? true,
-                            hideStats: existing.hideStats ?? false,
-                            statuses: existing.statuses || DEFAULT_STATUSES,
-                        });
-                    }
-                }
-            }
-        });
+            });
+        }
 
         return () => {
             isMounted = false;
-            unsubSelection();
-            unsubItems();
+            unsubSelection?.();
+            unsubItems?.();
         };
-    }, [selectToken, token?.id]);
+    }, [ready, isOBR, selectToken, token?.id]);
 
     const handleHpChange = async (newHp: number, newMax?: number) => {
         const updated = {

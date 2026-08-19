@@ -1,17 +1,39 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import OBR, { Image, Item, isImage } from '@owlbear-rodeo/sdk';
-import { Icons } from './ui/Icons';
+import OBR, { Image, isImage } from '@owlbear-rodeo/sdk';
 import {
     TokenTrackerData,
-    TokenAttachments,
     getTokenTrackerData,
     setTokenTrackerData,
     removeTokenTrackerData,
 } from '../obr/tokenAttachments';
 import { DaggerheartStatuses } from '../obr/storage';
+import { useOBR } from '../obr';
 import clsx from 'clsx';
 
-import { useOBR } from '../obr';
+// === Bubbles-Exact SVG Icons ===
+const BookLock = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H10" />
+        <path d="M20 15v4.5a2.5 2.5 0 0 1-2.5 2.5H6.5a2.5 2.5 0 0 1-2.5-2.5V19.5" />
+        <rect width="8" height="5" x="14" y="7" rx="1" />
+        <path d="M16 7V5a2 2 0 1 1 4 0v2" />
+    </svg>
+);
+
+const BookOpen = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z" />
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z" />
+    </svg>
+);
+
+const MagicIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="m19 11-8-8-8.5 8.5a2.12 2.12 0 0 0 0 3L11 23l8-8Z" />
+        <path d="m5 2 5 5" />
+        <path d="m2 5 5 5" />
+    </svg>
+);
 
 const STATUS_OPTIONS: { key: keyof DaggerheartStatuses; label: string; abbr: string; color: string; bg: string }[] = [
     { key: 'vulnerable', label: 'Vulnerable', abbr: 'VUL', color: 'text-red-400', bg: 'bg-red-950/60 border-red-800/80' },
@@ -35,10 +57,159 @@ const DEFAULT_STATUSES: DaggerheartStatuses = {
     empowered: false,
 };
 
+// Math calculation helper from Bubbles
+function parseInlineMath(inputContent: string, previousValue: number): number {
+    const trimmed = inputContent.trim();
+    if (!trimmed) return previousValue;
+    const newValue = parseFloat(trimmed);
+    if (Number.isNaN(newValue)) return previousValue;
+    if (trimmed.startsWith("+") || trimmed.startsWith("-")) {
+        return Math.trunc(previousValue + Math.trunc(newValue));
+    }
+    return newValue;
+}
+
+// PartiallyControlledInput from Bubbles
+interface PartiallyControlledInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+    parentValue: string;
+    onUserConfirm: (val: string) => void;
+}
+
+function PartiallyControlledInput({
+    parentValue,
+    onUserConfirm,
+    className,
+    ...inputProps
+}: PartiallyControlledInputProps): JSX.Element {
+    const [inputContent, setInputContent] = useState<string>(parentValue);
+
+    useEffect(() => {
+        setInputContent(parentValue);
+    }, [parentValue]);
+
+    const resetInputContent = () => setInputContent(parentValue);
+
+    return (
+        <input
+            {...inputProps}
+            value={inputContent}
+            onChange={(e) => {
+                if (inputProps.onChange) inputProps.onChange(e);
+                setInputContent(e.target.value);
+            }}
+            onBlur={(e) => {
+                if (inputProps.onBlur) inputProps.onBlur(e);
+                if (inputContent === "") {
+                    resetInputContent();
+                } else {
+                    onUserConfirm(inputContent);
+                }
+            }}
+            onKeyDown={(e) => {
+                if (inputProps.onKeyDown) inputProps.onKeyDown(e);
+                if (e.key === "Enter") {
+                    (e.target as HTMLInputElement).blur();
+                    onUserConfirm(inputContent);
+                } else if (e.key === "Escape") {
+                    (e.target as HTMLInputElement).blur();
+                    resetInputContent();
+                }
+            }}
+            onFocus={(e) => {
+                if (inputProps.onFocus) inputProps.onFocus(e);
+                setInputContent("");
+            }}
+            className={className}
+            placeholder=""
+            autoComplete="off"
+        />
+    );
+}
+
+// Curved SVG Text Ring from Bubbles
+const TextRing = ({
+    topText,
+    bottomText,
+    letterSpacing = 1,
+}: {
+    topText: string;
+    bottomText: string;
+    letterSpacing?: number;
+}): JSX.Element => {
+    const radius = 23;
+    return (
+        <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="overflow-visible text-[8px] font-bold tracking-wider select-none pointer-events-none fill-muted/70"
+            width="56"
+            height="56"
+            viewBox="-28 -28 56 56"
+        >
+            <path
+                id={`topCirclePath-${topText}`}
+                d={`M ${-radius} 0 A ${radius} ${radius} 0 0,1 ${radius},0`}
+                fill="none"
+            />
+            <path
+                id={`bottomCirclePath-${bottomText}`}
+                d={`M ${-radius} 0 A ${radius} ${radius} 0 0,0 ${radius},0`}
+                fill="none"
+            />
+            <text>
+                <textPath
+                    href={`#topCirclePath-${topText}`}
+                    startOffset="50%"
+                    dominantBaseline="central"
+                    textAnchor="middle"
+                    letterSpacing={letterSpacing}
+                >
+                    {topText}
+                </textPath>
+            </text>
+            <text>
+                <textPath
+                    href={`#bottomCirclePath-${bottomText}`}
+                    startOffset="50%"
+                    dominantBaseline="central"
+                    textAnchor="middle"
+                    letterSpacing={letterSpacing}
+                >
+                    {bottomText}
+                </textPath>
+            </text>
+        </svg>
+    );
+};
+
+// Left and Right Cutout SVGs from Bubbles
+function LeftCutoutBackground() {
+    return (
+        <svg className="w-full h-full" viewBox="0 0 100 40">
+            <path
+                d="M 44 20 l 0 -10 a 10 10 -90 0 0 -10 -10 l 56 0 a 10 10 90 0 1 10 10 l 0 20 a 10 10 90 0 1 -10 10 l -56 0 a 10 10 -90 0 0 10 -10 l 0 -10"
+                fill="rgba(220, 38, 38, 0.2)"
+            />
+        </svg>
+    );
+}
+
+function RightCutoutBackground() {
+    return (
+        <svg className="w-full h-full" viewBox="0 0 100 40">
+            <path
+                d="M 56 20 l 0 -10 a 10 10 -90 0 1 10 -10 l -56 0 a 10 10 90 0 0 -10 10 l 0 20 a 10 10 90 0 0 10 10 l 56 0 a 10 10 -90 0 1 -10 -10 l 0 -10"
+                fill="rgba(220, 38, 38, 0.2)"
+            />
+        </svg>
+    );
+}
+
+// === MAIN QUICK STATS EDITOR ===
 export const TokenQuickEditor: React.FC = () => {
-    const { ready, isOBR } = useOBR();
+    const { ready, isOBR, role } = useOBR();
     const [token, setToken] = useState<Image | null>(null);
     const [sceneTokens, setSceneTokens] = useState<Image[]>([]);
+    const [tokenName, setTokenName] = useState<string>('');
     const [tracker, setTracker] = useState<TokenTrackerData>({
         hp: 10,
         hpMax: 10,
@@ -49,11 +220,13 @@ export const TokenQuickEditor: React.FC = () => {
         hideStats: false,
         statuses: DEFAULT_STATUSES,
     });
+    const [valueHasFocus, setValueHasFocus] = useState(false);
+    const [maxHasFocus, setMaxHasFocus] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
-    const [mathInput, setMathInput] = useState('');
 
     const selectToken = useCallback((target: Image) => {
         setToken(target);
+        setTokenName(target.name || '');
         const existing = getTokenTrackerData(target);
         if (existing) {
             setTracker({
@@ -88,7 +261,6 @@ export const TokenQuickEditor: React.FC = () => {
 
         const load = async () => {
             try {
-                // Fetch character tokens in scene
                 const allCharacterItems = (await OBR.scene.items.getItems(
                     (i) => isImage(i) && (i.layer === 'CHARACTER' || i.layer === 'MOUNT')
                 )) as Image[];
@@ -97,10 +269,8 @@ export const TokenQuickEditor: React.FC = () => {
                     setSceneTokens(allCharacterItems);
                 }
 
-                // Try getting current player selection
                 let selection = await OBR.player.getSelection();
                 if (!selection || selection.length === 0) {
-                    // Quick 100ms retry to let selection propagate
                     await new Promise(r => setTimeout(r, 100));
                     selection = await OBR.player.getSelection();
                 }
@@ -178,65 +348,28 @@ export const TokenQuickEditor: React.FC = () => {
         };
     }, [ready, isOBR, selectToken, token?.id]);
 
-    const handleHpChange = async (newHp: number, newMax?: number) => {
-        const updated = {
-            ...tracker,
-            hp: Math.max(0, newHp),
-            hpMax: newMax !== undefined ? Math.max(1, newMax) : tracker.hpMax,
-        };
+    const handleUpdateHp = async (rawInput: string) => {
+        const newHp = Math.max(0, parseInlineMath(rawInput, tracker.hp));
+        const updated = { ...tracker, hp: newHp };
         setTracker(updated);
         if (token) {
             await setTokenTrackerData(token.id, updated);
         }
     };
 
-    const handleApplyMathDelta = async (delta: number) => {
-        const newHp = Math.max(0, Math.min(tracker.hpMax, tracker.hp + delta));
-        await handleHpChange(newHp);
-    };
-
-    const handleMathSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
-        const trimmed = mathInput.trim();
-        if (!trimmed) return;
-
-        let delta = 0;
-        if (trimmed.startsWith('+')) {
-            delta = parseInt(trimmed.slice(1), 10) || 0;
-        } else if (trimmed.startsWith('-')) {
-            delta = -1 * (parseInt(trimmed.slice(1), 10) || 0);
-        } else {
-            const absolute = parseInt(trimmed, 10);
-            if (!isNaN(absolute)) {
-                await handleHpChange(absolute);
-                setMathInput('');
-                return;
-            }
-        }
-
-        if (!isNaN(delta)) {
-            await handleApplyMathDelta(delta);
-        }
-        setMathInput('');
-    };
-
-    const handleToggleShowHp = async () => {
-        const updated = {
-            ...tracker,
-            showHp: !tracker.showHp,
-        };
+    const handleUpdateMaxHp = async (rawInput: string) => {
+        const newMax = Math.max(1, parseInlineMath(rawInput, tracker.hpMax));
+        const updated = { ...tracker, hpMax: newMax };
         setTracker(updated);
         if (token) {
             await setTokenTrackerData(token.id, updated);
         }
     };
 
-    const handleStatDelta = async (stat: 'stress' | 'armor' | 'hope', delta: number) => {
+    const handleUpdateStat = async (stat: 'armor' | 'stress' | 'hope', rawInput: string) => {
         const current = tracker[stat] ?? 0;
-        const updated = {
-            ...tracker,
-            [stat]: Math.max(0, current + delta),
-        };
+        const newVal = Math.max(0, parseInlineMath(rawInput, current));
+        const updated = { ...tracker, [stat]: newVal };
         setTracker(updated);
         if (token) {
             await setTokenTrackerData(token.id, updated);
@@ -259,16 +392,32 @@ export const TokenQuickEditor: React.FC = () => {
         }
     };
 
-    const handleRemoveTracker = async () => {
+    const handleToggleShowHp = async () => {
+        const updated = {
+            ...tracker,
+            showHp: !tracker.showHp,
+        };
+        setTracker(updated);
         if (token) {
-            await removeTokenTrackerData(token.id);
+            await setTokenTrackerData(token.id, updated);
+        }
+    };
+
+    const handleNameChange = async (newName: string) => {
+        setTokenName(newName);
+        if (token && newName.trim() !== "") {
+            await OBR.scene.items.updateItems([token.id], (items) => {
+                for (const item of items) {
+                    item.name = newName;
+                }
+            });
         }
     };
 
     if (isLoading) {
         return (
             <div className="w-full h-full flex items-center justify-center bg-background text-muted select-none">
-                <Icons.Refresh size={18} className="animate-spin text-white" />
+                <div className="w-4 h-4 rounded-full border-2 border-white/20 border-t-white animate-spin" />
             </div>
         );
     }
@@ -276,9 +425,8 @@ export const TokenQuickEditor: React.FC = () => {
     if (!token) {
         return (
             <div className="w-full h-full flex flex-col items-center justify-center p-3 bg-background text-muted text-center select-none overflow-y-auto">
-                <Icons.Target size={22} className="mb-1 text-white opacity-40" />
-                <p className="text-xs font-mono font-bold text-white">Select a Token</p>
-                <p className="text-[10px] text-muted font-mono mt-0.5 mb-2">Click a token from the scene below to edit stats:</p>
+                <p className="text-xs font-mono font-bold text-white mb-1">Select a Token</p>
+                <p className="text-[10px] text-muted font-mono mb-2">Click a token from the scene below to edit stats:</p>
                 {sceneTokens.length > 0 ? (
                     <div className="grid grid-cols-4 gap-1.5 w-full max-h-32 overflow-y-auto p-1">
                         {sceneTokens.map((t) => (
@@ -290,7 +438,7 @@ export const TokenQuickEditor: React.FC = () => {
                                 {t.image?.url ? (
                                     <img src={t.image.url} alt={t.name} className="w-6 h-6 object-cover rounded" />
                                 ) : (
-                                    <Icons.User size={14} className="text-muted" />
+                                    <div className="w-6 h-6 rounded bg-neutral-800" />
                                 )}
                                 <span className="text-[8px] font-mono text-muted truncate w-full">{t.name || 'Token'}</span>
                             </button>
@@ -303,205 +451,158 @@ export const TokenQuickEditor: React.FC = () => {
         );
     }
 
-    const damageDealt = Math.max(0, tracker.hpMax - tracker.hp);
-
     return (
-        <div className="w-full h-full bg-background text-white flex flex-col justify-between p-3 select-none overflow-y-auto font-sans">
-            {/* Header: Token Info + Show HP Toggle */}
-            <div className="flex items-center justify-between pb-2 border-b border-neutral-800 gap-2">
-                <div className="flex items-center gap-2 min-w-0">
-                    <div className="w-8 h-8 rounded-lg bg-surface border border-neutral-700 overflow-hidden flex-shrink-0">
-                        {token.image?.url && (
-                            <img src={token.image.url} alt={token.name} className="w-full h-full object-cover" />
-                        )}
+        <div className="h-full w-full space-y-2 overflow-hidden px-2.5 py-2 select-none bg-background text-white font-sans">
+            {/* 1. Name Field (Exact Bubbles Design) */}
+            <div className="grid grid-cols-[1fr,auto,1fr] place-items-center">
+                <div />
+                <div className="w-[160px] relative">
+                    <input
+                        value={tokenName}
+                        onChange={(e) => setTokenName(e.target.value)}
+                        onBlur={(e) => handleNameChange(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                                (e.target as HTMLInputElement).blur();
+                                handleNameChange(tokenName);
+                            }
+                        }}
+                        placeholder="Token Name"
+                        className="h-[32px] w-full rounded-xl bg-surface border border-neutral-800 px-2 py-0.5 text-center text-xs font-bold text-white outline-none focus:border-neutral-500 shadow-inner"
+                    />
+                </div>
+                <div className="flex items-center pl-1">
+                    <button
+                        onClick={async () => {
+                            if (token) {
+                                const currentName = token.name || 'Token';
+                                setTokenName(currentName);
+                                await handleNameChange(currentName);
+                            }
+                        }}
+                        className="p-1.5 rounded-lg bg-surface/50 hover:bg-surface border border-neutral-800 text-muted hover:text-white transition-all"
+                        title="Sync token name"
+                    >
+                        <MagicIcon />
+                    </button>
+                </div>
+            </div>
+
+            {/* 2. Stats Grid (Exact Bubbles 4-Column Bar + Rings Design) */}
+            <div className="grid grid-cols-5 rounded-xl bg-surface/60 border border-neutral-800/80 p-2 gap-1.5 items-center shadow-inner">
+                {/* Column 1-2: Hit Points & Maximum (BarInput) */}
+                <div className="col-span-2 flex flex-col items-center justify-center gap-0.5">
+                    <span className="text-[8px] font-bold tracking-wider text-muted uppercase font-mono">
+                        HIT POINTS
+                    </span>
+                    <div className="relative flex h-[38px] w-[96px] justify-between items-center rounded-xl bg-rose-950/30 border border-rose-800/50 shadow-inner">
+                        <PartiallyControlledInput
+                            parentValue={tracker.hp.toString()}
+                            onUserConfirm={handleUpdateHp}
+                            onFocus={() => setValueHasFocus(true)}
+                            onBlur={() => setValueHasFocus(false)}
+                            className="w-[42px] h-full bg-transparent text-center text-xs font-bold font-mono text-white outline-none"
+                        />
+                        <span className="text-muted/60 font-mono text-xs select-none">/</span>
+                        <PartiallyControlledInput
+                            parentValue={tracker.hpMax.toString()}
+                            onUserConfirm={handleUpdateMaxHp}
+                            onFocus={() => setMaxHasFocus(true)}
+                            onBlur={() => setMaxHasFocus(false)}
+                            className="w-[42px] h-full bg-transparent text-center text-xs font-bold font-mono text-muted focus:text-white outline-none"
+                        />
                     </div>
-                    <div className="min-w-0">
-                        <h3 className="text-xs font-bold text-white truncate">{token.name || 'Token'}</h3>
-                        <div className="text-[9px] font-mono text-muted flex items-center gap-1.5">
-                            {tracker.showHp ? (
-                                <span className="text-emerald-400 font-semibold">Standard HP Bar</span>
-                            ) : (
-                                <span className="text-rose-400 font-semibold flex items-center gap-1">
-                                    <span>💥 Dealt Mode</span>
-                                    <span>({damageDealt} dmg)</span>
-                                </span>
+                    <span className="text-[8px] font-bold tracking-wider text-muted uppercase font-mono">
+                        & MAXIMUM
+                    </span>
+                </div>
+
+                {/* Column 3: Armor Class Bubble (Exact Bubbles BubbleInput) */}
+                <div className="flex flex-col items-center justify-center relative">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <TextRing topText="ARMOR" bottomText="CLASS" letterSpacing={1} />
+                    </div>
+                    <div className="w-[36px] h-[36px] rounded-full bg-blue-950/40 border border-blue-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
+                        <PartiallyControlledInput
+                            parentValue={tracker.armor.toString()}
+                            onUserConfirm={(val) => handleUpdateStat('armor', val)}
+                            className="w-full h-full bg-transparent text-center text-xs font-bold font-mono text-blue-300 outline-none"
+                        />
+                    </div>
+                </div>
+
+                {/* Column 4: Stress Bubble */}
+                <div className="flex flex-col items-center justify-center relative">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <TextRing topText="STRESS" bottomText="VALUE" letterSpacing={0.8} />
+                    </div>
+                    <div className="w-[36px] h-[36px] rounded-full bg-amber-950/40 border border-amber-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
+                        <PartiallyControlledInput
+                            parentValue={tracker.stress.toString()}
+                            onUserConfirm={(val) => handleUpdateStat('stress', val)}
+                            className="w-full h-full bg-transparent text-center text-xs font-bold font-mono text-amber-300 outline-none"
+                        />
+                    </div>
+                </div>
+
+                {/* Column 5: Hope Bubble */}
+                <div className="flex flex-col items-center justify-center relative">
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <TextRing topText="HOPE" bottomText="POINTS" letterSpacing={1} />
+                    </div>
+                    <div className="w-[36px] h-[36px] rounded-full bg-emerald-950/40 border border-emerald-600/70 flex items-center justify-center shadow-fey-subtle my-auto">
+                        <PartiallyControlledInput
+                            parentValue={tracker.hope.toString()}
+                            onUserConfirm={(val) => handleUpdateStat('hope', val)}
+                            className="w-full h-full bg-transparent text-center text-xs font-bold font-mono text-emerald-300 outline-none"
+                        />
+                    </div>
+                </div>
+            </div>
+
+            {/* 3. Daggerheart Status Conditions */}
+            <div className="grid grid-cols-4 gap-1 pt-0.5">
+                {STATUS_OPTIONS.map((status) => {
+                    const isActive = !!tracker.statuses?.[status.key];
+                    return (
+                        <button
+                            key={status.key}
+                            onClick={() => handleToggleStatus(status.key)}
+                            className={clsx(
+                                "px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-all border text-center",
+                                isActive
+                                    ? `${status.bg} ${status.color} shadow-fey-subtle`
+                                    : "bg-surface/50 border-neutral-800 text-muted/60 hover:text-white hover:border-neutral-700"
                             )}
-                        </div>
-                    </div>
-                </div>
-
-                {/* Show HP Toggle Button */}
-                <button
-                    onClick={handleToggleShowHp}
-                    className={clsx(
-                        "px-2.5 py-1 rounded-full text-[10px] font-mono font-bold transition-all border shadow-fey-subtle flex items-center gap-1",
-                        tracker.showHp
-                            ? "bg-emerald-950/60 border-emerald-800 text-emerald-400 hover:bg-emerald-900/60"
-                            : "bg-rose-950/60 border-rose-800 text-rose-300 hover:bg-rose-900/60"
-                    )}
-                    title={tracker.showHp ? "Click to switch to Stealth HP Dealt mode" : "Click to switch to Standard HP mode"}
-                >
-                    {tracker.showHp ? "HP: Visible" : "HP: Dealt Only"}
-                </button>
+                        >
+                            {status.abbr}
+                        </button>
+                    );
+                })}
             </div>
 
-            {/* Middle Section: HP & Stat Inputs */}
-            <div className="grid grid-cols-3 gap-2 py-2">
-                {/* Hit Points Box */}
-                <div className="col-span-3 bg-surface/80 border border-neutral-800 rounded-xl p-2 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2">
-                        <span className="text-[10px] uppercase font-bold text-muted font-mono tracking-wider">HP</span>
-                        <div className="flex items-center gap-1">
-                            <input
-                                type="number"
-                                value={tracker.hp}
-                                onChange={(e) => handleHpChange(parseInt(e.target.value, 10) || 0)}
-                                className="w-12 px-1.5 py-0.5 bg-elevated border border-neutral-700 rounded text-center text-xs font-bold font-mono text-white focus:outline-none focus:border-white"
-                            />
-                            <span className="text-muted font-mono text-xs">/</span>
-                            <input
-                                type="number"
-                                value={tracker.hpMax}
-                                onChange={(e) => handleHpChange(tracker.hp, parseInt(e.target.value, 10) || 1)}
-                                className="w-12 px-1.5 py-0.5 bg-elevated border border-neutral-700 rounded text-center text-xs font-bold font-mono text-muted focus:text-white focus:outline-none focus:border-white"
-                            />
-                        </div>
-                    </div>
-
-                    {/* Quick Math Buttons */}
-                    <div className="flex items-center gap-1">
-                        <button
-                            onClick={() => handleApplyMathDelta(-5)}
-                            className="px-1.5 py-0.5 bg-elevated hover:bg-rose-950/60 text-rose-400 rounded text-[10px] font-mono font-bold border border-neutral-800"
-                        >
-                            -5
-                        </button>
-                        <button
-                            onClick={() => handleApplyMathDelta(-1)}
-                            className="px-1.5 py-0.5 bg-elevated hover:bg-rose-950/60 text-rose-400 rounded text-[10px] font-mono font-bold border border-neutral-800"
-                        >
-                            -1
-                        </button>
-                        <button
-                            onClick={() => handleApplyMathDelta(1)}
-                            className="px-1.5 py-0.5 bg-elevated hover:bg-emerald-950/60 text-emerald-400 rounded text-[10px] font-mono font-bold border border-neutral-800"
-                        >
-                            +1
-                        </button>
-                        <button
-                            onClick={() => handleApplyMathDelta(5)}
-                            className="px-1.5 py-0.5 bg-elevated hover:bg-emerald-950/60 text-emerald-400 rounded text-[10px] font-mono font-bold border border-neutral-800"
-                        >
-                            +5
-                        </button>
-
-                        <form onSubmit={handleMathSubmit} className="flex items-center">
-                            <input
-                                type="text"
-                                placeholder="+/-"
-                                value={mathInput}
-                                onChange={(e) => setMathInput(e.target.value)}
-                                className="w-10 px-1 py-0.5 bg-elevated border border-neutral-700 rounded text-center text-[10px] font-mono text-white focus:outline-none focus:border-white"
-                            />
-                        </form>
-                    </div>
-                </div>
-
-                {/* Armor Box */}
-                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-1.5 flex flex-col items-center justify-center">
-                    <span className="text-[9px] font-mono uppercase font-bold text-muted">Armor (AC)</span>
-                    <div className="flex items-center gap-1.5 mt-1">
-                        <button
-                            onClick={() => handleStatDelta('armor', -1)}
-                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
-                        >
-                            -
-                        </button>
-                        <span className="text-sm font-mono font-bold text-white px-1">{tracker.armor}</span>
-                        <button
-                            onClick={() => handleStatDelta('armor', 1)}
-                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                </div>
-
-                {/* Stress Box */}
-                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-1.5 flex flex-col items-center justify-center">
-                    <span className="text-[9px] font-mono uppercase font-bold text-ember">Stress</span>
-                    <div className="flex items-center gap-1.5 mt-1">
-                        <button
-                            onClick={() => handleStatDelta('stress', -1)}
-                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
-                        >
-                            -
-                        </button>
-                        <span className="text-sm font-mono font-bold text-ember px-1">{tracker.stress}</span>
-                        <button
-                            onClick={() => handleStatDelta('stress', 1)}
-                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                </div>
-
-                {/* Hope Box */}
-                <div className="bg-surface/80 border border-neutral-800 rounded-xl p-1.5 flex flex-col items-center justify-center">
-                    <span className="text-[9px] font-mono uppercase font-bold text-growth">Hope</span>
-                    <div className="flex items-center gap-1.5 mt-1">
-                        <button
-                            onClick={() => handleStatDelta('hope', -1)}
-                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
-                        >
-                            -
-                        </button>
-                        <span className="text-sm font-mono font-bold text-growth px-1">{tracker.hope}</span>
-                        <button
-                            onClick={() => handleStatDelta('hope', 1)}
-                            className="w-5 h-5 rounded bg-elevated hover:bg-neutral-700 text-muted hover:text-white flex items-center justify-center text-xs font-bold"
-                        >
-                            +
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            {/* Conditions / Status Badges */}
-            <div className="space-y-1">
-                <span className="text-[9px] font-mono uppercase font-bold text-muted">Conditions</span>
-                <div className="grid grid-cols-4 gap-1">
-                    {STATUS_OPTIONS.map((status) => {
-                        const isActive = !!tracker.statuses?.[status.key];
-                        return (
-                            <button
-                                key={status.key}
-                                onClick={() => handleToggleStatus(status.key)}
-                                className={clsx(
-                                    "px-1.5 py-0.5 rounded text-[9px] font-mono font-bold transition-all border text-center",
-                                    isActive
-                                        ? `${status.bg} ${status.color} shadow-fey-subtle`
-                                        : "bg-surface border-neutral-800 text-muted/60 hover:text-white hover:border-neutral-700"
-                                )}
-                            >
-                                {status.abbr}
-                            </button>
-                        );
-                    })}
-                </div>
-            </div>
-
-            {/* Footer: Remove Tracker */}
-            <div className="flex items-center justify-end pt-2 border-t border-neutral-800">
-                <button
-                    onClick={handleRemoveTracker}
-                    className="text-[9px] font-mono text-muted hover:text-rose-400 transition-colors flex items-center gap-1"
-                >
-                    <Icons.Delete size={10} />
-                    <span>Clear HUD</span>
-                </button>
-            </div>
+            {/* 4. DM Mode / Stealth Toggle (Exact Bubbles BookLock Button Design) */}
+            <button
+                onClick={handleToggleShowHp}
+                className={clsx(
+                    "w-full py-1.5 px-3 rounded-xl text-xs font-medium transition-all flex items-center justify-center gap-2 border shadow-sm",
+                    !tracker.showHp
+                        ? "bg-rose-950/40 border-rose-800 text-rose-300 hover:bg-rose-900/40"
+                        : "bg-surface/80 border-neutral-800 text-muted hover:text-white hover:bg-surface"
+                )}
+            >
+                {!tracker.showHp ? (
+                    <>
+                        <BookLock />
+                        <span className="font-mono text-[11px] font-bold">DM Stealth Mode (HP Dealt Only)</span>
+                    </>
+                ) : (
+                    <>
+                        <BookOpen />
+                        <span className="font-mono text-[11px] font-semibold">Player Visible (Standard HP Bar)</span>
+                    </>
+                )}
+            </button>
         </div>
     );
 };
